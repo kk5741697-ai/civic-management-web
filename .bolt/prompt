@@ -1,0 +1,72 @@
+use the raw php, no .tsx or other things.
+
+/themes folder is the website's front end --currently i have removed be cause no needed
+/manage folder is the management or admin-panel or crm or erp or hr management - we are currently working on this
+/xhr folder are the ajax endpoint files
+/ajax-request.php are endpoint url
+
+currently we are working on
+/xhr and /manage/pages/*
+don't remove anything's, give me full code, no placeholders.
+
+our mission is build a clean, optimized, modern, feature rich crm + erp + hr management.
+
+
+function Wo_LoadManagePage($page_url = '', $data = array()) {
+    global $wo, $db, $domain_details;
+    $create_file = false;
+
+    $page     = './manage/pages/' . $page_url . '.phtml';
+    $page_min = './manage/pages/' . $page_url . '.min.phtml';
+
+    if (!file_exists($page)) {
+        return ''; // page missing: return empty string to avoid fatal require
+    }
+
+    if ($wo['config']['is_ls'] == 1) {
+        if (!file_exists($page_min)) {
+            $fileContents = file_get_contents($page);
+            if ($fileContents === false) {
+                // fallback to original page if read fails
+                $page_output = $page;
+            } else {
+                $fileContents = removeScriptAndStyleComments($fileContents);
+                $fileContents = removeHtmlComments($fileContents);
+
+                if ($page_url == 'smc') {
+                    // keep as-is for smc
+                } else {
+                    $fileContents = str_replace(array("\r", "\n", "\r\n"), ' ', $fileContents);
+                    $fileContents = preg_replace('/\s+/', ' ', $fileContents);
+                }
+
+                if (file_put_contents($page_min, $fileContents) !== false) {
+                    // file created
+                }
+                $page_output = $page_min;
+            }
+        } else {
+            $page_output = $page_min;
+        }
+    } else {
+        if (file_exists($page_min)) {
+            @unlink($page_min);
+        }
+        $page_output = $page;
+    }
+
+    // Make sure $data is an array and extract it into local scope for the included file.
+    if (!is_array($data)) {
+        $data = array();
+    }
+
+    // Extract with EXTR_SKIP so existing variables aren't overwritten.
+    extract($data, EXTR_SKIP);
+
+    // Capture output of the included template
+    ob_start();
+    require($page_output);
+    $page_content = ob_get_clean();
+
+    return $page_content;
+}
