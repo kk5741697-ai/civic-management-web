@@ -1,0 +1,1067 @@
+<link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;600;700&display=swap" rel="stylesheet">
+<!-- Lucide Icons for basic icons, similar to how shadcn/ui uses them -->
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+/* Basic Reset & Global Styles */
+:root {
+  --light-green-bg: #e0fffe;
+  --dark-green-header: #4100ff;
+  --white-bg: #ffffff;
+  --red-button: #ef4444; /* Tailwind red-500 */
+  --red-button-hover: #dc2626; /* Tailwind red-600 */
+  --blue-button: #ef4444; /* Tailwind red-500 */
+  --blue-button-hover: #00eaff; /* Tailwind red-600 */
+  --text-color: #374151; /* Tailwind gray-800 */
+  --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); /* Tailwind shadow-md */
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: "Hind Siliguri", sans-serif;
+  line-height: 1.6;
+  color: var(--text-color);
+  background-color: var(--light-green-bg);
+  overflow-x: hidden; /* Prevent horizontal scroll from potential overflow */
+}
+
+/* Ensure all images are responsive */
+img {
+  max-width: 100%;
+  height: auto;
+  display: block; /* Removes extra space below images */
+}
+
+/* Ensure text wraps correctly */
+p,
+h1,
+h2,
+h3,
+li,
+label {
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1rem; /* Padding on sides for smaller screens */
+}
+
+section {
+  padding: 3rem 0;
+  text-align: center;
+}
+
+.light-green-bg {
+  background-color: #e0fffe; /* Slightly darker light green for alternating sections */
+}
+
+.white-bg {
+    background-color: #ffffff;
+}
+
+.section-title {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--dark-green-header);
+  margin-bottom: 2rem;
+  padding: 0 1rem; /* Ensure title also has padding on small screens */
+}
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 1rem 2rem;
+  border-radius: 9999px; /* Full rounded */
+  font-size: 1.125rem; /* text-lg */
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+  border: none;
+  text-decoration: none;
+  text-align: center; /* Ensure text is centered within button */
+}
+
+.btn-order {
+  background-color: var(--red-button);
+  color: white;
+  box-shadow: var(--card-shadow);
+  padding: 1.5rem 2rem; /* py-6 px-8 */
+  font-size: 1.25rem; /* text-xl */
+}
+
+.btn-order:hover {
+  background-color: var(--blue-button-hover);
+}
+
+.btn-ghost {
+  background: none;
+  border: none;
+  color: #6b7280; /* gray-500 */
+  padding: 0.25rem 0.5rem;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: color 0.2s ease-in-out;
+}
+
+.btn-ghost:hover {
+  color: #1f2937; /* gray-900 */
+}
+
+.btn-submit {
+  background-color: var(--dark-green-header);
+  color: white;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.375rem; /* rounded-md */
+  font-size: 1rem;
+  font-weight: 600;
+  width: 100%; /* Full width */
+  margin-top: 1rem;
+}
+
+.btn-submit:hover {
+  background-color: #226b44; /* Darker green on hover */
+}
+
+.btn-order-submit {
+  background-color: var(--red-button);
+  color: white;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.375rem; /* rounded-md */
+  font-size: 1rem;
+  font-weight: 600;
+  width: 100%; /* Full width */
+  margin-top: 1rem;
+}
+
+.btn-order-submit:hover {
+  background-color: var(--blue-button-hover);
+}
+
+/* Icons */
+.icon {
+  width: 1.5rem; /* w-6 */
+  height: 1.5rem; /* h-6 */
+}
+
+.icon-large {
+  width: 3rem; /* w-12 */
+  height: 3rem; /* h-12 */
+  color: var(--dark-green-header);
+  margin: 0 auto 0.75rem; /* mx-auto mb-3 */
+}
+
+.icon-small {
+    width: 24px;
+    height: 24px;
+    color: var(--dark-green-header);
+    flex-shrink: 0;
+}
+
+/* Cards */
+.card {
+  background-color: white;
+  border-radius: 0.5rem; /* rounded-lg */
+  box-shadow: var(--card-shadow);
+  overflow: hidden;
+}
+
+.card-content {
+  padding: 1rem; /* p-4 */
+}
+
+/* Hero Section */
+.hero-section {
+  padding: 3rem 1rem; /* py-12 px-4 */
+}
+
+.hero-title {
+  font-size: 2.25rem; /* text-3xl */
+  font-weight: 800; /* font-extrabold */
+  line-height: 1.25; /* leading-tight */
+  color: var(--dark-green-header);
+  margin-bottom: 1.5rem; /* space-y-6 */
+}
+
+.hero-subtitle {
+  font-size: 1.125rem; /* text-lg */
+  color: #4b5563; /* gray-700 */
+  margin-bottom: 2rem;
+}
+
+.video-placeholder {
+  width: 100%;
+  max-width: 768px; /* max-w-3xl */
+  height: 16rem; /* h-64 */
+  background-color: black;
+  border-radius: 0.5rem;
+  box-shadow: var(--card-shadow);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 1.5rem;
+  margin: 0 auto 2rem;
+}
+
+/* Reviews Section */
+.reviews-section {
+  background-color: white;
+  padding: 3rem 1rem;
+}
+
+.reviews-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+}
+
+.review-card .card-content {
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem; /* space-y-3 */
+}
+
+.review-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem; /* gap-3 */
+}
+
+.avatar {
+  width: 2.5rem; /* w-10 */
+  height: 2.5rem; /* h-10 */
+  border-radius: 9999px; /* rounded-full */
+  object-fit: cover;
+  flex-shrink: 0; /* Prevent avatar from shrinking */
+}
+
+.reviewer-name {
+  font-weight: 600;
+}
+
+.review-meta {
+  font-size: 0.875rem; /* text-sm */
+  color: #6b7280; /* gray-500 */
+}
+
+.review-text {
+  color: #4b5563; /* gray-700 */
+  text-align: left; /* Align review text to left */
+}
+
+.review-actions {
+  display: flex;
+  flex-wrap: wrap; /* Allow actions to wrap on small screens */
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.875rem;
+  color: #6b7280;
+  gap: 0.5rem; /* Add gap for wrapped items */
+}
+
+.review-actions .btn-ghost {
+  padding: 0.25rem 0.5rem;
+}
+
+/* Benefits Sections */
+.benefits-section {
+  padding: 3rem 1rem;
+}
+
+.benefits-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+}
+
+.benefit-card {
+  text-align: center;
+  padding: 1.5rem; /* p-6 */
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem; /* space-y-3 */
+}
+
+.card-title {
+  font-weight: 700;
+  font-size: 1.125rem; /* text-lg */
+}
+
+.card-text {
+  color: #4b5563; /* gray-700 */
+  font-size: 0.875rem; /* text-sm */
+}
+
+/* Qualities Section */
+.qualities-section {
+  padding: 3rem 1rem;
+}
+
+.qualities-list {
+  list-style: none;
+  text-align: left;
+  margin-bottom: 2rem;
+  padding: 0 1rem; /* Add padding to list items on small screens */
+}
+
+.qualities-list li {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+    font-size: 20px;
+    color: #000000;
+    font-weight: 700;
+}
+
+/* Why Choose Us Section */
+.why-choose-us-section {
+  padding: 3rem 1rem;
+}
+
+.why-choose-us-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+}
+
+.why-choose-card {
+  text-align: center;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+/* Image Gallery Section */
+.gallery-section {
+  background-color: white;
+  padding: 3rem 1rem;
+}
+
+.image-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+}
+
+.gallery-image {
+  width: 100%;
+  height: auto;
+  border-radius: 0.5rem;
+  object-fit: cover;
+}
+
+/* Pricing Section */
+.pricing-section {
+  padding: 3rem 1rem;
+}
+
+.phone-number-box {
+  background-color: var(--dark-green-header);
+  color: white;
+  padding: 1rem 1.5rem;
+  border-radius: 9999px;
+  display: block;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 1.5rem;
+  font-weight: 700;
+  box-shadow: var(--card-shadow);
+  margin-bottom: 2rem;
+  white-space: nowrap; /* Prevent phone number from breaking */
+}
+
+.regular-price {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--dark-green-header);
+  margin-top: 2rem;
+}
+
+.discount-price {
+  font-size: 1.875rem; /* text-3xl */
+  font-weight: 800; /* font-extrabold */
+  color: #ef4444; /* red-600 */
+  margin-top: 1rem;
+}
+
+.pricing-section .btn-order {
+  margin-top: 2rem;
+}
+
+.stock-message {
+  font-size: 1.25rem; /* text-xl */
+  font-weight: 700;
+  color: var(--dark-green-header);
+  margin-top: 2rem;
+}
+
+.eco-friendly-message {
+  font-size: 1.125rem; /* text-lg */
+  color: #4b5563; /* gray-700 */
+  margin-top: 1rem;
+}
+
+/* Apply Form Section */
+.apply-form-section {
+  background-color: var(--light-green-bg); /* Use the light green background */
+  padding: 3rem 1rem;
+}
+
+.apply-form-card {
+  max-width: 600px; /* Limit form width */
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: left; /* Align form content to left */
+}
+
+.apply-form .form-group {
+  margin-bottom: 1rem;
+}
+
+.apply-form label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: var(--text-color);
+}
+
+.apply-form input[type="text"],
+.apply-form input[type="email"],
+.apply-form input[type="tel"],
+.apply-form textarea {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #d1d5db; /* gray-300 */
+  border-radius: 0.375rem; /* rounded-md */
+  font-size: 1rem;
+  color: var(--text-color);
+  background-color: white;
+  transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.apply-form input[type="file"] {
+  width: 100%;
+  padding: 0.75rem 0; /* Adjust padding for file input */
+  font-size: 1rem;
+  color: var(--text-color);
+}
+
+.apply-form input:focus,
+.apply-form textarea:focus {
+  outline: none;
+  border-color: var(--dark-green-header);
+  box-shadow: 0 0 0 2px rgba(46, 139, 87, 0.2); /* Focus ring */
+}
+
+.apply-form textarea {
+  resize: vertical; /* Allow vertical resizing */
+}
+
+/* New Order Form Section */
+.order-form-section {
+  background-color: var(--white-bg); /* Consistent background */
+  padding: 3rem 1rem;
+}
+
+.order-form-card {
+  max-width: 600px; /* Limit form width */
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: left; /* Align form content to left */
+}
+
+.order-form .form-group {
+  margin-bottom: 1rem;
+}
+
+.order-form label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: var(--text-color);
+}
+
+.order-form input[type="text"],
+.order-form input[type="tel"],
+.order-form input[type="number"],
+.order-form textarea {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #d1d5db; /* gray-300 */
+  border-radius: 0.375rem; /* rounded-md */
+  font-size: 1rem;
+  color: var(--text-color);
+  background-color: white;
+  transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.order-form input:focus,
+.order-form textarea:focus {
+  outline: none;
+  border-color: var(--red-button); /* Use red for order form focus */
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2); /* Focus ring */
+}
+
+.order-form textarea {
+  resize: vertical;
+}
+
+/* Footer */
+.footer-section {
+  background-color: var(--dark-green-header);
+  color: white;
+  padding: 2rem 1rem;
+  position: relative; /* For scroll-to-top button */
+}
+
+.footer-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2rem;
+  margin-bottom: 2rem;
+  text-align: left; /* Align footer text to left */
+}
+
+.footer-heading {
+  font-weight: 700;
+  font-size: 1.125rem; /* text-lg */
+  margin-bottom: 0.75rem;
+}
+
+.footer-column p {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.footer-link {
+  color: white;
+  text-decoration: none;
+  transition: text-decoration 0.2s ease-in-out;
+}
+
+.footer-link:hover {
+  text-decoration: underline;
+}
+
+.social-icons {
+  display: flex;
+  gap: 1rem;
+}
+
+.social-icons .icon {
+  color: white;
+  transition: color 0.2s ease-in-out;
+}
+
+.social-icons .icon:hover {
+  color: #d1d5db; /* gray-300 */
+}
+
+.footer-bottom {
+  border-top: 1px solid #4b5563; /* gray-700 */
+  padding-top: 1rem;
+  text-align: center;
+  font-size: 0.875rem; /* text-sm */
+}
+
+.footer-bottom .disclaimer {
+  margin-top: 0.5rem;
+}
+
+.scroll-to-top {
+  position: fixed;
+  bottom: 1rem;
+  right: 1rem;
+  background-color: #f3f4f6; /* secondary */
+  color: #1f2937; /* text-gray-900 */
+  border: none;
+  border-radius: 9999px;
+  width: 2.5rem;
+  height: 2.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--card-shadow);
+  cursor: pointer;
+  transition: background-color 0.2s ease-in-out;
+  z-index: 100; /* Ensure it's above other content */
+}
+
+.scroll-to-top:hover {
+  background-color: #e5e7eb; /* secondary-hover */
+}
+
+/* Responsive Adjustments */
+@media (min-width: 640px) {
+  /* md breakpoint */
+  .hero-title {
+    font-size: 3rem; /* md:text-5xl */
+  }
+  .hero-subtitle {
+    font-size: 1.25rem; /* md:text-xl */
+  }
+  .video-placeholder {
+    height: 24rem; /* md:h-96 */
+  }
+  .section-title {
+    font-size: 2.5rem; /* md:text-4xl */
+  }
+  .reviews-grid,
+  .benefits-grid,
+  .why-choose-us-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .image-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .pricing-section .regular-price {
+    font-size: 1.875rem; /* md:text-3xl */
+  }
+  .pricing-section .discount-price {
+    font-size: 2.25rem; /* md:text-4xl */
+  }
+  .pricing-section .stock-message {
+    font-size: 1.5rem; /* md:text-2xl */
+  }
+  .pricing-section .eco-friendly-message {
+    font-size: 1.25rem; /* md:text-xl */
+  }
+  .footer-grid {
+    grid-template-columns: repeat(3, 1fr);
+    text-align: left; /* Ensure alignment for larger screens */
+  }
+}
+
+@media (min-width: 1024px) {
+  /* lg breakpoint */
+  .reviews-grid,
+  .benefits-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .why-choose-us-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+  .image-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+      .why-choose-us-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1rem;
+      }
+    
+      /* Hide extra items */
+      .extra-card {
+        display: none;
+      }
+    
+      /* Show extra when active */
+      .show-all .extra-card {
+        display: block;
+      }
+    
+      /* Mobile - only show first 4 */
+      @media (max-width: 768px) {
+        .why-choose-card {
+          display: none;
+        }
+    
+        .why-choose-card:nth-child(-n+4),
+        .show-all .why-choose-card {
+          display: block;
+        }
+      }
+    
+      /* Desktop - show first 12 */
+      @media (min-width: 769px) {
+        .why-choose-card:nth-child(-n+12) {
+          display: block;
+        }
+      }
+    
+      .btn {
+        padding: 10px 20px;
+        background: #007bff;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+      }
+</style>
+
+<div class="page-wrapper">
+    <!-- Hero Section -->
+    <section class="hero-section">
+        <div class="container">
+            <h1 class="hero-title">
+                এককালীন রেজিস্ট্রিতে মূল্য ছাড়!
+            </h1>
+            <p class="hero-subtitle">
+                পূর্বাচল এশিয়ান হাইওয়ে - সিভিক মুনহিল আবাসন প্রকল্পটি রাজউক পূর্বাচল ২৭ ও ২৮নং সেক্টর সংলগ্ন
+            </p>
+            <div class="video-placeholder" style="position: relative; padding-bottom: 37.05%; height: 0; overflow: hidden;">
+                <iframe
+                    src="https://www.youtube.com/embed/Eoy5-9jQUfg?autoplay=1&controls=0&modestbranding=1&rel=0&fs=1&enablejsapi=1"
+                    frameborder="0"
+                    allow="autoplay; fullscreen"
+                    allowfullscreen
+                    style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"
+                ></iframe>
+            </div>
+
+            
+            <p class="regular-price"> কাঠা প্রতি <span style=" text-decoration: line-through; ">১৫.৫০</span> লক্ষ টাকা* (এককালীন মুল্য পরিশোধে) (এছাড়াও কিস্তির সুবিধা বিদ্যমান)</p>
+            <p class="discount-price">ডিসকাউন্ট অফারে বর্তমান মূল্য কাঠা প্রতি ১৪.৫০ লক্ষ টাকা</p>
+            
+            <p class="hero-subtitle" style=" font-weight: 700;font-size: 28px; ">📍 Google Map: <a href="https://maps.app.goo.gl/7JmoiwpB7q88i4gL6" target="_blank" rel="noopener noreferrer">এখানে দেখুন</a></p>
+
+            <button class="btn btn-order scroll-to-form">
+                <i data-lucide="shopping-cart" class="icon"></i>
+                বিস্তারিত জানতে আবেদন করুন
+            </button>
+        </div>
+    </section>
+
+    <!-- Customer Reviews Section -->
+    <section class="reviews-section d-none">
+        <div class="container">
+            <h2 class="section-title">সম্মানিত কাস্টমারদের কিছু রিভিউ</h2>
+            <div class="reviews-grid">
+                <!-- Review Card 1 -->
+                <div class="card review-card">
+                    <div class="card-content">
+                        <div class="review-header">
+                            <img src="/placeholder.svg?height=40&width=40" alt="Rukshana Sheikh" class="avatar">
+                            <div>
+                                <p class="reviewer-name">Rukshana Sheikh</p>
+                                <p class="review-meta">5h Like Reply Message</p>
+                            </div>
+                        </div>
+                        <p class="review-text">খুব ভালো মানের একটি পণ্য, অসাধারণ।</p>
+                        <div class="review-actions">
+                            <button class="btn-ghost">Like</button>
+                            <button class="btn-ghost">Comment</button>
+                            <button class="btn-ghost">Send</button>
+                            <button class="btn-ghost">Share</button>
+                            <button class="btn-boost">Boost post</button>
+                        </div>
+                    </div>
+                </div>
+                <!-- Review Card 2 -->
+                <div class="card review-card">
+                    <div class="card-content">
+                        <div class="review-header">
+                            <img src="/placeholder.svg?height=40&width=40" alt="Agric Planet" class="avatar">
+                            <div>
+                                <p class="reviewer-name">Agric Planet</p>
+                                <p class="review-meta">38m Like Reply</p>
+                            </div>
+                        </div>
+                        <p class="review-text">Hello, received the product with thanks. The rice is slightly sweeter than other rice but it has good aroma. Wishing all the very best with your endeavor</p>
+                        <div class="review-actions">
+                            <button class="btn-ghost">Like</button>
+                            <button class="btn-ghost">Comment</button>
+                            <button class="btn-ghost">Send</button>
+                            <button class="btn-ghost">Share</button>
+                            <button class="btn-boost">Boost post</button>
+                        </div>
+                    </div>
+                </div>
+                <!-- Review Card 3 -->
+                <div class="card review-card">
+                    <div class="card-content">
+                        <div class="review-header">
+                            <img src="/placeholder.svg?height=40&width=40" alt="Amatul Khonjona" class="avatar">
+                            <div>
+                                <p class="reviewer-name">Amatul Khonjona</p>
+                                <p class="review-meta">16h Like Reply</p>
+                            </div>
+                        </div>
+                        <p class="review-text">অসাধারণ! ছোট ছোট দানা। সবসময়ে ভালো লেগেছে পরিষ্কার বারে বাড়িতে থাকে প্যাকেজিং। একটু নতুনত্ব। আবার বাচ্চা খাচ্ছে। এগিয়ে যান। আপনাদের জন্য শুভকামনা রইল। দেখে মন ভালো হয়ে গেল। ❤️</p>
+                        <div class="review-actions">
+                            <button class="btn-ghost">Like</button>
+                            <button class="btn-ghost">Comment</button>
+                            <button class="btn-ghost">Send</button>
+                            <button class="btn-ghost">Share</button>
+                            <button class="btn-boost">Boost post</button>
+                        </div>
+                    </div>
+                </div>
+                <!-- Review Card 4 -->
+                <div class="card review-card">
+                    <div class="card-content">
+                        <div class="review-header">
+                            <img src="/placeholder.svg?height=40&width=40" alt="Shama Bably" class="avatar">
+                            <div>
+                                <p class="reviewer-name">Shama Bably</p>
+                                <p class="review-meta">13h Like Reply</p>
+                            </div>
+                        </div>
+                        <p class="review-text">প্রোডাক্ট ভালো। অর্গানিক মনে হচ্ছে। বাংলাদেশের সেরা পোলাও ও চাল। এতোটা চিকন এতোটা ছোট। একটা রিভিউ।</p>
+                        <div class="review-actions">
+                            <button class="btn-ghost">Like</button>
+                            <button class="btn-ghost">Comment</button>
+                            <button class="btn-ghost">Send</button>
+                            <button class="btn-ghost">Share</button>
+                            <button class="btn-boost">Boost post</button>
+                        </div>
+                    </div>
+                </div>
+                <!-- Review Card 5 -->
+                <div class="card review-card">
+                    <div class="card-content">
+                        <div class="review-header">
+                            <img src="/placeholder.svg?height=40&width=40" alt="Siddiqa Tonny" class="avatar">
+                            <div>
+                                <p class="reviewer-name">Siddiqa Tonny</p>
+                                <p class="review-meta">4h Like Reply</p>
+                            </div>
+                        </div>
+                        <p class="review-text">আপনার চালের মান অনেক ভালো। খিচুড়ি, পোলাও ও সুস্বাদু খুব সুন্দর হয়। 😊</p>
+                        <div class="review-actions">
+                            <button class="btn-ghost">Like</button>
+                            <button class="btn-ghost">Comment</button>
+                            <button class="btn-ghost">Send</button>
+                            <button class="btn-ghost">Share</button>
+                            <button class="btn-boost">Boost post</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Tulshimala Rice Qualities Section -->
+    <section class="qualities-section white-bg">
+        <div class="container">
+            <h2 class="section-title">আমাদের আবাসন প্রকল্পটি কেন <br /> আপনার জন্য একটি লাভজনক বিনিয়োগ? :</h2>
+            <ul class="qualities-list">
+                <li><i data-lucide="check-circle" class="icon-small"></i>নির্ভেজাল , নিষ্কণ্টক ও উঁচু জমি।</li>
+                <li><i data-lucide="check-circle" class="icon-small"></i>আধুনিক নগরায়নের সকল সুযোগ সুবিধা ।</li>
+                <li><i data-lucide="check-circle" class="icon-small"></i>১০০% সেফটি অ্যান্ড সিকিউরিটি।</li>
+                <li><i data-lucide="check-circle" class="icon-small"></i>প্লট কিনুন এককালীন ও দীর্ঘমেয়াদী কিস্তিতে ।</li>
+                <li><i data-lucide="check-circle" class="icon-small"></i>৩, ৪, ৫ ও ১০ কাঠার আবাসিক এবং প্রাতিষ্ঠানিক প্লট</li>
+                <li><i data-lucide="check-circle" class="icon-small"></i>১৮০’ (ফোর লেন) এশিয়ান হাইওয়ে সংযুক্ত, ১৫০’ রোড, রাজউক পূর্বাচল এবং এশিয়ান হাইওয়ে সংযোগ সড়ক সংলগ্ন, রাজউক পূর্বাচলের সেক্টর ২৭ এবং ২৮ নং সংলগ্ন।</li>
+                <li><i data-lucide="check-circle" class="icon-small"></i>আন্তর্জাতিক বাণিজ্য মেলা কনভেনশন হল এর সন্নিকটে অবস্থিত।</li>
+                <li><i data-lucide="check-circle" class="icon-small"></i>মূল্য পরিশোধের সাথে সাথেই রেজিষ্ট্রি।</li>
+                <li><i data-lucide="check-circle" class="icon-small"></i>এককালীন বুকিং এবং দীর্ঘ মেয়াদী কিস্তি সুবিধা বিদ্যমান।</li>
+            </ul>
+            
+            <p class="stock-message">মূল্য বৃদ্ধির আগেই প্লট বুকিং করুন</p>
+            <button class="btn btn-order scroll-to-form">
+                <i data-lucide="shopping-cart" class="icon"></i>
+                বিস্তারিত জানতে আবেদন করুন
+            </button>
+        </div>
+    </section>
+
+    <!-- Why Choose Our Pulao Rice Section -->
+    <section class="why-choose-us-section">
+      <div class="container">
+        <h2 class="section-title">কেন আমাদের প্রকল্পটি আপনার জন্য বিশেষ?</h2>
+    
+        <div id="whyChooseGrid" class="why-choose-us-grid">
+          <!-- Total 20 items (only first 12 shown on desktop, first 4 on mobile) -->
+    
+          <!-- Loop Start -->
+          <div class="card why-choose-card"> <i data-lucide="check-circle" class="icon-large"></i> <h3 class="card-title">North South University – ৭ মিনিট</h3> </div>
+          <div class="card why-choose-card"> <i data-lucide="check-circle" class="icon-large"></i> <h3 class="card-title">IUB – ৭ মিনিট</h3> </div>
+          <div class="card why-choose-card"> <i data-lucide="check-circle" class="icon-large"></i> <h3 class="card-title">UITS – ১২ মিনিট</h3> </div>
+          <div class="card why-choose-card"> <i data-lucide="check-circle" class="icon-large"></i> <h3 class="card-title">UIU – ১০ মিনিট</h3> </div>
+          <div class="card why-choose-card"> <i data-lucide="check-circle" class="icon-large"></i> <h3 class="card-title">DIU – ১০ মিনিট</h3> </div>
+          <div class="card why-choose-card"> <i data-lucide="check-circle" class="icon-large"></i> <h3 class="card-title">DUET – ১৫ মিনিট</h3> </div>
+          <div class="card why-choose-card"> <i data-lucide="check-circle" class="icon-large"></i> <h3 class="card-title">PG Hospital – ১৫ মিনিট</h3> </div>
+          <div class="card why-choose-card"> <i data-lucide="check-circle" class="icon-large"></i> <h3 class="card-title">Parliament – ১০ মিনিট</h3> </div>
+          <div class="card why-choose-card"> <i data-lucide="check-circle" class="icon-large"></i> <h3 class="card-title">BUET – ২০ মিনিট</h3> </div>
+          <div class="card why-choose-card"> <i data-lucide="check-circle" class="icon-large"></i> <h3 class="card-title">Dhaka University – ৩০ মিনিট</h3> </div>
+          <div class="card why-choose-card"> <i data-lucide="check-circle" class="icon-large"></i> <h3 class="card-title">Titumir College – ১৫ মিনিট</h3> </div>
+          <div class="card why-choose-card"> <i data-lucide="check-circle" class="icon-large"></i> <h3 class="card-title">Aga Khan Academy – ৭ মিনিট</h3> </div>
+    
+          <!-- Hidden by default on both mobile & desktop -->
+          <div class="card why-choose-card extra-card"> <i data-lucide="check-circle" class="icon-large"></i> <h3 class="card-title">Kabi Nazrul College – ৩০ মিনিট</h3> </div>
+          <div class="card why-choose-card extra-card"> <i data-lucide="check-circle" class="icon-large"></i> <h3 class="card-title">Notre Dame College – ৩০ মিনিট</h3> </div>
+          <div class="card why-choose-card extra-card"> <i data-lucide="check-circle" class="icon-large"></i> <h3 class="card-title">Eden College – ৩০ মিনিট</h3> </div>
+          <div class="card why-choose-card extra-card"> <i data-lucide="check-circle" class="icon-large"></i> <h3 class="card-title">Jagannath University – ৩০ মিনিট</h3> </div>
+          <div class="card why-choose-card extra-card"> <i data-lucide="check-circle" class="icon-large"></i> <h3 class="card-title">Jahangirnagar University – ৪৫ মিনিট</h3> </div>
+          <div class="card why-choose-card extra-card"> <i data-lucide="check-circle" class="icon-large"></i> <h3 class="card-title">BIRDEM Hospital – ১৫ মিনিট</h3> </div>
+          <div class="card why-choose-card extra-card"> <i data-lucide="check-circle" class="icon-large"></i> <h3 class="card-title">AUST – ১২ মিনিট</h3> </div>
+          <div class="card why-choose-card extra-card"> <i data-lucide="check-circle" class="icon-large"></i> <h3 class="card-title">DU 2nd Campus – ৩ মিনিট</h3> </div>
+          <!-- Loop End -->
+        </div>
+    
+        <div class="text-center mt-4">
+          <button id="toggleMore" class="btn">আরও দেখুন</button>
+        </div>
+      </div>
+    </section>
+    
+    <script>
+      const toggleBtn = document.getElementById('toggleMore');
+      const grid = document.getElementById('whyChooseGrid');
+    
+      toggleBtn.addEventListener('click', () => {
+        grid.classList.toggle('show-all');
+        toggleBtn.textContent = grid.classList.contains('show-all') ? 'কম দেখুন' : 'আরও দেখুন';
+      });
+    </script>
+
+
+    <!-- Image Gallery Section -->
+    <section class="gallery-section">
+      <div class="container">
+        <div class="image-grid">
+          <a data-fancybox="gallery" href="/upload/photos/2025/07/aewioruoqiuroijkladfjasdiofjweiqur.jpg">
+            <img loading="lazy" src="/upload/photos/2025/07/aewioruoqiuroijkladfjasdiofjweiqur.jpg" alt="civic moon hill" class="gallery-image">
+          </a>
+          <a data-fancybox="gallery" href="/upload/photos/2025/07/484568303_1180852703716779_8470078813707872589_n.jpg">
+            <img loading="lazy" src="/upload/photos/2025/07/484568303_1180852703716779_8470078813707872589_n.jpg" alt="civic moon hill" class="gallery-image">
+          </a>
+          <a data-fancybox="gallery" href="/upload/photos/2025/07/zHXdK19tAvMldomVAmrl_02_5f3e621373e8f9c054a166c5ee44c513_image.jpg">
+            <img loading="lazy" src="/upload/photos/2025/07/zHXdK19tAvMldomVAmrl_02_5f3e621373e8f9c054a166c5ee44c513_image.jpg" alt="civic moon hill" class="gallery-image">
+          </a>
+          <a data-fancybox="gallery" href="/upload/photos/2025/07/Mur6fvkvM3KB68O4Q3F3_02_c65cacf6bcd786d0a77de8ad51bb0fef_image.jpg">
+            <img loading="lazy" src="/upload/photos/2025/07/Mur6fvkvM3KB68O4Q3F3_02_c65cacf6bcd786d0a77de8ad51bb0fef_image.jpg" alt="civic moon hill" class="gallery-image">
+          </a>
+          <a data-fancybox="gallery" href="/upload/photos/2025/07/ewopriupqoweropkdaslfjjasdfasdkljf.jpg">
+            <img loading="lazy" src="/upload/photos/2025/07/ewopriupqoweropkdaslfjjasdfasdkljf.jpg" alt="Moon Hill Layout" class="gallery-image">
+          </a>
+          <a data-fancybox="gallery" href="/upload/photos/2025/07/PVlFzOBuNjLjkNxmSR5p_02_ea84fb9eb001f4363b0b4bdee49f530d_image.jpg">
+            <img loading="lazy" src="/upload/photos/2025/07/PVlFzOBuNjLjkNxmSR5p_02_ea84fb9eb001f4363b0b4bdee49f530d_image.jpg" alt="civic moon hill" class="gallery-image">
+          </a>
+          <a data-fancybox="gallery" href="/upload/photos/2025/07/6Unc3t4ylWHKqtu7sInM_02_4535cf49631cf3448701fc0973b7c67c_image.jpg">
+            <img loading="lazy" src="/upload/photos/2025/07/6Unc3t4ylWHKqtu7sInM_02_4535cf49631cf3448701fc0973b7c67c_image.jpg" alt="civic moon hill" class="gallery-image">
+          </a>
+          <a data-fancybox="gallery" href="/upload/photos/2025/07/300-ft-purbachal.jpg">
+            <img loading="lazy" src="/upload/photos/2025/07/300-ft-purbachal.jpg" alt="300 feet to 4 min" class="gallery-image">
+          </a>
+        </div>
+      </div>
+    </section>
+
+<!-- Order Form Section -->
+<section id="orderForm" class="order-form-section white-bg">
+    <div class="container">
+        <h2 class="section-title" style="margin-bottom: 5px;">এখনই আবেদন করুন!</h2>
+        <p class="hero-subtitle">প্রকল্প ভিজিট অথবা বিস্তারিত জানতে</p>
+
+        <div class="card order-form-card" id="formCard">
+            <form id="mainOrderForm" class="order-form">
+                <div class="form-group">
+                    <label for="order-name">আপনার নাম:</label>
+                    <input type="text" id="order-name" name="order_name" required>
+                </div>
+                <div class="form-group">
+                    <label for="order-phone">ফোন নম্বর:</label>
+                    <input type="tel" id="order-phone" name="order_phone" required>
+                </div>
+                <div class="form-group">
+                    <label for="order-katha">কত কাঠা:</label>
+                    <select id="order-katha" name="order_katha" class="form-control" required>
+                        <option value="">-- নির্বাচন করুন --</option>
+                        <option selected>৩ কাঠা</option>
+                        <option>৪ কাঠা</option>
+                        <option>৫ কাঠা</option>
+                        <option>১০ কাঠা</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="order-notes">বিশেষ নোট (যদি থাকে):</label>
+                    <textarea id="order-notes" name="order_notes" rows="3"></textarea>
+                </div>
+                <input type="hidden" name="project" value="moon_hill" hidden/>
+                <button type="submit" class="btn btn-order-submit">অর্ডার নিশ্চিত করুন</button>
+            </form>
+        </div>
+
+        <div id="thankYouMessage" style="display:none; max-width: 600px; margin: 0 auto;">
+            <div style="text-align: center;border: 2px dashed #3f00ff;border-radius: 35px;height: 576px;display: flex;flex-direction: column;justify-content: center;align-items: center;">
+                <h3>আবেদন করার জন্য ধন্যবাদ</h3>
+                <p>আমাদের বিক্রয় প্রতিনিধি আপনার সাথে শিঘ্রই যোগাযোগ করবে।</p>
+                <p>
+                    📞 আমাদের হটলাইন: 
+                    <a href="tel:01907110810" style="color: inherit; text-decoration: underline;">
+                        01907110810
+                    </a>
+                </p>
+
+            </div>
+        </div>
+    </div>
+</section>
+
+    <script>
+    // Utility: Set cookie
+    function setCookie(name, value, days) {
+        const expires = new Date(Date.now() + days * 86400 * 1000).toUTCString();
+        document.cookie = `${name}=${value}; expires=${expires}; path=/`;
+    }
+    
+    // Utility: Get cookie
+    function getCookie(name) {
+        const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+        return match ? match[2] : null;
+    }
+    
+    // Check if user already submitted
+    if (getCookie('formSubmitted_moonhill') === 'yes') {
+        document.getElementById('formCard').style.display = 'none';
+        document.getElementById('thankYouMessage').style.display = 'block';
+    }
+    
+    document.getElementById('mainOrderForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+    
+        const formData = new FormData(e.target);
+    
+        fetch(Wo_Ajax_Requests_File() + '?f=submit-order', {
+            method: 'POST',
+            body: formData
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 200) {
+                // Set long TTL cookie (180 days)
+                setCookie('formSubmitted_moonhill', 'yes', 180);
+                document.getElementById('formCard').style.display = 'none';
+                document.getElementById('thankYouMessage').style.display = 'block';
+            } else {
+                // Show validation error
+                alert(data.message || 'দুঃখিত, কিছু ভুল হয়েছে।');
+            }
+        })
+        .catch(error => {
+            alert('দুঃখিত, আবেদন পাঠাতে সমস্যা হয়েছে। পরে আবার চেষ্টা করুন।');
+            console.error(error);
+        });
+    });
+    
+    // Initialize Lucide icons
+    lucide.createIcons();
+    
+    document.querySelectorAll('.scroll-to-form').forEach(btn => {
+        btn.addEventListener('click', function (e) {
+            e.preventDefault();
+            document.getElementById('orderForm').scrollIntoView({
+                behavior: 'smooth'
+            });
+        });
+    });
+    </script>
+</div>
+

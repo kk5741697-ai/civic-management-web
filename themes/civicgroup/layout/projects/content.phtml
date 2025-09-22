@@ -1,0 +1,31 @@
+<?php
+    $type = isset($_GET['link2']) ? trim($_GET['link2']) : '';
+    
+    if (in_array($type, ['land', 'apartment', 'car'])) {
+        echo Wo_LoadPage('projects/project-list', ['type' => $type]);
+    } else {
+        $typeExp = explode('_', $type);
+        if (isset($typeExp[0]) && is_numeric($typeExp[0]) && $typeExp[0] > 0) {
+            $project_id = $typeExp[0];
+            
+            $project = $db->where('active', '1')->where('id', $project_id)->getOne(T_PROJECTS);
+            if ($project) {
+                $project_data = json_decode($project->additional, true) ?: [];
+                unset($project->additional);
+                $site_url = $wo['config']['site_url'];
+
+                echo Wo_LoadPage('projects/project-view', [
+                    'project' => $project,
+                    'project_data' => $project_data,
+                    'project_id' => $project_id,
+                    'url' => $site_url . '/projects/' . $project_id . '_' . urlencode($project->name),
+                    'thumbnail' => !empty($project->avatar) ? $wo['config']['site_url'] . '/' . $project->avatar : $site_url . '/themes/civicgroup/img/comming-soon.jpg',
+                ]);
+            } else {
+                echo Wo_LoadPage('projects/not-found');
+            }
+        } else {
+            echo Wo_LoadPage('projects/not-found');
+        }
+    }
+?>

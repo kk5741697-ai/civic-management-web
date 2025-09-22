@@ -1,0 +1,240 @@
+<?php
+$project = 'gallery';
+$page = empty($_GET['link2']) ? 'civic-moonhill-photo-gallery' : $_GET['link2'];
+?>
+<div class="inner-banner" style="background-image: url('<?php echo $wo['config']['theme_url']; ?>/img/gallery/civic-moonhill-photo-gallery.jpg');">
+    <div class="container">
+        <div class="banner-content">
+            <div class="text-area">
+                <?php if ($page == 'civic-moonhill-photo-gallery') { ?>
+                    <h1 class="photo-gallery-title">Civic Moonhill Photo Gallery</h1>
+                <?php } elseif ($page == 'civic-design-and-development-photo-gallery') { ?>
+                    <h1 class="photo-gallery-title">Civic Design & Development<br/> Photo Gallery</h1>
+                <?php } elseif ($page == 'civic-abedin-photo-gallery') { ?>
+                    <h1 class="photo-gallery-title">Civic Abedin Photo Gallery</h1>
+                <?php } ?>
+                <section class="breadcrumb">
+                    <div class="container">
+                        <nav>
+                            <ul>
+                                <li class="">
+                                    <a href="<?php echo $wo['config']['site_url']; ?>">
+                                        <i class="fa fa-home"></i> Home </a>
+                                </li>
+                                <li class="">
+                                    <a href="<?php echo $wo['config']['site_url']; ?>/<?php echo $project; ?>">Gallery</a>
+                                </li>
+                                <li class="active">
+                                    <em><?php echo ucwords(str_replace('-', ' ', $page)); ?></em>
+                                </li>
+                            </ul>
+                        </nav>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="navbar-sub-page">
+    <div class="container">
+        <nav>
+            <ul class="inline-navigation d-flex align-items-center">
+				<?php
+					$projects = $db->where('active', '1')->get(T_PROJECTS);
+					foreach ($projects as $pj) {
+						$project_data = json_decode($pj->additional, true) ?: [];
+				        ?>
+				        
+                        <li class="nav-item <?php echo (urlencode($page) == ($pj->id . '_' . urlencode(strtolower($pj->name)))) ? 'active' : ''; ?>">
+                            <a class="nav-link" href="<?php echo $wo['config']['site_url']; ?>/gallery/<?php echo $pj->id . '_' . urlencode(strtolower($pj->name)); ?>"><?php echo $pj->name; ?></a>
+                        </li>
+					<?php } ?>
+            </ul>
+        </nav>
+    </div>
+</div>
+<style>
+.photo-gallery-title {color: #fff;font-size: 35px;margin-bottom: 0;}
+@media only screen and (min-width: 768px) {
+	.photo-gallery-title {color: #fff;font-size: 44px;margin-bottom: 0;}
+}
+
+
+.border-middle:before {
+    top: 0;
+    right: 50%;
+    width: 2px;
+    content: "";
+    height: 100%;
+    position: absolute;
+    background: #DFDFDF;
+}
+
+.navbar-sub-page {
+    background: var(--site-primary-color);
+    font-family: var(--font-family-Assistant);
+    font-weight: 600;
+}
+
+.inline-navigation {
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+    flex-wrap: wrap;
+}
+
+.inline-navigation .nav-item .nav-link:before {
+    content: "";
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    bottom: 0;
+    left: 0;
+    top: 0;
+    background: #fff;
+    visibility: hidden;
+    transform: scale(0);
+    -webkit-transition: 0.25s linear;
+    -moz-transition: 0.25s linear;
+    -o-transition: 0.25s linear;
+    -ms-transition: 0.25s linear;
+    transition: 0.25s linear;
+    z-index: -1;
+}
+
+.inline-navigation .nav-item:hover .nav-link {
+    color: var(--site-primary-color);
+}
+
+.inline-navigation>.nav-item:hover>.nav-link:before {
+    visibility: visible;
+    transform: scale(1);
+}
+
+.inline-navigation .nav-item.active .nav-link {
+    color: var(--site-primary-color);
+}
+
+.inline-navigation>.nav-item.active>.nav-link:before {
+    visibility: visible;
+    transform: scale(1);
+}
+
+.inline-navigation ul.dropdown-menu {
+    position: absolute !important;
+    left: 0;
+    box-shadow: inset 0 0 5px 0 rgb(0 0 0 / 10%);
+    display: block;
+    opacity: 0;
+    visibility: hidden;
+    top: 120%;
+    margin: 0;
+    border: 0;
+    border-radius: 0;
+    float: none;
+    padding: 0;
+    background-image: inherit;
+    backdrop-filter: inherit;
+    -webkit-backdrop-filter: inherit;
+}
+
+.inline-navigation li.nav-item.dropdown:hover>.dropdown-menu {
+    top: 100%;
+    opacity: 1;
+    visibility: visible;
+}
+
+.inline-navigation li.nav-item.dropdown a {
+    padding-right: 25px
+}
+
+.inline-navigation li.nav-item.dropdown>a::after {
+    position: absolute;
+    right: 1rem;
+    content: "\f0d7";
+    font-family: FontAwesome;
+    color: #fff;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.inline-navigation li.nav-item.dropdown:hover>a::after,
+.inline-navigation li.nav-item.dropdown.active>a::after {
+    color: var(--site-primary-color);
+}
+
+.inline-navigation li.nav-item.dropdown a.nav-link+.dropdown-menu li.nav-item a.nav-link {
+    color: var(--site-primary-color);
+}
+
+.inline-navigation li.nav-item.dropdown a.nav-link+.dropdown-menu li.nav-item:hover a.nav-link:before {
+    visibility: visible;
+    transform: scale(1);
+}
+
+.inline-navigation li.nav-item.dropdown a.nav-link+.dropdown-menu li.nav-item:hover a.nav-link {
+    color: #fff;
+}
+
+.inline-navigation li.nav-item.dropdown a.nav-link+.dropdown-menu li.nav-item a.nav-link:before {
+    background: var(--site-primary-color);
+}
+
+@media all and (max-width: 1399px) {
+    .navbar-sub-page .container {
+        max-width: 100%;
+    }
+}
+
+ul.list-info {
+    list-style-type: none;
+    padding-left: 0;
+    position: relative;
+    font-family: var(--font-family-Assistant);
+    font-weight: 500;
+}
+
+ul.list-info>li {
+    position: relative;
+    overflow: hidden;
+    padding-left: 32px;
+    margin-bottom: 10px;
+}
+
+ul.list-info>li:before {
+    content: 'âœ“';
+    font-size: 16px;
+    font-weight: bolder;
+    color: #fff;
+    width: 24px;
+    height: 24px;
+    background: var(--site-secondary-color);
+    position: absolute;
+    left: 0;
+    top: 2px;
+    transition: all 200ms ease;
+    border-radius: 33% 67% 65% 35%/46% 62% 38% 54%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.padding-top-bottom {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    min-height: 100vh;
+    overflow: hidden;
+}
+
+.bg-beige {
+    background: beige;
+}
+
+</style>
+<?php
+//echo Wo_LoadPage($project . '/' . $page);
+// echo Wo_LoadPage('reviews');
+?>

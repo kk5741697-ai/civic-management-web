@@ -1,0 +1,17 @@
+<div class="pt-5">
+	<div class="container">
+		<div class="row">
+			<?php
+				$datas = $db->where('featured', 1)->where('product', 'Civic Moonhill')->orderBy('position', 'ASC')->get(T_PHOTO_GALLERY);
+				foreach ($datas as $data) {
+			?>
+				<div class="col-md-3 mb-5">
+					<a href="/<?= htmlspecialchars($data->image); ?>" data-fancybox="<?= htmlspecialchars(ucfirst($data->name)); ?>" data-title="<?= htmlspecialchars(ucfirst($data->name)); ?>">
+						<img src="/<?= htmlspecialchars(str_replace('_image.', '_image_small.', $data->image)); ?>" alt="<?= htmlspecialchars(ucfirst($data->name)); ?>">
+						<figcaption class="bg-primary-color text-white text-center px-2 py-3"><?= htmlspecialchars(ucfirst($data->name)); ?></figcaption>
+					</a>
+				</div>
+			<?php } ?>
+		</div>
+	</div>
+</div>

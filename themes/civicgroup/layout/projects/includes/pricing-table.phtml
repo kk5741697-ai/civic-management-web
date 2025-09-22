@@ -1,0 +1,34 @@
+<?php
+// Decode your stored JSON (if it’s still a string)
+$pricing = [];
+if (!empty($project_data['pricing'])) {
+    $pricing = is_string($project_data['pricing'])
+      ? json_decode($project_data['pricing'], true)
+      : $project_data['pricing'];
+    if (!is_array($pricing)) {
+        $pricing = [];
+    }
+}
+?>
+<span id="price_list"></span>
+<div class="rh-property-additional-details-wrapper">
+    <h4 class="rh_property__heading rh_property__additional_details">Plot Price List</h4>
+    <ul class="rh_property__additional margin-bottom-40px clearfix">
+        <!-- header row -->
+        <li style="display: flex; font-weight: bold;">
+            <span class="title" style="flex: 1;">Plot Category</span>
+            <span class="value" style="flex: 1;">Single Payment</span>
+            <span class="value" style="flex: 1;">24 Months</span>
+            <span class="value" style="flex: 1;">60 Months</span>
+        </li>
+        <!-- data rows -->
+        <?php foreach ($pricing as $row): ?>
+        <li style="display: flex;">
+            <span class="title" style="flex: 1;"><?= htmlspecialchars($row['category']  ?? '', ENT_QUOTES) ?></span>
+            <span class="value" style="flex: 1;"><?= htmlspecialchars($row['single']    ?? '', ENT_QUOTES) ?></span>
+            <span class="value" style="flex: 1;"><?= htmlspecialchars($row['month24']  ?? '', ENT_QUOTES) ?></span>
+            <span class="value" style="flex: 1;"><?= htmlspecialchars($row['month60']  ?? '', ENT_QUOTES) ?></span>
+        </li>
+        <?php endforeach; ?>
+    </ul>
+</div>
