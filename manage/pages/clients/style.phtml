@@ -1,0 +1,173 @@
+<style>
+.bg-gradient-primary {
+  background: linear-gradient(45deg, #667eea 0%, #764ba2 100%);
+}
+
+.bg-gradient-success {
+  background: linear-gradient(45deg, #11998e 0%, #38ef7d 100%);
+}
+
+.bg-gradient-warning {
+  background: linear-gradient(45deg, #f093fb 0%, #f5576c 100%);
+}
+
+.bg-gradient-info {
+  background: linear-gradient(45deg, #00d4ff 0%, #090979 100%);
+}
+
+.card {
+  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+}
+
+.table-hover tbody tr:hover {
+  background-color: rgba(0,123,255,.05);
+}
+
+.btn-group .btn {
+  transition: all 0.2s ease-in-out;
+}
+
+.modal-content {
+  border-radius: 15px;
+}
+
+.modal-header {
+  border-radius: 15px 15px 0 0;
+}
+
+.card-header {
+  border-radius: 10px 10px 0 0;
+}
+
+.form-control, .form-select {
+  border: 1px solid #e0e6ed;
+  transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+.form-control:focus, .form-select:focus {
+  border-color: #667eea;
+  box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+}
+
+.badge {
+  padding: 0.5em 0.75em;
+  font-size: 0.75em;
+}
+
+.btn-outline-primary:hover {
+  background-color: #667eea;
+  border-color: #667eea;
+}
+
+.text-gradient {
+  background: linear-gradient(45deg, #667eea, #764ba2);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+#ui_schedule_table .table-light th {
+  background-color: #f8f9fa !important;
+}
+
+.payment-status-paid {
+  background-color: rgba(40, 167, 69, 0.1);
+}
+
+.payment-status-unpaid {
+  background-color: rgba(255, 193, 7, 0.1);
+}
+
+/* Enhanced dropdown styling */
+.dropdown-menu {
+  border: none;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+  border-radius: 8px;
+  padding: 0;
+  min-width: 220px;
+}
+
+.dropdown-header {
+  background: linear-gradient(45deg, #667eea, #764ba2);
+  color: white !important;
+  font-weight: 600;
+  padding: 10px 15px;
+  margin: 0;
+  border-radius: 8px 8px 0 0;
+}
+
+.dropdown-header:first-child {
+  border-radius: 8px 8px 0 0;
+}
+
+.dropdown-item {
+  padding: 8px 15px;
+  transition: all 0.2s ease-in-out;
+  font-size: 0.9rem;
+}
+
+.dropdown-item:hover {
+  background-color: rgba(102, 126, 234, 0.1);
+  transform: translateX(3px);
+}
+
+.dropdown-item i {
+  width: 18px;
+  display: inline-block;
+}
+
+.dropdown-divider {
+  margin: 5px 0;
+  border-top: 1px solid rgba(0,0,0,0.1);
+}
+
+/* Print styles */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  
+  .schedule-print-template {
+    width: 100%;
+    margin: 0;
+    padding: 20px;
+  }
+  
+  .schedule-print-template .table {
+    page-break-inside: auto;
+  }
+  
+  .schedule-print-template .card {
+    border: 1px solid #dee2e6 !important;
+    page-break-inside: auto;
+  }
+}
+
+.schedule-print-template {
+  background: white;
+  padding: 30px;
+  font-family: Arial, sans-serif;
+}
+
+.schedule-print-template .company-name {
+  color: #2c3e50;
+  font-weight: bold;
+}
+
+.schedule-print-template .document-title {
+  color: #34495e;
+  margin-bottom: 10px;
+}
+
+.schedule-print-template .card {
+  border: 1px solid #dee2e6;
+  margin-bottom: 5px;
+}
+
+.schedule-print-template .signature-area {
+  margin-top: 40px;
+}
+</style>
