@@ -1,0 +1,79 @@
+<!-- Booking Form Print Modal -->
+<div class="modal fade" id="bookingFormModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-fullscreen">
+    <div class="modal-content">
+      <div class="modal-header no-print">
+        <h5 class="modal-title">Booking Form</h5>
+        <div class="d-flex gap-2">
+          <button type="button" class="btn btn-outline-secondary btn-sm" onclick="printBookingForm()">Print</button>
+          <button type="button" class="btn btn-outline-secondary btn-sm" onclick="downloadBookingForm()">Download</button>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+      </div>
+      
+      <div class="modal-body p-0" id="bookingFormContent">
+        <!-- Booking form content will be loaded here -->
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+/* Booking Form Print Styles */
+.booking-form-container {
+  position: relative;
+  width: 8.5in;
+  height: 11in;
+  margin: 0 auto;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  font-family: Arial, sans-serif;
+  font-weight: 600;
+  color: #000;
+}
+
+.booking-form-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10;
+}
+
+.form-field {
+  position: absolute;
+  font-size: 14px;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+/* Project-specific positioning */
+.moon-hill-form {
+  background-image: url('/manage/pages/clients/moon-hill.jpg');
+}
+
+.hill-town-form {
+  background-image: url('/manage/pages/clients/hill-town.jpg');
+}
+
+/* Print styles */
+@media print {
+  body * { visibility: hidden; }
+  .booking-form-container, .booking-form-container * { visibility: visible; }
+  .booking-form-container {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+  }
+  .no-print { display: none !important; }
+  @page {
+    size: 8.5in 11in;
+    margin: 0;
+  }
+}
+</style>
