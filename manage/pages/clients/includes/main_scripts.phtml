@@ -53,7 +53,8 @@ jQuery(function($){
       var instance = $el.select2($.extend({
         width: '100%',
         theme: 'bootstrap-5',
-        allowClear: true
+        allowClear: true,
+        dropdownParent: $('#viewClient-modal')
       }, options || {}));
       
       select2Instances[selector] = instance;
@@ -76,6 +77,106 @@ jQuery(function($){
       }
     });
   }
+
+  // Plot normalization and templates
+  function normalizePlotItem(it) {
+    if (!it) return null;
+    var id    = it.id || it.purchase_id || it.PK || '';
+    var plot  = it.plot || it.plot_number || it.name || '';
+    var katha = (it.katha !== undefined && it.katha !== null) ? String(it.katha) : '';
+    var block = it.block || it.block_name || it.block_label || '';
+    var road  = it.road || it.road_name || '';
+    var facing  = it.facing || it.facing_name || '';
+    var statusRaw = (it.status !== undefined && it.status !== null) ? it.status : (it.status_label !== undefined ? it.status_label : '');
+    var statusLabel = '';
+    if (it.status_label !== undefined && it.status_label !== null && String(it.status_label) !== '') {
+      statusLabel = String(it.status_label);
+    } else {
+      var s = String(statusRaw).toLowerCase();
+      if (s === '0' || s === '1' || s === 'available') statusLabel = 'Available';
+      else if (s === '2' || s === 'sold' || s === 'booked') statusLabel = 'Sold';
+      else if (s.indexOf('cancel') !== -1) statusLabel = 'Cancelled';
+      else statusLabel = (s === '' ? '' : (s.charAt(0).toUpperCase() + s.slice(1)));
+    }
+
+    var available = (it.available !== undefined && it.available !== null) ? (Number(it.available) === 1) : (String(statusRaw) === '' || /^(0|1|available)$/i.test(String(statusRaw)));
+    var disabledFlag = (it.disabled !== undefined && it.disabled !== null) ? (Number(it.disabled) === 1) : (!available && /^(2|sold|booked)$/i.test(String(statusRaw)));
+
+    var parts = [];
+    if (block) parts.push(String(block).toUpperCase());
+    if (plot) parts.push('Plot ' + String(plot));
+    if (katha) parts.push(String(katha) + ' katha');
+    if (road) parts.push('Road ' + String(road));
+    if (facing) parts.push('Facing ' + String(facing));
+    var baseText = parts.join(' • ');
+
+    return {
+      id: id,
+      text: baseText || String(id),
+      plot: plot,
+      katha: katha,
+      block: block,
+      road: road,
+      facing: facing,
+      status: statusRaw,
+      status_label: statusLabel,
+      available: !!available,
+      blocked: !!disabledFlag,
+      helpers: it.helpers || [],
+      conflicts: it.conflicts || [],
+      raw: it,
+      disabled: false
+    };
+  }
+
+  function select2TemplateResult(item) {
+    if (!item || !item.id) return item && item.text ? item.text : null;
+    var $wrap = $('<div class="select2-result-item d-flex justify-content-between"></div>');
+    var $label = $('<div class="me-2 select2-main-text"></div>').text(item.text);
+    $wrap.append($label);
+    var badgeText = (item.status_label !== undefined && item.status_label !== null && String(item.status_label) !== '') ? String(item.status_label) : '';
+    if (badgeText !== '') {
+      var s = String(item.status || '').toLowerCase();
+      var badgeClass = 'other';
+      if (/(sold|2|booked)/.test(s)) badgeClass = 'sold';
+      else if (/(cancel(ed)?|4)/.test(s)) badgeClass = 'cancelled';
+      else if (/(avail|0|1|available)/.test(s)) badgeClass = 'available';
+      else if (/(complete|3)/.test(s)) badgeClass = 'completed';
+      var $badge = $('<span class="select2-result-badge ' + badgeClass + '"></span>').text(badgeText);
+      $wrap.append($badge);
+    }
+    if (item.blocked) { $wrap.addClass('select2-result--disabled'); }
+    return $wrap;
+  }
+
+  function select2TemplateSelection(item) {
+    if (!item) return null;
+    if (typeof item === 'string') return item;
+    if (!item.id) return item.text || null;
+    var $wrap = $('<span class="select2-selection-item d-flex justify-content-between align-items-center w-100" style="padding: 3px 6px;line-height: 2;"></span>').text(item.text);
+    var hasLabel = (item.status_label !== undefined && item.status_label !== null && String(item.status_label) !== '');
+    if (hasLabel) {
+      var s = String(item.status || '').toLowerCase();
+      var badgeClass = 'other';
+      if (/(sold|2|booked)/.test(s)) badgeClass = 'sold';
+      else if (/(cancel(ed)?|4)/.test(s)) badgeClass = 'cancelled';
+      else if (/(avail|0|1|available)/.test(s)) badgeClass = 'available';
+      else if (/(complete|3)/.test(s)) badgeClass = 'completed';
+      $wrap.append(' ');
+      $wrap.append($('<span class="select2-result-badge ' + badgeClass + '"></span>').text(String(item.status_label)));
+    }
+    return $wrap;
+  }
+
+  // Auto-focus search field when Select2 opens
+  $(document).on('select2:open', function() {
+    setTimeout(function() {
+      var searchField = document.querySelector('.select2-container--open .select2-search__field');
+      if (searchField) {
+        searchField.focus();
+      }
+    }, 0);
+  });
 
   // Dropdown actions functions
   window.transferPurchase = function(purchaseId) {
@@ -228,6 +329,54 @@ jQuery(function($){
     $('#suspendPurchaseModal').modal('show');
   };
 
+  window.changePlot = function(purchaseId) {
+    $('#change_plot_purchase_id').val(purchaseId);
+    $('#change_plot_error').addClass('d-none').text('');
+    
+    // Load current purchase details
+    $.get(inventoryBase() + '&s=get_purchase_details&purchase_id=' + purchaseId)
+      .done(function(resp){
+        var data = resp;
+        try { if (typeof resp === 'string') data = JSON.parse(resp); } catch(e) {}
+        
+        if (data && data.status === 200) {
+          $('#change_plot_project').val(data.project_name || '');
+          
+          // Load available plots for the same project
+          $.get(inventoryBase() + '&s=get_available_plots&project_slug=' + (data.project_slug || ''))
+            .done(function(plotResp){
+              var plots = plotResp;
+              try { if (typeof plotResp === 'string') plots = JSON.parse(plotResp); } catch(e) {}
+              
+              var $plotSelect = $('#change_plot_select');
+              $plotSelect.empty().append('<option value="">Select available plot</option>');
+              
+              if (Array.isArray(plots) && plots.length) {
+                plots.forEach(function(p){
+                  var text = 'Block ' + (p.block || '') + ' • Plot ' + (p.plot || '') + ' • ' + (p.katha || '') + ' katha';
+                  $plotSelect.append('<option value="'+p.id+'">'+text+'</option>');
+                });
+              }
+              
+              safeInitSelect2('#change_plot_select', {
+                placeholder: 'Search available plots...',
+                dropdownParent: $('#changePlotModal')
+              });
+              
+              $('#changePlotModal').modal('show');
+            })
+            .fail(function(){
+              $('#change_plot_error').removeClass('d-none').text('Failed to load available plots');
+            });
+        } else {
+          $('#change_plot_error').removeClass('d-none').text('Failed to load purchase details');
+        }
+      })
+      .fail(function(){
+        $('#change_plot_error').removeClass('d-none').text('Server error');
+      });
+  };
+
   // Event handlers
   $('#suspend_duration').on('change', function(){
     if ($(this).val() === 'custom') {
@@ -323,6 +472,38 @@ jQuery(function($){
       });
   });
 
+  $('#change_plot_save').on('click', function(){
+    var purchaseId = $('#change_plot_purchase_id').val();
+    var newPlotId = $('#change_plot_select').val();
+    
+    if (!newPlotId) {
+      $('#change_plot_error').removeClass('d-none').text('Please select a plot');
+      return;
+    }
+    
+    var payload = {
+      s: 'change_plot',
+      purchase_id: purchaseId,
+      new_plot_id: newPlotId
+    };
+    
+    $.post(inventoryBase(), payload)
+      .done(function(resp){
+        var data = resp;
+        try { if (typeof resp === 'string') data = JSON.parse(resp); } catch(e) {}
+        if (data && (data.status === 200 || data.status === '200')) {
+          alert('Plot changed successfully');
+          $('#changePlotModal').modal('hide');
+          location.reload();
+        } else {
+          $('#change_plot_error').removeClass('d-none').text((data && data.message) ? data.message : 'Failed to change plot');
+        }
+      })
+      .fail(function(){
+        $('#change_plot_error').removeClass('d-none').text('Server error');
+      });
+  });
+
   // Cancel purchase functionality
   $(document).on('click', '.cancel-purchase', function(e){
     e.preventDefault();
@@ -386,6 +567,357 @@ jQuery(function($){
       });
   });
 
+  // Payment Schedule functionality
+  $(document).on('click', '.update_installment', function(e){
+    e.preventDefault();
+    var purchaseId = $(this).data('id');
+    if (!purchaseId) {
+      alert('Purchase ID missing');
+      return;
+    }
+    
+    $('#ui_purchase_id').val(purchaseId);
+    
+    // Load purchase data
+    $.get(inventoryBase() + '&s=get_purchase&purchase_id=' + purchaseId)
+      .done(function(resp){
+        var data = resp;
+        try { if (typeof resp === 'string') data = JSON.parse(resp); } catch(e) {}
+        
+        if (data && !data.error) {
+          // Populate modal with purchase data
+          $('#ui_project_name').text(data.project_name || '');
+          $('#ui_total_price').text(Number(data.total_price || 0).toLocaleString());
+          $('#ui_booking_money').text(Number(data.booking_money || 0).toLocaleString());
+          $('#ui_down_payment').text(Number(data.down_payment || 0).toLocaleString());
+          
+          var remaining = (data.total_price || 0) - (data.booking_money || 0) - (data.down_payment || 0);
+          $('#ui_remaining').text(Number(remaining).toLocaleString());
+          
+          // Load existing schedule if any
+          if (data.schedule && data.schedule.length) {
+            populateScheduleTable(data.schedule);
+            $('#ui_configuration_section').hide();
+            $('#ui_change_schedule').show();
+          } else {
+            $('#ui_configuration_section').show();
+            $('#ui_change_schedule').hide();
+            $('#ui_start_date').val(data.default_start_date || new Date().toISOString().slice(0,10));
+          }
+          
+          $('#updateInstallmentModal').modal('show');
+        } else {
+          alert('Failed to load purchase data: ' + (data.error || 'Unknown error'));
+        }
+      })
+      .fail(function(){
+        alert('Server error while loading purchase data');
+      });
+  });
+
+  function populateScheduleTable(schedule) {
+    var tbody = $('#ui_schedule_table tbody');
+    tbody.empty();
+    
+    var total = 0;
+    schedule.forEach(function(item, index) {
+      var amount = Number(item.amount || 0);
+      total += amount;
+      
+      var row = `
+        <tr>
+          <td>${index + 1}</td>
+          <td><input type="date" class="form-control form-control-sm" value="${item.date}" data-field="date"></td>
+          <td><input type="number" class="form-control form-control-sm" value="${amount}" data-field="amount" min="0"></td>
+          <td><input type="number" class="form-control form-control-sm" value="${item.adjustment || 0}" data-field="adjustment"></td>
+          <td>
+            <select class="form-select form-select-sm" data-field="status">
+              <option value="unpaid" ${(item.status === 'unpaid' || !item.status) ? 'selected' : ''}>Unpaid</option>
+              <option value="paid" ${item.status === 'paid' ? 'selected' : ''}>Paid</option>
+            </select>
+          </td>
+          <td><button type="button" class="btn btn-sm btn-outline-danger remove-schedule-row">&times;</button></td>
+        </tr>
+      `;
+      tbody.append(row);
+    });
+    
+    $('#ui_total_amount').text(total.toLocaleString());
+    updateScheduleTotals();
+  }
+
+  function updateScheduleTotals() {
+    var total = 0;
+    $('#ui_schedule_table tbody tr').each(function() {
+      var amount = Number($(this).find('[data-field="amount"]').val() || 0);
+      total += amount;
+    });
+    $('#ui_total_amount').text(total.toLocaleString());
+    $('#ui_schedule_total').text(total.toLocaleString());
+  }
+
+  // Schedule management
+  $('#ui_generate_schedule').on('click', function(){
+    var mode = $('#ui_mode').val();
+    var installments = Number($('#ui_installments').val()) || 12;
+    var startDate = $('#ui_start_date').val();
+    var startOption = $('#ui_start_option').val();
+    var monthlyAmount = Number($('#ui_monthly_amount').val()) || 0;
+    var yearlyAdjustment = Number($('#ui_yearly_adjustment').val()) || 0;
+    var adjustmentType = $('#ui_adjustment_type').val();
+    
+    var remaining = Number($('#ui_remaining').text().replace(/,/g, '')) || 0;
+    
+    if (mode === '1') {
+      // Full payment
+      var tbody = $('#ui_schedule_table tbody');
+      tbody.empty();
+      tbody.append(`
+        <tr>
+          <td>1</td>
+          <td><input type="date" class="form-control form-control-sm" value="${startDate}" data-field="date"></td>
+          <td><input type="number" class="form-control form-control-sm" value="${remaining}" data-field="amount" min="0"></td>
+          <td><input type="number" class="form-control form-control-sm" value="0" data-field="adjustment"></td>
+          <td>
+            <select class="form-select form-select-sm" data-field="status">
+              <option value="unpaid" selected>Unpaid</option>
+              <option value="paid">Paid</option>
+            </select>
+          </td>
+          <td><button type="button" class="btn btn-sm btn-outline-danger remove-schedule-row">&times;</button></td>
+        </tr>
+      `);
+    } else {
+      // Installment payment
+      generateInstallmentSchedule(remaining, installments, startDate, startOption, monthlyAmount, yearlyAdjustment, adjustmentType);
+    }
+    
+    updateScheduleTotals();
+  });
+
+  function generateInstallmentSchedule(totalAmount, installments, startDate, startOption, monthlyAmount, yearlyAdjustment, adjustmentType) {
+    var tbody = $('#ui_schedule_table tbody');
+    tbody.empty();
+    
+    var currentDate = new Date(startDate);
+    var remainingAmount = totalAmount;
+    
+    // Calculate monthly amount if not provided
+    if (!monthlyAmount) {
+      monthlyAmount = Math.floor((totalAmount - (yearlyAdjustment * Math.floor(installments / 12))) / installments);
+    }
+    
+    for (var i = 0; i < installments; i++) {
+      var scheduleDate = new Date(currentDate);
+      
+      // Adjust date based on start option
+      if (startOption === 'start') {
+        scheduleDate.setDate(1);
+      } else if (startOption === 'middle') {
+        scheduleDate.setDate(15);
+      } else if (startOption === 'end') {
+        var lastDay = new Date(scheduleDate.getFullYear(), scheduleDate.getMonth() + 1, 0).getDate();
+        scheduleDate.setDate(lastDay);
+      }
+      
+      var amount = monthlyAmount;
+      var adjustment = 0;
+      
+      // Apply yearly adjustment
+      if (yearlyAdjustment > 0 && (i + 1) % 12 === 0) {
+        if (adjustmentType === 'year_start' && i === 11) {
+          adjustment = yearlyAdjustment;
+        } else if (adjustmentType === 'year_middle' && i === 5) {
+          adjustment = yearlyAdjustment;
+        } else if (adjustmentType === 'year_end' && (i + 1) % 12 === 0) {
+          adjustment = yearlyAdjustment;
+        }
+      }
+      
+      // Last installment gets remaining amount
+      if (i === installments - 1) {
+        amount = remainingAmount;
+      } else {
+        remainingAmount -= amount;
+      }
+      
+      var row = `
+        <tr>
+          <td>${i + 1}</td>
+          <td><input type="date" class="form-control form-control-sm" value="${scheduleDate.toISOString().slice(0,10)}" data-field="date"></td>
+          <td><input type="number" class="form-control form-control-sm" value="${amount}" data-field="amount" min="0"></td>
+          <td><input type="number" class="form-control form-control-sm" value="${adjustment}" data-field="adjustment"></td>
+          <td>
+            <select class="form-select form-select-sm" data-field="status">
+              <option value="unpaid" selected>Unpaid</option>
+              <option value="paid">Paid</option>
+            </select>
+          </td>
+          <td><button type="button" class="btn btn-sm btn-outline-danger remove-schedule-row">&times;</button></td>
+        </tr>
+      `;
+      tbody.append(row);
+      
+      // Move to next month
+      currentDate.setMonth(currentDate.getMonth() + 1);
+    }
+  }
+
+  // Schedule table events
+  $(document).on('click', '.remove-schedule-row', function(){
+    $(this).closest('tr').remove();
+    updateScheduleTotals();
+  });
+
+  $(document).on('input', '[data-field="amount"]', updateScheduleTotals);
+
+  $('#ui_save_schedule').on('click', function(){
+    var purchaseId = $('#ui_purchase_id').val();
+    var schedule = [];
+    
+    $('#ui_schedule_table tbody tr').each(function(){
+      var $row = $(this);
+      schedule.push({
+        date: $row.find('[data-field="date"]').val(),
+        amount: Number($row.find('[data-field="amount"]').val()) || 0,
+        adjustment: Number($row.find('[data-field="adjustment"]').val()) || 0,
+        status: $row.find('[data-field="status"]').val()
+      });
+    });
+    
+    if (!schedule.length) {
+      alert('Please generate a schedule first');
+      return;
+    }
+    
+    $.post(inventoryBase() + '&s=update_installment', {
+      purchase_id: purchaseId,
+      schedule: JSON.stringify(schedule)
+    })
+      .done(function(resp){
+        var data = resp;
+        try { if (typeof resp === 'string') data = JSON.parse(resp); } catch(e) {}
+        
+        if (data && data.status === 200) {
+          alert('Payment schedule saved successfully');
+          $('#updateInstallmentModal').modal('hide');
+        } else {
+          alert((data && data.message) ? data.message : 'Failed to save schedule');
+        }
+      })
+      .fail(function(){
+        alert('Server error while saving schedule');
+      });
+  });
+
+  // Print schedule functionality
+  $(document).on('click', '.print_payment_schedule', function(e){
+    e.preventDefault();
+    var purchaseId = $(this).data('id');
+    if (!purchaseId) {
+      alert('Purchase ID missing');
+      return;
+    }
+    
+    // Load purchase data for printing
+    $.get(inventoryBase() + '&s=get_purchase&purchase_id=' + purchaseId)
+      .done(function(resp){
+        var data = resp;
+        try { if (typeof resp === 'string') data = JSON.parse(resp); } catch(e) {}
+        
+        if (data && !data.error) {
+          // Populate print template
+          $('#print_company_name').text('<?= htmlspecialchars($wo['config']['siteTitle'] ?? 'Company Name') ?>');
+          $('#print_client_name').text('<?= htmlspecialchars($wo['client']['name']) ?>');
+          $('#print_client_phone').text('<?= htmlspecialchars($wo['client']['phone']) ?>');
+          $('#print_client_address').text('<?= htmlspecialchars($wo['client']['address']) ?>');
+          $('#print_project_name').text(data.project_name || '');
+          $('#print_file_number').text(data.file_number || '');
+          $('#print_total_price').text(Number(data.total_price || 0).toLocaleString());
+          $('#print_booking_money').text(Number(data.booking_money || 0).toLocaleString());
+          $('#print_down_payment').text(Number(data.down_payment || 0).toLocaleString());
+          
+          var remaining = (data.total_price || 0) - (data.booking_money || 0) - (data.down_payment || 0);
+          $('#print_remaining').text(Number(remaining).toLocaleString());
+          $('#print_date').text(new Date().toLocaleDateString());
+          
+          // Populate schedule rows
+          var scheduleRows = '';
+          var scheduleTotal = 0;
+          if (data.schedule && data.schedule.length) {
+            data.schedule.forEach(function(item, index) {
+              var amount = Number(item.amount || 0);
+              scheduleTotal += amount;
+              scheduleRows += `
+                <tr>
+                  <td>${index + 1}</td>
+                  <td>${item.date}</td>
+                  <td>৳${amount.toLocaleString()}</td>
+                  <td>${item.status === 'paid' ? 'Paid' : 'Unpaid'}</td>
+                  <td>${item.notes || ''}</td>
+                </tr>
+              `;
+            });
+          }
+          $('#print_schedule_rows').html(scheduleRows);
+          $('#print_schedule_total').text(scheduleTotal.toLocaleString());
+          
+          // Print
+          var printContent = $('#printScheduleContent').html();
+          var printWindow = window.open('', '_blank');
+          printWindow.document.write(`
+            <html>
+            <head>
+              <title>Payment Schedule</title>
+              <style>
+                body { margin: 20px; font-family: Arial, sans-serif; }
+                .print-header { text-align: center; margin-bottom: 30px; }
+                .company-name { font-size: 24px; font-weight: bold; margin-bottom: 10px; }
+                .document-title { font-size: 18px; color: #666; }
+                table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+                th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+                th { background-color: #f5f5f5; font-weight: bold; }
+                .client-info, .purchase-info { margin-bottom: 20px; }
+                .signature-area { margin-top: 50px; text-align: center; }
+                @media print {
+                  body { margin: 0; }
+                  .signature-area { page-break-inside: avoid; }
+                }
+              </style>
+            </head>
+            <body>
+              ${printContent}
+            </body>
+            </html>
+          `);
+          
+          printWindow.document.close();
+          setTimeout(function() {
+            printWindow.print();
+            setTimeout(function() {
+              printWindow.close();
+            }, 500);
+          }, 250);
+        } else {
+          alert('Failed to load purchase data for printing');
+        }
+      })
+      .fail(function(){
+        alert('Server error while loading purchase data');
+      });
+  });
+
+  // Change plot functionality
+  $(document).on('click', '.change_plot_btn', function(e){
+    e.preventDefault();
+    var purchaseId = $(this).data('id');
+    if (!purchaseId) {
+      alert('Purchase ID missing');
+      return;
+    }
+    changePlot(purchaseId);
+  });
+
   // Add Purchase Form Management
   $('#addPurchaseBtn').on('click', function(){
     if (isFormVisible) return;
@@ -431,7 +963,9 @@ jQuery(function($){
     if (!projectId) {
       safeInitSelect2('#purchaseSelect', {
         placeholder: 'Select Plot',
-        dropdownParent: $('#viewClient-modal')
+        dropdownParent: $('#viewClient-modal'),
+        templateResult: select2TemplateResult,
+        templateSelection: select2TemplateSelection
       });
       return;
     }
@@ -441,6 +975,8 @@ jQuery(function($){
       placeholder: 'Search plots...',
       dropdownParent: $('#viewClient-modal'),
       minimumInputLength: 1,
+      templateResult: select2TemplateResult,
+      templateSelection: select2TemplateSelection,
       ajax: {
         url: inventoryBase() + '&s=search_purchases',
         dataType: 'json',
@@ -458,10 +994,11 @@ jQuery(function($){
           var results = [];
           if (data && Array.isArray(data.results)) {
             results = data.results.map(function(item) {
+              var normalized = normalizePlotItem(item);
               return {
-                id: item.id,
-                text: item.text,
-                data: item
+                id: normalized.id,
+                text: normalized.text,
+                data: normalized
               };
             });
           }
