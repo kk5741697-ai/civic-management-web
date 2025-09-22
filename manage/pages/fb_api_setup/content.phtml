@@ -1,0 +1,394 @@
+<style>
+.switcher {
+  position:  relative;
+}
+
+
+.switcher input[type=checkbox] {
+  position: absolute;
+  opacity: 0;
+  z-index: -1;
+}
+
+.check-trail {
+  display: flex;
+  align-items: center;
+  width: 58px;
+  height: 33px;
+  background: #be3e44;
+  border-radius: 2.5em;
+  transition: all 0.2s ease;
+  cursor: pointer !important;
+}
+
+.check-handler {
+  display: flex;
+  margin-left: 0.5em;
+  justify-content: center;
+  align-items: center;
+  width: 25px;
+  height: 25px;
+  background: #ce464a;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.3);
+}
+.check-handler:before {
+  content: "×";
+  color: white;
+  font-size: 1em;
+  font-weight: bold;
+}
+
+
+.switcher input[type=checkbox]:checked + .check-trail {
+  background: #16a085;
+}
+.switcher input[type=checkbox]:checked + .check-trail .check-handler {
+  margin-left: 50%;
+  background: #1abc9c;
+}
+.switcher input[type=checkbox]:checked + .check-trail .check-handler::before {
+  content: "✔";
+}
+.float-left {
+    float: left !important;
+}
+.float-right {
+    float: right !important;
+}
+.main-label {
+    background: #f8f8f8;
+    padding: 6px;
+    border-radius: 10px;
+    font-weight: 500;
+}
+.fb_api label {
+    font-weight: 500;
+    margin-top: 5px;
+    margin-bottom: 5px;
+}
+
+.fb_api .form-group {
+    margin-bottom: 1rem;
+}
+</style>
+<?php
+Global $fb_connect;
+
+if (!empty($wo['fb_api_data']['user_access_token'])) {
+    try {
+        // Get the list of pages the user manages with WhatsApp info
+        $response = $fb_connect->get('/me/accounts?fields=has_whatsapp_number,has_whatsapp_business_number,whatsapp_number,access_token,name,picture', $wo['fb_api_data']['user_access_token']);
+        $pages = $response->getDecodedBody();
+    } catch (Facebook\Exceptions\FacebookResponseException $e) {
+        echo 'Graph returned an error: ' . $e->getMessage();
+    } catch (Facebook\Exceptions\FacebookSDKException $e) {
+        echo 'Facebook SDK returned an error: ' . $e->getMessage();
+    }
+}
+
+?>
+
+<div class="container-fluid">
+    <div>
+        <h3>Facebook API</h3>
+    </div>
+
+<form class="fb_api" method="POST">
+    <div class="row">
+        <div class="col-lg-12 col-md-12 float-left">
+            <div class="card">
+                <div class="card-body">
+                    <h6 class="card-title">App & API Credentials</h6>
+                    <div class="api-key-alert"></div>
+                        <div class="form-group form-float">
+                            <label class="form-label">App ID</label>
+                            <div class="form-line">
+                                <input type="text" name="app_id" class="form-control" value="<?php echo htmlspecialchars($wo['fb_api_data']['app_id']); ?>">
+                                <small class="admin-info">Facebook app id credentials.</small>
+                            </div>
+                        </div>
+                        <div class="form-group form-float">
+                            <label class="form-label">App Secret</label>
+                            <div class="form-line">
+                                <input type="text" name="app_secret" class="form-control" value="<?php echo htmlspecialchars($wo['fb_api_data']['app_secret']); ?>">
+                                <small class="admin-info">Facebook app secret credentials.</small>
+                            </div>
+                        </div>
+                        <div class="form-group form-float">
+                            <label class="form-label">User Access Token</label>
+                            <div class="form-line">
+                                <input type="text" name="user_access_token" class="form-control" value="<?php echo htmlspecialchars($wo['fb_api_data']['user_access_token']); ?>">
+                                <small class="admin-info">Facebook user access token.</small>
+                            </div>
+                        </div>
+                </div>
+            </div>
+        </div>
+
+        <?php
+        if ($pages['data']) {
+            foreach ($pages['data'] as $page) {
+                $page_name = $page['name'];
+                $page_id = $page['id'];
+                $picture = $page['picture']['data']['url'];
+                $page_access_token = $page['access_token'];
+
+                try {
+                    $forms_response = $fb_connect->get('/' . $page_id . '/leadgen_forms', $page_access_token);
+                    $leadgen_forms = $forms_response->getDecodedBody();
+                    //print_r($forms_response);
+                } catch (Facebook\Exceptions\FacebookResponseException $e) {
+                    echo 'Error fetching lead forms: ' . $e->getMessage();
+                    exit;
+                } catch (Facebook\Exceptions\FacebookSDKException $e) {
+                    echo 'Facebook SDK error: ' . $e->getMessage();
+                    exit;
+                }
+        ?>
+        
+        <div class="col-lg-6 col-md-6 float-left">
+            <div class="card">
+                <div class="card-body">
+                    <h6 class="card-title"><?php echo $page_name; ?></h6>
+                        <div class="float-left">
+                            <label for="chck-<?php echo $page_id; ?>" class="main-label">Disable/Enable</label>
+                            <br><small class="admin-info">By enabling you can send & receive conversations.</small>
+                        </div>
+                        <div class="form-group float-right switcher">
+                            <input type="hidden" name="pages[<?php echo $page_id; ?>][status]" value="0">
+                            <input type="checkbox" name="pages[<?php echo $page_id; ?>][status]" id="chck-<?php echo $page_id; ?>" value="1" <?php echo (isset($wo['fb_api_data']['pages'][$page_id]['status']) && $wo['fb_api_data']['pages'][$page_id]['status'] == 1) ? 'checked' : ''; ?>>
+                            <label for="chck-<?php echo $page_id; ?>" class="check-trail"><span class="check-handler"></span></label>
+                        </div>
+                        <div class="clearfix"></div>
+                        <hr>
+                        <div class="form-group form-float">
+                            <label class="form-label">Page ID</label>
+                            <div class="form-line">
+                                <input type="text" name="pages[<?php echo $page_id; ?>][page_id]" class="form-control" value="<?php echo $page_id; ?>" readonly>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group form-float">
+                            <label class="form-label">Page Access Token</label>
+                            <div class="form-line">
+                                <input type="text" name="pages[<?php echo $page_id; ?>][access_token]" class="form-control" value="<?php echo $page_access_token; ?>" readonly>
+                            </div>
+                        </div>
+
+                        <input type="hidden" name="pages[<?php echo $page_id; ?>][page_name]" class="form-control" value="<?php echo $page_name; ?>" hidden readonly>
+                        <div class="form-group form-float">
+                            <label class="form-label">Page Profile Picture</label>
+                            <div class="form-line">
+                                <input type="text" name="pages[<?php echo $page_id; ?>][picture]" class="form-control" value="<?php echo $picture; ?>" <?php echo (isset($wo['fb_api_data']['pages'][$page_id]['picture']) && !empty($wo['fb_api_data']['pages'][$page_id]['picture'])) ? 'disabled' : 'readonly'; ?> id="page-picture-<?php echo $page_id; ?>">
+                            </div>
+                            <!-- Button to toggle enable/disable -->
+                            <div class="form-group">
+                                <label class="form-label">
+                                    <input class="chk-download-picture" type="checkbox" id="download-picture-<?php echo $page_id; ?>" <?php echo (!isset($wo['fb_api_data']['pages'][$page_id]['picture']) || empty($wo['fb_api_data']['pages'][$page_id]['picture'])) ? 'checked' : ''; ?>> Download Picture?
+                                </label>
+                            </div>
+                        </div>
+                        <script>
+                            // jQuery to handle enabling/disabling the input based on checkbox state
+                            $(document).ready(function() {
+                                $('#download-picture-<?php echo $page_id; ?>').change(function() {
+                                    var inputField = $('#page-picture-<?php echo $page_id; ?>');
+                                    if ($(this).is(':checked')) {
+                                        inputField.prop('readonly', false);  // Enable the field
+                                        inputField.prop('disabled', false);  // Enable the field for input
+                                    } else {
+                                        inputField.prop('readonly', true);   // Disable the field for input
+                                        inputField.prop('disabled', true);   // Disable the field
+                                    }
+                                });
+                        
+                                // Initialize input field state based on checkbox status (in case it's pre-checked)
+                                if ($('#download-picture-<?php echo $page_id; ?>').is(':checked')) {
+                                    $('#page-picture-<?php echo $page_id; ?>').prop('readonly', false);
+                                    $('#page-picture-<?php echo $page_id; ?>').prop('disabled', false);
+                                }
+                            });
+                        </script>
+                        <hr>
+                        
+                        <div class="float-left">
+                            <label for="chck-leads-<?php echo $page_id; ?>" class="main-label">Import Leads</label>
+                            <br><small class="admin-info">By enabling it will start receiving & importing page associated leads from form submission.</small>
+                        </div>
+                        <div class="form-group float-right switcher">
+                            <input type="hidden" name="leads[<?php echo $page_id; ?>][status]" value="0">
+                            <input type="checkbox" name="leads[<?php echo $page_id; ?>][status]" id="chck-leads-<?php echo $page_id; ?>" value="1" <?php echo (isset($wo['fb_api_data']['leads'][$page_id]['status']) && $wo['fb_api_data']['leads'][$page_id]['status'] == 1) ? 'checked' : ''; ?>>
+                            <label for="chck-leads-<?php echo $page_id; ?>" class="check-trail"><span class="check-handler"></span></label>
+                        </div>
+                        <div class="clearfix"></div>
+                        
+                        <label for="form_id_<?php echo $page_id; ?>">Select Lead Form</label>
+                        <div class="form-group focused">
+                            <select class="form-control select2" id="form_id_<?php echo $page_id; ?>" name="leads[<?php echo $page_id; ?>][form_id][]" multiple="multiple">
+                                <option value="">Select a form</option>
+                                <?php foreach ($leadgen_forms['data'] as $form) { ?>
+                                    <option value="<?php echo $form['id']; ?>" 
+                                        <?php echo (!empty($wo['fb_api_data']['leads'][$page_id]['form_id']) && in_array($form['id'], (array) $wo['fb_api_data']['leads'][$page_id]['form_id'])) ? 'selected' : ''; ?>>
+                                        <?php echo $form['name']; ?>
+                                    </option>
+                                <?php } ?>
+                            </select>
+
+                            
+                            
+                            <script>
+                            $(document).ready(function() {
+                                $("#form_id_<?php echo $page_id; ?>").select2({
+                                    placeholder: "Select a form",
+                                    allowClear: true
+                                });
+                            });
+                            </script>
+
+                        </div>
+                </div>
+            </div>
+        </div>
+        <?php
+            }
+        }
+        ?>
+        <div class="clearfix"></div>
+    </div>
+    
+    <input type="hidden" name="hash_id" value="<?php echo Wo_CreateSession();?>">
+    <button type="submit" class="btn btn-primary m-t-15 waves-effect">Save</button>
+</form>
+</div>
+
+<script>
+$(function() {
+    $('.fb_api').on('submit', function (e) {
+        e.preventDefault(); // Prevent the default form submission
+
+        // Serialize form data into an object
+        var formData = $(this).serialize();
+
+        // Submit the form data using an AJAX POST request
+        $.ajax({
+            url: Wo_Ajax_Requests_File() + '?f=fb_api_setup', // Replace with your endpoint
+            type: 'POST',
+            data: formData,
+            success: function (response) {
+                // Handle success (update UI, show notifications, etc.)
+                console.log('Form submitted successfully:', response);
+            },
+            error: function (error) {
+                // Handle error (show error messages, etc.)
+                console.error('Form submission failed:', error);
+            }
+        });
+    });
+    
+    $('.fb_api input[type=checkbox]:not(.chk-download-picture)').click(function () {
+        setToTrue = 0;
+        if ($(this).is(":checked") === true) {
+            setToTrue = 1;
+        }
+        
+        // Serialize form data into an object
+        var formData = $('.fb_api').serialize();
+
+        // Submit the form data using an AJAX POST request
+        $.ajax({
+            url: Wo_Ajax_Requests_File() + '?f=fb_api_setup', // Replace with your endpoint
+            type: 'POST',
+            data: formData,
+            success: function (response) {
+                // Handle success (update UI, show notifications, etc.)
+                console.log('Form submitted successfully:', response);
+            },
+            error: function (error) {
+                // Handle error (show error messages, etc.)
+                console.error('Form submission failed:', error);
+            }
+        });
+    });
+
+    var setTimeOutColor = setTimeout(function (){});
+    $('select').on('change', function() {
+         clearTimeout(setTimeOutColor);
+        var thisElement = $(this);
+        var configName = thisElement.attr('name');
+        var hash_id = $('input[name=hash_id]').val();
+        var objData = {};
+        objData[configName] = this.value;
+        objData['hash_id'] = hash_id;
+        thisElement.addClass('warning');
+        
+        // Serialize form data into an object
+        var formData = $('.fb_api').serialize();
+
+        // Submit the form data using an AJAX POST request
+        $.ajax({
+            url: Wo_Ajax_Requests_File() + '?f=fb_api_setup', // Replace with your endpoint
+            type: 'POST',
+            data: formData,
+            success: function (data) {
+                if (data.status == 200) {
+                    thisElement.removeClass('warning');
+                    thisElement.addClass('success');
+                } else {
+                    thisElement.addClass('error');
+                }
+                var setTimeOutColor = setTimeout(function () {
+                    thisElement.removeClass('success');
+                    thisElement.removeClass('warning');
+                    thisElement.removeClass('error');
+                }, 2000);
+            },
+            error: function (error) {
+                // Handle error (show error messages, etc.)
+                console.error('Form submission failed:', error);
+            }
+        });
+    });
+    $('.fb_api input[type=text], .fb_api input[type=number] , .fb_api textarea').on('input', delay(function() {
+        clearTimeout(setTimeOutColor);
+        var thisElement = $(this);
+        var configName = thisElement.attr('name');
+        var hash_id = $('input[name=hash_id]').val();
+        var objData = {};
+        objData[configName] = this.value;
+        objData['hash_id'] = hash_id;
+        thisElement.addClass('warning');
+        
+            
+        // Serialize form data into an object
+        var formData = $('.fb_api').serialize();
+
+        // Submit the form data using an AJAX POST request
+        $.ajax({
+            url: Wo_Ajax_Requests_File() + '?f=fb_api_setup', // Replace with your endpoint
+            type: 'POST',
+            data: formData,
+            success: function (data) {
+                if (data.status == 200) {
+                    thisElement.removeClass('warning');
+                    thisElement.addClass('success');
+                } else {
+                    thisElement.addClass('error');
+                }
+                var setTimeOutColor = setTimeout(function () {
+                    thisElement.removeClass('success');
+                    thisElement.removeClass('warning');
+                    thisElement.removeClass('error');
+                }, 2000);
+                //thisElement.focus();
+            },
+            error: function (error) {
+                // Handle error (show error messages, etc.)
+                console.error('Form submission failed:', error);
+            }
+        });
+    }, 500));
+});
+
+</script>

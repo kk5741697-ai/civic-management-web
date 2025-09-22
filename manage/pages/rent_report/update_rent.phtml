@@ -1,0 +1,311 @@
+<?php Global $rent_id;
+?>
+<div class="modal fade" id="updateLeave-modal" role="dialog">
+	<div class="modal-dialog modal-lg wow_mat_mdl invoice_print">
+		<div class="modal-content p-3">
+			<div class="d-flex justify-content-between">
+				<h3 class="mb-2 fs-5">Update Rent</h3>
+				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+			</div>
+			<hr class="style-one" style=" margin-bottom: 15px !important; ">
+			
+			<?php
+				$rent_data = $db->where('id', $rent_id)->getOne(T_RENT_REPORT);
+				$user_data = Wo_UserData($rent_data->user_id);
+			?>
+			
+			<div class="row row-cols-1 row-cols-lg-2 row-cols-xl-2">
+				<div class="col w-100">
+					<div class="card radius-10">
+						<div class="card-body">
+							<div class="d-flex align-items-center">
+								<img src="<?php echo $user_data['avatar']; ?>" class="rounded-circle p-1 border" width="90" height="90" alt="...">
+								<div class="flex-grow-1 ms-3">
+									<h5 class="mt-0"><?php echo $user_data['name']; ?></h5>
+									<p class="mb-0"><?php echo $user_data['designation']; ?><?php echo (!empty($user_data['department'])) ? ', ' . $user_data['department'] : ''; ?></p>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="col">
+					<div class="card radius-10 mb-2">
+						<div class="card-body">
+							<div class="d-flex align-items-center">
+								<div class="allocation-members">
+									<p class="mb-0">Visit Date</p>
+									<h3 class="mb-0 fs-5"><?php echo date('d M Y, l', $rent_data->visit_date); ?></h3>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="col">
+					<div class="card radius-10 mb-2">
+						<div class="card-body">
+							<div class="d-flex align-items-center">
+								<div class="allocation-members">
+									<p class="mb-0">Bill Date</p>
+									<h3 class="mb-0 fs-5">
+										<?php 
+										$bill_date = $rent_data->bill_date; // Assuming down_time_update is in 'H:i' format
+										if (empty($bill_date)) {
+											echo 'N/A';
+										} else {
+											echo date('d M Y, l', $bill_date);
+										}
+										?>
+									</h3>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="col">
+					<div class="card radius-10 mb-2">
+						<div class="card-body">
+							<div class="d-flex align-items-center">
+								<div class="allocation-members">
+									<p class="mb-0">Up Time</p>
+									<h3 class="mb-0 fs-5">
+										<?php 
+										$time = $rent_data->up_time; // Assuming up_time_update is in 'H:i' format
+										if (empty($time)) {
+											echo 'N/A';
+										} else {
+											$dateTime = DateTime::createFromFormat('H:i', $time);
+											echo $dateTime ? $dateTime->format('h:i A') : 'Invalid time format';
+										}
+										?>
+									</h3>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<div class="col">
+					<div class="card radius-10 mb-2">
+						<div class="card-body">
+							<div class="d-flex align-items-center">
+								<div class="allocation-members">
+									<p class="mb-0">Down Time</p>
+									<h3 class="mb-0 fs-5">
+										<?php 
+										$time = $rent_data->down_time; // Assuming down_time_update is in 'H:i' format
+										if (empty($time)) {
+											echo 'N/A';
+										} else {
+											$dateTime = DateTime::createFromFormat('H:i', $time);
+											echo $dateTime ? $dateTime->format('h:i A') : 'Invalid time format';
+										}
+										?>
+									</h3>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="col">
+					<div class="card radius-10 mb-2">
+						<div class="card-body">
+							<div class="d-flex align-items-center">
+								<div class="allocation-members">
+									<p class="mb-0">Payment</p>
+									<h3 class="mb-0 fs-5">
+										<?php 
+										$payment = $rent_data->payment; // Assuming down_time_update is in 'H:i' format
+										if (empty($payment)) {
+											echo 'N/A';
+										} else {
+											echo '৳' . number_format($payment);
+										}
+										?>
+									</h3>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="col">
+					<div class="card radius-10 mb-2">
+						<div class="card-body">
+							<div class="d-flex align-items-center">
+								<div class="allocation-members">
+									<p class="mb-0">Payment</p>
+									<h3 class="mb-0 fs-5">
+										<?php 
+											$status = '';
+											if ($rent_data->status == 0) {
+												$status = '<span class="badge bg-info">Due</span>';
+											} else if ($rent_data->status == 1) {
+												$status = '<span class="badge bg-success">Paid</span>';
+											} else if ($rent_data->status == 2) {
+												$status = '<span class="badge bg-danger">Rejected</span>';
+											}
+											if (empty($status)) {
+												echo 'N/A';
+											} else {
+												echo $status;
+											}
+										?>
+									</h3>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="col">
+					<div class="card radius-10 mb-2">
+						<div class="card-body">
+							<div class="d-flex align-items-center">
+								<div class="allocation-members">
+									<p class="mb-0">Person</p>
+									<h3 class="mb-0 fs-5"><?php echo $rent_data->person; ?></h3>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="col">
+					<div class="card radius-10 mb-2">
+						<div class="card-body">
+							<div class="d-flex align-items-center">
+								<div class="allocation-members">
+									<p class="mb-0">Vendor/Driver</p>
+									<h3 class="mb-0 fs-5">
+										<?php 
+										$vendor = $rent_data->vendor; // Assuming down_time_update is in 'H:i' format
+										if (empty($vendor)) {
+											echo 'N/A';
+										} else {
+											echo $vendor;
+										}
+										?>
+									</h3>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="col w-100">
+					<div class="card radius-10 mb-2">
+						<div class="card-body">
+							<div class="d-flex align-items-center">
+								<div class="allocation-members">
+									<p class="mb-0">Destination</p>
+									<h3 class="mb-0 fs-5">
+										<?php 
+										$destination = $rent_data->destination; // Assuming down_time_update is in 'H:i' format
+										if (empty($destination)) {
+											echo 'N/A';
+										} else {
+											echo $destination;
+										}
+										?>
+									</h3>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+				
+			</div>
+			
+			<hr class="style-one" style=" margin-bottom: 15px !important; ">
+			<div class="row g-3 needs-validation">
+				<div class="col-md-4">
+					<label class="form-label" for="visit_date_update">Visit Date</label> 
+					<input id="visit_date_update" name="visit_date_update" type="date" class="form-control input-md" value="<?php echo ($rent_data->visit_date) ? date('Y-m-d', $rent_data->visit_date) : date('Y-m-d'); ?>" <?php echo ($rent_data->status == 1) ? 'disabled' : ''; ?>>
+				</div>
+				<div class="col-md-4">
+					<label class="form-label" for="up_time_update">Up Time</label> 
+					<input id="up_time_update" name="up_time_update" type="time" class="form-control input-md" value="<?php echo ($rent_data->up_time) ? $rent_data->up_time : ''; ?>" <?php echo ($rent_data->status == 1) ? 'disabled' : ''; ?>>
+				</div>
+				<div class="col-md-4">
+					<label class="form-label" for="down_time_update">Down Time</label> 
+					<input id="down_time_update" name="down_time_update" type="time" class="form-control input-md" value="<?php echo ($rent_data->down_time) ? $rent_data->down_time : ''; ?>" <?php echo ($rent_data->status == 1) ? 'disabled' : ''; ?>>
+				</div>
+				<div class="col-md-4">
+					<label class="form-label" for="person_update">Person</label> 
+					<input id="person_update" name="person_update" type="number" class="form-control input-md" value="<?php echo ($rent_data->person) ? $rent_data->person : 0; ?>" <?php echo ($rent_data->status == 1) ? 'disabled' : ''; ?>>
+				</div>
+				<div class="col-md-4">
+					<label class="form-label" for="payment_update">Payment</label> 
+					<input id="payment_update" name="payment_update" type="number" class="form-control input-md" value="<?php echo ($rent_data->payment) ? $rent_data->payment : 0; ?>" <?php echo ($rent_data->status == 1) ? 'disabled' : ''; ?>>
+				</div>
+				<div class="col-md-4">
+					<label class="form-label" for="status">Status</label> 
+					<select name="status" id="status" class="form-select w-100" <?php echo ($rent_data->status != 1 || check_permission('update-rent') || Wo_IsAdmin() || Wo_IsModerator()) ? '' : 'disabled'; ?>>
+						<option value="0" <?php echo ($rent_data->status == 0) ? 'selected' : ''; ?>>Due</option>
+						<option value="1" <?php echo ($rent_data->status == 1) ? 'selected' : ''; ?>>Paid</option>
+						<option value="2" <?php echo ($rent_data->status == 2) ? 'selected' : ''; ?>>Rejected</option>
+					</select>
+				</div>
+				
+				
+				<div class="text-center mt-3">
+					<button class="btn btn-primary add_wow_loader w-100" onclick="submit_updateLeave()" ><?php echo $wo['lang']['save']; ?></button>
+				</div>
+			</div>
+	
+			<script>
+				function submit_updateLeave() {
+					var up_time_update = $('#up_time_update').val();
+					var down_time_update = $('#down_time_update').val();
+					var status = $('#status').val();
+					var rent_id = "<?php echo $rent_data->id; ?>";
+					var visit_date_update = $('#visit_date_update').val();
+					var person_update = $('#person_update').val();
+					var payment_update = $('#payment_update').val();
+					
+					// Proceed with AJAX request to delete the lead
+					$.ajax({
+						type: "POST",
+						url: Wo_Ajax_Requests_File() + '?f=manage_rent&s=update_rent', // Ensure Wo_Ajax_Requests_File() returns the correct URL
+						data: { visit_date_update: visit_date_update, up_time_update: up_time_update, down_time_update: down_time_update, person_update: person_update, payment_update: payment_update, status: status, rent_id: rent_id },
+						success: function (response) {
+							if (response['status'] == 200) {
+								pos5_success_noti(response['message']);
+								$('.btn-close').click();
+							} else {
+								pos4_error_noti(response['message']);
+							}
+							DataTableRefresh();
+						},
+						error: function(xhr, status, error) {
+							console.error('Error deleting lead:', error);
+							// Handle error here if needed
+						}
+					});
+				}
+				$(document).ready(function() {
+					// Initialize Flatpickr
+					var flatpickrInstance = flatpickr('#visit_date_update', {
+						dateFormat: 'Y-m-d',
+						altFormat: 'F j, Y',
+						altInput: false,
+						allowInput: false,
+						clickOpens: true,
+						onChange: function(selectedDates, dateStr, instance) {
+							// console.log(selectedDates);
+							// // You can add additional logic here if needed
+						},
+						onReady: function(selectedDates, dateStr, instance) {
+							// Add custom date range options to the Flatpickr container
+							var datepickerContainer = instance.calendarContainer;
+
+						}
+					});
+					
+					// Attach a listener for the modal hidden event
+					$('#updateLeave-modal').on('hidden.bs.modal', function() {
+						$('#updateLeave-modal').fadeOut(200);
+						$('#updateLeave-modal').remove();
+					});
+				});
+			</script>
+		</div>
+	</div>
+			<!--end row-->
+</div>

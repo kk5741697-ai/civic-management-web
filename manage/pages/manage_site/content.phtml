@@ -1,0 +1,6 @@
+<?php
+	if (check_permission('manage_site') || Wo_IsAdmin() || Wo_IsModerator()) {
+		$tab = $_GET['tab'];
+		echo Wo_LoadManagePage('manage_site/' . $tab);
+	} else { echo Wo_LoadManagePage('permission-required/content'); }
+?>

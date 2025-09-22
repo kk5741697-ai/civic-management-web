@@ -1,0 +1,122 @@
+<?php
+Global $user_id;
+if (Wo_IsAdmin() || Wo_IsModerator() || check_permission('update-leave')) {
+	$user = Wo_UserData($user_id);
+} else {
+	$user = $wo['user'];
+}
+?>
+<div class="modal fade" id="applyLeave-modal" role="dialog">
+	<div class="modal-dialog modal-lg wow_mat_mdl invoice_print">
+		<div class="modal-content p-3">
+			<div class="d-flex justify-content-between">
+				<h3 class="mb-2 fs-5">Apply for Leave</h3>
+				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+			</div>
+			<hr class="style-one">
+			<?php
+				$last_leave = $db->where('user_id',$user['user_id'])->orderBy('id', 'ASC')->getOne(T_LEAVES);
+				
+				$remaining_leave = remaining_leave($user['user_id']);
+				
+				if ($remaining_leave < 1) { ?>
+				<div class="alert alert-dismissible fade show py-2 bg-warning">
+                <div class="d-flex align-items-center">
+                  <div class="fs-3 text-dark"><ion-icon name="warning-sharp" role="img" class="md hydrated" aria-label="warning sharp"></ion-icon>
+                  </div>
+                  <div class="ms-3">
+                    <div class="text-dark">Heads up! 🌟<br/>It looks like you’ve used up all your leave days for the year.<br/>Currently, you have utilized: <strong><?php echo $remaining_leave; ?></strong> days.</div>
+                  </div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+              </div>
+				<?php } ?>
+				
+			<div class="d-flex justify-content-between mb-2">
+				<span style=" align-items: center; display: flex; font-weight: 500; color: black; "><?php echo $user['name']; ?></span>
+				<span style=" align-items: center; display: flex; font-weight: 500; color: black; ">Last Leave: <?php echo ($last_leave) ? date('d M Y', $last_leave->leave_to) : 'N/A'; ?></span>
+			</div>
+			<div class="row g-3 needs-validation">
+				<div class="col-md-6">
+					<input class="form-select w-100" type="text" id="leave_start_end" name="leave_start_end" placeholder="Select date range" readonly>
+				</div>
+				<div class="col-md-6">
+					<select name="leave_type" id="leave_type" class="form-select w-100">
+						<option value="Casual" selected="">Casual</option>
+						<option value="Sick">Sick</option>
+						<option value="Earned">Earned</option>
+						<option value="Maternity">Maternity</option>
+					</select>
+				</div>
+				<div class="col-md-12">
+					<input class="form-control w-100" type="text" id="leave_reason" name="leave_reason" placeholder="Type Reason..." maxlength="53">
+				</div>
+				<div class="text-center mt-3">
+					<button class="btn btn-primary add_wow_loader w-100" onclick="submit_applyLeave()" ><?php echo $wo['lang']['save']; ?></button>
+				</div>
+			</div>
+	
+			<script>
+				function submit_applyLeave() {
+					// Show confirmation dialog
+					var confirmed = confirm("Are you sure you want to submit this Leave Application?");
+					if (!confirmed) {
+						return false; // Cancel the operation if user clicks Cancel
+					}
+					
+					var leave_start_end = $('#leave_start_end').val();
+					var leave_type = $('#leave_type').val();
+					var leave_reason = $('#leave_reason').val();
+					var user_id = "<?php echo $user['user_id']; ?>";
+					
+					// Proceed with AJAX request to delete the lead
+					$.ajax({
+						type: "POST",
+						url: Wo_Ajax_Requests_File() + '?f=manage_leave&s=apply_leave', // Ensure Wo_Ajax_Requests_File() returns the correct URL
+						data: { leave_start_end: leave_start_end, leave_type: leave_type, leave_reason: leave_reason, user_id: user_id },
+						success: function (response) {
+							DataTableRefresh(); // Refresh DataTable on success
+							$('#applyLeave-modal').fadeOut(200);
+							$('#applyLeave-modal').hide();
+							$('#applyLeave-modal').remove();
+							$('.modal-backdrop').remove();
+						},
+						error: function(xhr, status, error) {
+							console.error('Error deleting lead:', error);
+							// Handle error here if needed
+						}
+					});
+				}
+				$(document).ready(function() {
+					// Initialize Flatpickr
+					var flatpickrInstance = flatpickr('#leave_start_end', {
+						mode: 'range',
+						dateFormat: 'Y-m-d',
+						altFormat: 'F j, Y',
+						altInput: false,
+						allowInput: false,
+						clickOpens: true,
+						onChange: function(selectedDates, dateStr, instance) {
+							// console.log(selectedDates);
+							// // You can add additional logic here if needed
+						},
+						onReady: function(selectedDates, dateStr, instance) {
+							// Add custom date range options to the Flatpickr container
+							var datepickerContainer = instance.calendarContainer;
+
+						}
+					});
+					
+					// Attach a listener for the modal hidden event
+					$('#applyLeave-modal').on('hidden.bs.modal', function() {
+						$('#applyLeave-modal').fadeOut(200);
+						$('#applyLeave-modal').hide();
+						$('#applyLeave-modal').remove();
+						$('.modal-backdrop').remove();
+					});
+				});
+			</script>
+		</div>
+	</div>
+			<!--end row-->
+</div>

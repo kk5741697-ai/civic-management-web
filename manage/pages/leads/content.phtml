@@ -1,0 +1,596 @@
+<?php
+if (Wo_IsAdmin() || Wo_IsModerator() || check_permission('manage-leads')) {
+	$total_leads = $db->getValue(T_LEADS, 'COUNT(*)');
+} elseif ($wo['user']['is_team_leader'] == true) {
+	$total_leads = $db->where('assigned', $wo['user']['user_id'])->where('member', '0')->getValue(T_LEADS, 'COUNT(*)');
+} else {
+	$total_leads = $db->where('member', $wo['user']['user_id'])->getValue(T_LEADS, 'COUNT(*)');
+}
+
+$new_leads = ($total_leads - $wo['user']['last_lead_count']);
+$new_lead_alert = false;
+if ($total_leads <> $wo['user']['last_lead_count']) {
+	$new_lead_alert = true;
+	$update = $db->where('user_id', $wo['user']['user_id'])->update(T_USERS, array('last_lead_count' => $total_leads));
+}
+
+
+
+if (check_permission('leads') || Wo_IsAdmin() || Wo_IsModerator()) {
+    $action = Wo_Secure($_GET['action']);
+	if ($action == 'quota' && Wo_IsAdmin()) {
+        echo Wo_LoadManagePage('leads/quota');
+	} else {
+
+echo Wo_LoadManagePage('view_notif/content');
+	?>
+<!--start breadcrumb-->
+<div class="page-breadcrumb d-flex align-items-center mb-3">
+  <div class="breadcrumb-title pe-3"><?php echo $wo['title']; ?></div>
+  <?php echo Wo_LoadManagePage('leads/import-leads'); ?>
+</div>
+<!--end breadcrumb-->
+
+<div class="mb-3">
+	<div class="row row-cols-auto g-3">
+		<div class="col">
+		</div>
+	</div>
+</div>
+<style>
+#invoiceTable_wrapper > .row tbody tr {cursor: pointer;}
+.new-leads-alert {
+    font-weight: 500;
+    background: #eff6ea;
+    border: none;
+    padding: 12px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+tr:hover, tr:focus, tr:active {
+    --bs-table-bg: #f3f3f3;
+}
+.dark-theme tr:hover, .dark-theme tr:focus, .dark-theme tr:active {
+    --bs-table-bg: #ffffff1f;
+}
+
+.ellipsis {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 400px; /* Default max-width for larger screens */
+}
+
+@media screen and (max-width: 768px) {
+    .ellipsis {
+        max-width: 250px;
+    }
+}
+@media screen and (max-width: 500px) {
+    .ellipsis {
+        max-width: 160px; /* Adjust max-width for smaller screens */
+    }
+}
+
+	.custom-remarks {
+		display: flex;
+		width: 100%;
+	}
+	.custom-remarks button {
+		border: none;
+		border-radius: 0px 0px 6px 0px;
+		box-shadow: 0 5px 10px rgba(0, 0, 0, 0.1);
+		border-left: 0px;
+		color: #fff;
+		background-color: #2260ff;
+		outline: none;
+		padding: 4px 15px;
+		transition: 0.375s ease;
+	}
+	.custom-remarks input {
+		width: 100%;
+		border: none;
+		background: #f1f1f1;
+		border-bottom: 1px solid #b5bfd9;
+		border-radius: 0px 0px 0px 6px;
+		border-right: none;
+		color: #525252;
+		outline: none;
+		padding: 5px 10px;
+		padding-right: 42px;
+		transition: 0.375s ease;
+	}
+	.custom-remarks input:focus {
+		border-color: #2260ff;
+	}
+	.checkbox-group {
+	  display: flex;
+	  flex-wrap: wrap;
+	  justify-content: center;
+	  width: 90%;
+	  margin-left: auto;
+	  margin-right: auto;
+	  max-width: 600px;
+	  -webkit-user-select: none;
+		 -moz-user-select: none;
+		  -ms-user-select: none;
+			  user-select: none;
+	}
+	.checkbox-group > * {
+	  margin: 0.25rem 0.5rem;
+	}
+
+	.checkbox-group-legend {
+	  font-size: 1.25rem;
+	  font-weight: 700;
+	  color: #9c9c9c;
+	  text-align: center;
+	  line-height: 1.125;
+	}
+
+	.checkbox-input {
+	  clip: rect(0 0 0 0);
+	  -webkit-clip-path: inset(100%);
+			  clip-path: inset(100%);
+	  height: 1px;
+	  overflow: hidden;
+	  position: absolute;
+	  white-space: nowrap;
+	  width: 1px;
+	}
+	.checkbox-input:checked + .checkbox-tile {
+	  border-color: #2260ff;
+	  box-shadow: 0 5px 10px rgba(0, 0, 0, 0.1);
+	  color: #2260ff;
+	}
+	.checkbox-input:checked + .checkbox-tile:before {
+	  transform: scale(1);
+	  opacity: 1;
+	  background-color: #2260ff;
+	  border-color: #2260ff;
+	}
+	.checkbox-input:checked + .checkbox-tile .checkbox-icon,
+	.checkbox-input:checked + .checkbox-tile .checkbox-label {
+	  color: #2260ff;
+	}
+	.checkbox-input:focus + .checkbox-tile {
+	  border-color: #2260ff;
+	  box-shadow: 0 5px 10px rgba(0, 0, 0, 0.1), 0 0 0 4px #b5c9fc;
+	}
+	.checkbox-input:focus + .checkbox-tile:before {
+	  transform: scale(1);
+	  opacity: 1;
+	}
+
+	.checkbox-tile {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		min-height: 2.5rem;
+		border-radius: 0.5rem;
+		border: 2px solid #b5bfd9;
+		background-color: #fff;
+		box-shadow: 0 5px 10px rgba(0, 0, 0, 0.1);
+		transition: 0.15s ease;
+		cursor: pointer;
+		position: relative;
+		padding: 5px 20px;
+	}
+	.checkbox-tile:before {
+		content: "";
+		position: absolute;
+		display: block;
+		width: 1.25rem;
+		height: 1.25rem;
+		border: 2px solid #b5bfd9;
+		background-color: #fff;
+		border-radius: 6px;
+		top: -2px;
+		left: -2px;
+		opacity: 0;
+		transform: scale(0);
+		transition: 0.25s ease;
+		background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='192' height='192' fill='%23FFFFFF' viewBox='0 0 256 256'%3E%3Crect width='256' height='256' fill='none'%3E%3C/rect%3E%3Cpolyline points='216 72.005 104 184 48 128.005' fill='none' stroke='%23FFFFFF' stroke-linecap='round' stroke-linejoin='round' stroke-width='32'%3E%3C/polyline%3E%3C/svg%3E");
+		background-size: 12px;
+		background-repeat: no-repeat;
+		background-position: 50% 50%;
+	}
+	.checkbox-tile:hover {
+	  border-color: #2260ff;
+	}
+	.checkbox-tile:hover:before {
+	  transform: scale(1);
+	  opacity: 1;
+	}
+
+	.checkbox-icon {
+	  transition: 0.375s ease;
+	  color: #494949;
+	}
+	.checkbox-icon svg {
+	  width: 3rem;
+	  height: 3rem;
+	}
+
+	.checkbox-label {
+	  color: #707070;
+	  transition: 0.375s ease;
+	  text-align: center;
+	}
+</style>
+<!-- Your HTML code starts here -->
+
+<div class="attandence mb-3">
+	<div class="select-panel d-flex justify-content-between">
+		<?php
+
+
+		$get_status = array(
+			'14' => 'Positive',
+			// '13' => 'Low Budget',
+			// '4' => 'Pending',
+			'5' => 'Sale Done',
+			'6' => 'Visit Done',
+			// '7' => 'Ready Plot',
+			// '8' => 'Semi-Ready Plot',
+			// '9' => 'Not Interest',
+			// '10' => 'Not capable to buy',
+			// '11' => 'Location not match',
+			// '12' => 'Closed',
+			'0' => 'Not Started',
+			'999' => 'All',
+		);
+		$get_project = array(
+			'all' => 'All',
+			'moon_hill'     => 'Moon Hill',
+			'hill_town'     => 'Hill Town',
+			'abedin'        => 'Civic Abedin',
+			'ashridge'      => 'Civic Ashridge',
+		);
+		if (Wo_IsAdmin() || Wo_IsModerator() || check_permission('manage-leads') || $wo['user']['is_team_leader'] == true) {
+			// $get_status['1'] = 'Completed';
+			// $get_status['3'] = 'Working';
+			?>
+			<div class="d-flex col-md-6" style=" gap: 10px; ">
+				<select id="user_id" name="user_id" class="form-select w-auto wm-100" onchange="DataTableReset()">
+					<option value="999">All User</option>
+					<option value="888">Banned User</option>
+					<?php 
+						if ($wo['user']['is_team_leader'] == true) {
+							$get_users = $db->orderBy('position', 'ASC')->where('active', '1')->where('leader_id', $wo['user']['user_id'])->orwhere('user_id', $wo['user']['user_id'])->get(T_USERS);
+						} else {
+							$get_users = $db->orderBy('position', 'ASC')->where('active', '1')->where('leader_id', '0', '>')->orwhere('is_team_leader', '1')->get(T_USERS);
+						}
+						foreach ($get_users as $userlist) {
+							$user   = Wo_UserData($userlist->user_id);
+							echo '<option' . ($_COOKIE['default_u'] == $user['user_id'] ? ' selected' : '') . " value='{$user['user_id']}'>{$user['name']}</option>";
+						}
+					?>
+				</select>
+				<select id="status_id" name="status_id" class="form-select w-auto wm-100" onchange="DataTableReset()">
+					<?php 
+						foreach ($get_status as $key => $name) {
+							echo '<option' . ($_COOKIE['status_id'] == $key ? ' selected' : '') . " value='{$key}'>{$name}</option>";
+						}
+					?>
+				</select>
+        		
+        		<select id="project" name="project" class="form-select w-auto wm-100" onchange="DataTableReset()">
+        			<?php 
+        				foreach ($get_project as $key => $name) {
+        					echo '<option' . ($_COOKIE['project'] == $key ? ' selected' : '') . " value='{$key}'>{$name}</option>";
+        				}
+        			?>
+        		</select>
+			</div>
+		<?php } else { ?>
+			<select id="user_id" name="user_id" class="form-select w-auto wm-120 <?php echo (Wo_IsAdmin() || Wo_IsModerator()) ? '' : 'd-none'; ?>" onchange="DataTableReset()">
+				<option value="<?php echo $wo['user']['user_id'];?>" ><?php echo $wo['user']['name'];?></option>
+				<?php 
+					$get_users = $db->orderBy('position', 'ASC')->where('active', '1')->where('is_team_leader', '0')->where('leader_id', $wo['user']['user_id'])->get(T_USERS);
+					foreach ($get_users as $userlist) {
+						$user   = Wo_UserData($userlist->user_id);
+                        echo '<option' . (($_COOKIE['default_u'] ?? '') == $user['user_id'] ? ' selected' : '') . " value='{$user['user_id']}'>" . short_name($user['name']) . '</option>';
+					}
+				?>
+			</select>
+			<select id="status_id" name="status_id" class="form-select w-auto wm-100" onchange="DataTableReset()">
+				<?php 
+					foreach ($get_status as $key => $name) {
+						echo '<option' . ($_COOKIE['status_id'] == $key ? ' selected' : '') . " value='{$key}'>{$name}</option>";
+					}
+				?>
+			</select>
+		
+    		<select id="project" name="project" class="form-select w-auto wm-100" onchange="DataTableReset()">
+    			<?php 
+    				foreach ($get_project as $key => $name) {
+    					echo '<option' . ($_COOKIE['project'] == $key ? ' selected' : '') . " value='{$key}'>{$name}</option>";
+    				}
+    			?>
+    		</select>
+		<?php } ?>
+		<!-- Use flatpickr for date selection -->
+		<input class="form-select w-auto wm-120" type="text" id="date_start_end" name="date_start_end" placeholder="Select date range" readonly onchange="DataTableReset()" value="<?php echo urldecode($_COOKIE['start_end'] ?? '') ?: date('Y-m-01') . ' to ' . date('Y-m-t'); ?>">
+	</div>
+</div>
+<?php
+	if ($new_lead_alert == true) {
+		echo '<div class="alert alert-success new-leads-alert"><ion-icon style=" font-size: 22px; " name="checkmark-circle-outline"></ion-icon> ' . $new_leads . ' new leads.</div>';
+	}
+?>
+<!-- Your HTML code starts here -->
+<div class="card radius-10 w-100 no_border">
+    <div class="card-body">
+        <div class="table-responsive mt-2">
+            <table id="invoiceTable" class="table align-middle mb-0" style="width: 100%;">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ellipsis" style="width: 200px; max-width: 300px;" style="width: 200px;">Name</th>
+                        <th style="width: 45px;">Status</th>
+                        <th style="width: 90px;">Created</th>
+                        <th class="ellipsis" style="width: 300px; max-width: 500px;">Remarks</th>
+                        <th style="width: 300px;">Project</th>
+						<?php if (Wo_IsAdmin() || Wo_IsModerator() || check_permission('manage-leads')) { ?>
+                        <th style="width: 90px;">Team Leader</th>
+                        <th style="width: 60px;">Member</th>
+                        <th style="width: 50px;">Actions</th>
+						<?php } else if ($wo['user']['is_team_leader'] == true) { ?>
+                        <th style="width: 60px;">Member</th>
+						<?php } else { ?>
+                        <th style="width: 300px;">Phone</th>
+						<?php } ?>
+                    </tr>
+                </thead>
+                <tbody>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+function assignLead() {
+    $.ajax({
+        type: "POST",
+        url: Wo_Ajax_Requests_File() + '?f=manage_leads&s=assign_lead_modal', // Ensure Wo_Ajax_Requests_File() returns the correct URL
+        success: function (response) {
+            if (response['status'] == 200) {
+				$("#contnet").append(response['result']);
+				$("#assignLead-modal").modal('show');
+            }
+			DataTableReset();
+        }
+    });
+}
+function viewLead(lead_id) {
+    if (lead_id == null) {
+        return false;
+    }
+    $.ajax({
+        type: "POST",
+        url: Wo_Ajax_Requests_File() + '?f=manage_leads&s=view_lead_modal',
+        data: { lead_id: lead_id },
+        success: function (response) {
+            if (response['status'] == 200) {
+                
+            	window.history.pushState({state: "new", back_url: location.href}, "", location.href + '?lead_id='+lead_id);
+            	
+				$("#contnet").append(response['result']);
+				$("#viewLead-modal").modal('show');
+            }
+        }
+    });
+}
+function deleteLead(lead_id) {
+    if (lead_id == null) {
+        return false;
+    }
+
+    // Show confirmation dialog
+    var confirmed = confirm("Are you sure you want to delete this lead?");
+    if (!confirmed) {
+        return false; // Cancel the operation if user clicks Cancel
+    }
+
+    // Proceed with AJAX request to delete the lead
+    $.ajax({
+        type: "POST",
+        url: Wo_Ajax_Requests_File() + '?f=manage_leads&s=delete_lead', // Ensure Wo_Ajax_Requests_File() returns the correct URL
+        data: { lead_id: lead_id },
+        success: function (response) {
+            DataTableRefresh(); // Refresh DataTable on success
+        },
+        error: function(xhr, status, error) {
+            console.error('Error deleting lead:', error);
+            // Handle error here if needed
+        }
+    });
+}
+$(document).ready(function() {
+    
+    // Add event listener for row click to trigger the edit_entry_modal(id) function
+    $('#invoiceTable tbody').on('click', 'tr', function() {
+        var id = $(this).data('id');
+        if (id) {
+            viewLead(id);
+        }
+    });
+    
+    
+	// Initialize Flatpickr
+	var flatpickrInstance = flatpickr('#date_start_end', {
+		mode: 'range',
+		dateFormat: 'Y-m-d',
+		altFormat: 'F j, Y',
+		altInput: false,
+		allowInput: false,
+		clickOpens: true,
+		onChange: function(selectedDates, dateStr, instance) {
+			// console.log(selectedDates);
+			// // You can add additional logic here if needed
+		},
+		onReady: function(selectedDates, dateStr, instance) {
+			// Add custom date range options to the Flatpickr container
+			var datepickerContainer = instance.calendarContainer;
+
+			var dateRangeOptions = [
+				{ label: 'This Month', range: [new Date(new Date().getFullYear(), new Date().getMonth(), 1), new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0)] },
+				{ label: 'Last Month', range: [new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1), new Date(new Date().getFullYear(), new Date().getMonth(), 0)] },
+				{ label: 'This Year', range: [new Date(new Date().getFullYear(), 0, 1), new Date(new Date().getFullYear(), 11, 31)] },
+				{ label: 'Last Year', range: [ new Date(new Date().getFullYear() - 1, 0, 1), new Date(new Date().getFullYear() - 1, 11, 31) ] }
+			];
+
+			dateRangeOptions.forEach(function(option) {
+				var button = document.createElement('button');
+				button.textContent = option.label;
+				button.addEventListener('click', function() {
+					flatpickrInstance.setDate(option.range);
+					flatpickrInstance.close(); // Close Flatpickr instance
+					DataTableReset();
+				});
+
+				datepickerContainer.prepend(button);
+			});
+		}
+	});
+    // Initialize DataTables without buttons
+    var table = $('#invoiceTable').DataTable({
+        "processing": true,
+		"serverSide": true,
+        "pageLength": 25,  // Set the default number of entries per page
+        "ajax": {
+            "url": Wo_Ajax_Requests_File() + '?f=manage_leads&s=fetch_leads',
+            "type": "POST",
+			"data": function (d) {
+				// Include additional parameters for the AJAX request
+				d.user_id = $('#user_id').val();
+				d.status_id = $('#status_id').val();
+				d.project = $('#project').val();
+				var dateRange = document.getElementById('date_start_end').value;
+				// If date range is not selected, use the single selected date
+				var dates = dateRange.split(' to ');
+				var data_start = dates[0];
+				var data_end = dates.length > 1 ? dates[1] : data_start;
+				
+				d.data_start = data_start;
+				d.data_end = data_end;
+			},
+            "beforeSend": function(xhr) {
+				$('#length_count').remove();
+				$('#invoiceTable_length label').append('<span id="length_count"><span>');
+                // Set opacity to 0 before the Ajax request
+                $('#invoiceTable').css('opacity', .5);
+            },
+            "complete": function(xhr) {
+				// Parse the JSON response
+				var responseData = JSON.parse(xhr.responseText);
+				// Access the recordsTotal value
+				var recordsTotal = responseData.recordsTotal;
+					
+                // Set opacity to 1 after the Ajax request is complete
+                $('#invoiceTable').css('opacity', 1);
+                $('#length_count').html('of <b>' + recordsTotal + '</b>');
+            }
+        },
+        "columns": [
+            { "data": "name", "orderable": true, "className": "ellipsis"  },
+            { "data": "status", "orderable": false },
+            { "data": "created", "orderable": false },
+            { "data": "remarks", "orderable": false, "className": "ellipsis" },
+            { "data": "project", "orderable": false },
+			<?php if (Wo_IsAdmin() || Wo_IsModerator() || check_permission('manage-leads')) { ?>
+            { "data": "team_leader", "orderable": false },
+            { "data": "member", "orderable": false },
+            { "data": "actions", "orderable": false },
+			<?php } else if ($wo['user']['is_team_leader'] == true) { ?>
+            { "data": "member", "orderable": false },
+			<?php } else { ?>
+            { "data": "phone", "orderable": false },
+			<?php } ?>
+        ],
+        "order": [],
+        "language": {
+            "emptyTable": "No data available in the table",
+            "infoEmpty": "Showing 0 to 0 of 0 entries",
+            "infoFiltered": "(filtered from _MAX_ total entries)",
+            "zeroRecords": "No matching records found"
+        },
+		"rowCallback": function(row, data) {
+			$(row).attr('data-id', data.id);
+			if (data.is_hotline == true) {
+			    $(row).addClass('hotline_number');
+			}
+		}
+    });
+	
+	<?php if (Wo_IsAdmin() || Wo_IsModerator() || check_permission('manage-leads')) { ?>
+	<?php } else { ?>
+		$('#user_id').change(function() {
+			var user_id = $(this).val(); // Get the selected value from #user_id
+
+			// Compare selected user_id with PHP variable $wo['user']['user_id']
+			if (user_id == <?php echo $wo['user']['user_id']; ?>) {
+				table.column(':last').visible(true); // Show the last column of DataTable
+			} else {
+				table.column(':last').visible(false); // Hide the last column of DataTable
+			}
+		});
+	<?php } ?>
+    // Append buttons separately
+    new $.fn.dataTable.Buttons(table, {
+        buttons: [
+            { 
+                extend: 'copy',
+                text: '<i class="fadeIn animated bx bx-copy"></i>',
+                titleAttr: 'Copy to clipboard',
+                exportOptions: {
+                    columns: ':not(:last-child)'  // Exclude the last column (Actions)
+                }
+            },
+            { 
+                extend: 'excel',
+                text: '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="18" viewBox="0 0 18 24"><path fill="currentColor" d="M20.34,4.59,16.41.66A2.28,2.28,0,0,0,14.82,0H5.25A2.25,2.25,0,0,0,3,2.25v19.5A2.25,2.25,0,0,0,5.25,24h13.5A2.25,2.25,0,0,0,21,21.75V6.19A2.27,2.27,0,0,0,20.34,4.59ZM18.57,6H15V2.44ZM5.25,21.75V2.25h7.5V7.13a1.12,1.12,0,0,0,1.12,1.12h4.88v13.5ZM15.19,10.5H13.84a.55.55,0,0,0-.49.3A24.54,24.54,0,0,0,12,13.5c-.65-1.36-.32-.81-1.34-2.7a.56.56,0,0,0-.49-.3H8.81a.56.56,0,0,0-.48.85L10.5,15,8.33,18.66a.56.56,0,0,0,.48.84h1.36a.56.56,0,0,0,.49-.29A23.15,23.15,0,0,0,12,16.5c.7,1.42.28.75,1.34,2.71a.57.57,0,0,0,.5.29h1.35a.56.56,0,0,0,.48-.84L13.5,15c0-.05,1.42-2.36,2.17-3.65A.56.56,0,0,0,15.19,10.5Z" transform="translate(-3)"/></svg>', // Font Awesome Excel icon
+                titleAttr: 'Export to Excel',
+                exportOptions: {
+                    columns: ':not(:last-child)'  // Exclude the last column (Actions)
+                }
+            },
+            { 
+                extend: 'pdf',
+                text: '<i class="fadeIn animated bx bxs-file-pdf"></i>', // Font Awesome PDF icon
+                titleAttr: 'Export to PDF',
+                exportOptions: {
+                    columns: ':not(:last-child)'  // Exclude the last column (Actions)
+                }
+            },
+            { 
+                extend: 'print',
+                text: '<i class="fadeIn animated bx bx-printer"></i>',
+                titleAttr: 'Print',
+                exportOptions: {
+                    columns: ':not(:last-child)'  // Exclude the last column (Actions)
+                }
+            }
+        ]
+    }).container().appendTo('#dataSheet_download');
+	
+    // DataTableReset function to reset the DataTable
+    window.DataTableReset = function() {
+        table.ajax.reload();
+    };
+	
+	window.DataTableRefresh = function() {
+		table.ajax.reload(null, false); // Reload the DataTable
+
+		// After reload, restore the state (including pagination)
+		var state = table.state.loaded();
+		if (state) {
+			table.state.restore(state);
+		}
+	};
+});
+</script>
+<?php } } else { echo Wo_LoadManagePage('permission-required/content'); } ?>

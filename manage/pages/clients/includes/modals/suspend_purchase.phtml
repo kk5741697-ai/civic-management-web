@@ -1,0 +1,57 @@
+<!-- Suspend Purchase Modal -->
+<div class="modal fade" id="suspendPurchaseModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+  <div class="modal-dialog modal-md modal-dialog-centered">
+    <div class="modal-content border-0 shadow-lg">
+      <div class="modal-header bg-gradient-warning text-white border-0">
+        <h5 class="modal-title mb-0">
+          <i class="lni lni-pause me-2"></i>Suspend Purchase
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+
+      <div class="modal-body py-4">
+        <input type="hidden" id="suspend_purchase_id" value="">
+        
+        <div class="mb-3">
+          <label class="form-label fw-medium">Suspension Date</label>
+          <input type="date" id="suspend_date" class="form-control" value="<?= date('Y-m-d') ?>">
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label fw-medium">Suspension Duration</label>
+          <select id="suspend_duration" class="form-control">
+            <option value="30">30 Days</option>
+            <option value="60">60 Days</option>
+            <option value="90">90 Days</option>
+            <option value="180">6 Months</option>
+            <option value="365">1 Year</option>
+            <option value="custom">Custom Duration</option>
+          </select>
+        </div>
+
+        <div class="mb-3 d-none" id="custom_duration_field">
+          <label class="form-label fw-medium">Custom Duration (Days)</label>
+          <input type="number" id="custom_duration_days" class="form-control" min="1" placeholder="Enter number of days">
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label fw-medium">Suspension Reason</label>
+          <textarea id="suspend_reason" class="form-control" rows="3" placeholder="Enter reason for suspension..." required></textarea>
+        </div>
+
+        <div class="alert alert-warning">
+          <strong>Note:</strong> Suspended purchases will be temporarily inactive and won't appear in regular reports.
+        </div>
+
+        <div class="alert alert-danger d-none" id="suspend_error" role="alert"></div>
+      </div>
+
+      <div class="modal-footer border-0 bg-light">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button id="suspend_purchase_save" class="btn btn-warning text-white">
+          <i class="lni lni-pause me-1"></i>Suspend Purchase
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

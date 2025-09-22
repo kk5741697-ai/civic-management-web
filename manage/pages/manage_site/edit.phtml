@@ -1,0 +1,1359 @@
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet-draw/dist/leaflet.draw.css" />
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-draw/dist/leaflet.draw.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet.fullscreen/Control.FullScreen.css" />
+<script src="https://unpkg.com/leaflet.fullscreen/Control.FullScreen.js"></script>
+
+<style>
+.card-header .card-title,
+.card-header .card-title .form-label {
+    margin-bottom: 0;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.form-body .form-label {
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.image-box {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem;
+    border: 1px dashed var(--bb-gray-400);
+    border-radius: var(--bb-border-radius);
+    flex-direction: column;
+}
+
+.image-box .preview-image {
+    max-width: 100%;
+    height: auto;
+    border-radius: var(--bb-border-radius-sm);
+}
+
+.image-box-actions {
+    color: var(--bb-primary);
+    text-decoration: none;
+}
+
+.image-box-actions:hover {
+    text-decoration: underline;
+}
+
+.ck.ck-content {
+    min-height: 600px;
+    border-radius: 0px 0px 5px 5px !important;
+}
+
+.ck.ck-powered-by {
+    display: none !important;
+}
+
+.ck.ck-editor__editable_inline {
+    border: var(--bs-border-width) solid var(--bs-border-color);
+    border-radius: 5px !important;
+}
+</style>
+
+<?php
+
+// 1) Fetch your project row
+$data_table = T_PROJECTS;
+$id          = Wo_Secure($_GET['id']);
+$data        = $db->where('id', $id)->getOne($data_table);
+$marker_icon = $wo['config']['theme_url'] . '/icons/single-family-home-map-icon.png';
+
+// 2) Grab the raw `additional` string
+$addiRaw = $data->additional;
+
+// 3) Try JSON‑decoding first
+$addiData = json_decode($addiRaw, true);
+if (json_last_error() !== JSON_ERROR_NONE || !is_array($addiData)) {
+    // Fallback: convert single quotes to double and try again
+    $fallback = str_replace("'", '"', $addiRaw);
+    $addiData = json_decode($fallback, true) ?: [];
+}
+
+// 4) Normalize the keys: strip any [‘…’] wrappers
+$normalized = [];
+foreach ($addiData as $rawKey => $val) {
+    // remove leading/trailing [ ] ' characters
+    $cleanKey = preg_replace("/^[\[\]']+|[\[\]']+$/", "", $rawKey);
+    $normalized[$cleanKey] = $val;
+}
+
+$addiData = $normalized;
+
+// Make sure we always have a valid JSON object here:
+$shapes = $addiData['location_shapes'] ?? [
+    'polygon'   => null,
+    'rectangle' => null,
+    'marker'    => null
+];
+// JSON‐encode and escape
+$shapes_json = htmlspecialchars(json_encode($shapes), ENT_QUOTES, 'UTF-8');
+
+unset($data->additional);
+
+// 1) Bring back any encoded entities
+$raw = html_entity_decode($data->description, ENT_QUOTES, 'UTF-8');
+// 2) Turn <br> or <br /> into PHP newlines
+$with_nl = preg_replace('#<br\s*/?>#i', "\n", $raw);
+// 3) Escape for the textarea
+$for_textarea = htmlspecialchars($with_nl, ENT_QUOTES, 'UTF-8');
+
+
+//------------------------//
+//------------------------//
+
+// COMMON FEATURES (for all project types)
+// 1) Common features for all projects
+$common_features = [
+    'mosque' => 'Mosque',
+    'park' => 'Park',
+    'walking_track' => 'Walking Track',
+    'green_area' => 'Green Area',
+    'year_built' => 'Year Built',
+];
+
+// 2) Land-specific features
+$land_features = [
+    'madrasha' => 'Madrasha',
+    'school' => 'School',
+    'college' => 'College',
+    'university' => 'University',
+    'graveyard' => 'Graveyard',
+    'polytechnic_institute' => 'Polytechnic Institute',
+    'market' => 'Market',
+    'medical_institute' => 'Medical Institute',
+    'lake' => 'Lake',
+    'resort_&_water_kingdom' => 'Resort & Water Kingdom',
+];
+
+// 3) Apartment-specific features
+$apartment_features = [
+    'fair_face_finishing' => 'Fair-face Finishing',
+    'fire_alarm' => 'Fire Alarm',
+    'fitness_center' => 'Fitness Center',
+    'jog_path' => 'Jog Path',
+    'lawn' => 'Lawn',
+    'open_terrace' => 'Open Terrace',
+    'swimming_pool' => 'Swimming Pool',
+    'tri_corner_plot' => 'Tri Corner Plot',
+    'bbq_corner' => 'BBQ Corner',
+    'electric_range' => 'Electric Range',
+    'emergency_exit' => 'Emergency Exit',
+    'basement' => 'Basement',
+    'basketball_court' => 'Basketball Court',
+    'bedrooms' => 'Bedrooms',
+    'bathrooms' => 'Bathrooms',
+    'car_parking' => 'Car Parking',
+    'area' => 'Area (SFT)',
+    'varanda' => 'Varanda',
+    'electric_vehicle_ev_charging_point' => 'Electric Vehicle (EV) Charging Point',
+    'mezzanine_floor' => 'Mezzanine Floor',
+];
+
+// 4) Combine common + specific features based on project type
+if ($data->type === 'land') {
+    $final_features = array_merge($land_features, $common_features);
+    $title = "Land Project Features & Amenities";
+} elseif ($data->type === 'apartment') {
+    $final_features = array_merge($apartment_features, $common_features);
+    $title = "Apartment Project Features & Amenities";
+} else {
+    // fallback to common only if unknown type
+    $final_features = $common_features;
+    $title = "Features & Amenities";
+}
+
+// Sort final features by label alphabetically
+asort($final_features);
+
+?>
+<form method="POST" id="editor_form">
+    <div role="alert" class="alert alert-info d-none"></div>
+    <div class="row">
+
+        <!-- main card body -->
+        <div class="gap-3 col-md-9">
+
+            <input class="d-none" required="required" name="id" type="hidden" aria-required="true" hidden
+                value="<?= $data->id ?>">
+            <div class="card mb-3">
+                <div class="card-body">
+                    <div class="form-body">
+                        <div class="mb-3 position-relative">
+                            <label class="form-label form-label required" for="name"> Name </label>
+                            <input class="form-control" data-counter="120" placeholder="Name" required="required"
+                                name="name" type="text" id="name" value="<?= $data->name ?>" aria-required="true">
+                        </div>
+                        <div class="mb-3 position-relative">
+                            <label class="form-label" for="description"> Description </label>
+                            <textarea class="form-control" rows="4" placeholder="Short description" id="description"
+                                name="description" cols="50"><?= $for_textarea ?></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- =====================
+            ADDITIONAL DETAILS
+            ===================== -->
+            <div id="additional_wrap" class="card meta-boxes mb-3">
+                <div class="card-header">
+                    <h4 class="card-title">Additional Details</h4>
+                </div>
+                <div class="card-body">
+                    <!-- hidden field to carry the JSON array of additional-detail rows -->
+                    <input id="additional-data" name="addi[additional_details]" type="hidden"
+                        value='<?= htmlspecialchars(json_encode($addiData['additional_details'] ?? []), ENT_QUOTES, 'UTF-8') ?>'>
+
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Key</th>
+                                <th>Value</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="additional-body"></tbody>
+                    </table>
+
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-primary btn_add_additional">Add Row</button>
+                        <button type="button" class="btn btn-danger btn_reset_additional">Reset Table</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mb-3">
+                <div class="card-body">
+                    <div class="form-body">
+                        <div class="row row-cols-1 row-cols-sm-2 row-cols-md-2 row-cols-lg-4 row-cols-xxl-4">
+                            <div class="mb-3 position-relative">
+                                <label class="form-label form-label required" for="katha"><?= ($data->type == 'land') ? 'Katha' : 'Lot Size (Katha)' ?></label>
+                                <input class="form-control" data-counter="120" placeholder="<?= ($data->type == 'land') ? 'Katha' : 'Lot Size (Katha)' ?>" name="addi[katha]"
+                                    type="text" id="katha" value="<?= $addiData['katha'] ?>" aria-required="true">
+                            </div>
+                            <div class="mb-3 position-relative">
+                                <label class="form-label form-label required" for="location_text"> Location Text
+                                </label>
+                                <input class="form-control" data-counter="120" placeholder="Location Text"
+                                    name="location_text" type="text" id="location_text" value="<?= $data->location ?>"
+                                    aria-required="true">
+                            </div>
+                            <div class="mb-3 position-relative">
+                                <label class="form-label form-label required" for="location_url"> Location Url </label>
+                                <input class="form-control" data-counter="120" placeholder="Location Url"
+                                    name="addi[location_url]" type="text" id="location_url"
+                                    value="<?= $addiData['location_url'] ?>" aria-required="true">
+                            </div>
+                            <div class="mb-3 position-relative">
+                                <label class="form-label form-label required" for="location_coordinates"> Coordinates
+                                </label>
+
+                                <input id="location_shapes_display" type="text" id="location_coordinates"
+                                    class="form-control mb-3" value='<?= $shapes_json ?>' disabled>
+
+                            </div>
+                            <input id="location_shapes" name="addi[location_shapes]" type="hidden"
+                                value='<?= $shapes_json ?>'>
+
+                            <!-- the map container -->
+                            <div id="project_map_editor" style="height:400px;width:100%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Type based fields -->
+            <!-- Aminities & Features -->
+            <div class="card mb-3">
+                <div class="card-body">
+                    <div class="form-body">
+                        <span><?= htmlspecialchars($title); ?></span>
+                        <div class="row row-cols-1 row-cols-sm-2 row-cols-md-2 row-cols-lg-3 row-cols-xxl-4">
+                            <?php foreach ($final_features as $key => $label): ?>
+                            <div class="col mb-3 position-relative">
+                                <label class="form-label required" for="<?= $key; ?>"><?= htmlspecialchars($label); ?></label>
+                                <input
+                                    id="<?= $key; ?>"
+                                    name="addi[features][<?= $key; ?>]"
+                                    type="number"
+                                    class="form-control"
+                                    placeholder="<?= htmlspecialchars($label); ?>"
+                                    value="<?= (int)($addiData['features'][$key] ?? 0); ?>"
+                                    aria-required="true">
+                            </div>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            
+            
+            <!-- for land projects -->
+            <?php if ($data->type == 'land') { ?>
+            <!-- =====================
+         PRICING TABLE
+         ===================== -->
+            <div id="pricing_wrap" class="card meta-boxes mb-3">
+                <div class="card-header">
+                    <h4 class="card-title">Land Pricing Table</h4>
+                </div>
+                <div class="card-body">
+                    <!-- hidden field to carry the JSON array of pricing rows -->
+                    <input id="pricing-data" name="addi[pricing]" type="hidden"
+                        value='<?= htmlspecialchars(json_encode($addiData['pricing'] ?? []), ENT_QUOTES, 'UTF-8') ?>'>
+
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Plot Category</th>
+                                <th>Single Payment</th>
+                                <th>24-month</th>
+                                <th>60-month</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="pricing-body"></tbody>
+                    </table>
+
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-primary btn_add_pricing">Add Row</button>
+                        <button type="button" class="btn btn-danger btn_reset_pricing">Reset Table</button>
+                    </div>
+                </div>
+            </div>
+            <?php } ?>
+          
+
+            <!-- gallery images -->
+            <div id="advanced-sortables" class="meta-box-sortables">
+                <?php $initialGallery = $addiData['gallery'] ?? []; ?>
+                <!-- hidden field to carry the JSON array of image URLs -->
+                <input id="gallery-data" name="gallery" type="hidden"
+                    value="<?= htmlspecialchars(json_encode($initialGallery), ENT_QUOTES, 'UTF-8') ?>">
+
+                <div class="card meta-boxes mb-3" id="gallery_wrap">
+                    <div class="card-header">
+                        <h4 class="card-title d-flex" style=" align-items: center; justify-content: space-between; ">
+                            Gallery images
+                            <select class="form-select form-select-sm float-end" id="gallery_layout"
+                                name="addi[gallery_layout]" style=" min-width: 120px; max-width: 250px; width: auto; ">
+                                <option value="fullwidth"
+                                    <?= ($addiData['gallery_layout'] == 'fullwidth') ? 'selected' : ''; ?>>
+                                    Full width</option>
+                                <option value="inpage"
+                                    <?= ($addiData['gallery_layout'] == 'inpage') ? 'selected' : ''; ?>>
+                                    In page</option>
+                            </select>
+                        </h4>
+
+                    </div>
+                    <div class="card-body">
+                        <!-- invisible native file input for select / drag-drop -->
+                        <input id="gallery-files" type="file" multiple accept="image/*" style="display:none">
+
+                        <!-- dropzone + preview grid -->
+                        <div id="gallery-dropzone" class="list-photos-gallery border rounded p-3 mb-2 text-center"
+                            style="min-height:150px; cursor:pointer;">
+                            <small>Click or drag & drop images here to upload</small>
+                            <div class="row mt-2" id="list-photos-items"></div>
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-primary btn_select_gallery">Select images</button>
+                            <button type="button" class="btn btn-danger reset-gallery">Reset gallery</button>
+                        </div>
+
+                        <!-- Modal for editing description & delete in bulk -->
+                        <div class="modal fade" id="edit-gallery-item" tabindex="-1" aria-hidden="true">
+                            <div class="modal-dialog modal-dialog-centered">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title">Update photo’s description</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <input type="text" class="form-control" id="gallery-item-description"
+                                            placeholder="Photo’s description…">
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button class="btn btn-danger" id="delete-gallery-item">Delete this
+                                            photo</button>
+                                        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                        <button class="btn btn-primary" id="update-gallery-item">Update</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- =====================
+     VIDEO GALLERY (dynamic + thumbnail)
+     ===================== -->
+            <div id="video_wrap" class="card meta-boxes mb-3">
+                <div class="card-header">
+                    <h4 class="card-title">Video Gallery</h4>
+                </div>
+                <div class="card-body">
+                    <!-- hidden field carrying the JSON array of video rows -->
+                    <input id="video-data" name="addi[video]" type="hidden"
+                        value='<?= htmlspecialchars(json_encode($addiData['video'] ?? []), ENT_QUOTES, 'UTF-8') ?>'>
+
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Video URL</th>
+                                <th>Title</th>
+                                <th>Thumbnail</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="video-body"></tbody>
+                    </table>
+
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-primary btn_add_video">Add Video</button>
+                        <button type="button" class="btn btn-danger btn_reset_video">Reset Videos</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- =====================
+         POST ATTACHMENTS
+         ===================== -->
+            <div id="attachments_wrap" class="card meta-boxes mb-3">
+                <div class="card-header">
+                    <h4 class="card-title">Post Attachments</h4>
+                </div>
+                <div class="card-body">
+                    <!-- hidden field to carry the JSON array of attachments -->
+                    <input id="attachments-data" name="attachments" type="hidden"
+                        value="<?= htmlspecialchars(json_encode($addiData['attachments'] ?? []), ENT_QUOTES, 'UTF-8') ?>">
+
+                    <!-- invisible native file input for select / drag-drop -->
+                    <input id="attachments-files" type="file" multiple
+                        accept=".pdf,.doc,.docx,.xls,.xlsx,.zip,.rar,.txt,.png,.jpg" style="display:none">
+
+                    <!-- dropzone + preview list -->
+                    <div id="attachments-dropzone" class="list-photos-gallery border rounded p-3 mb-2 text-center"
+                        style="min-height:120px; cursor:pointer;">
+                        <small>Click or drag &amp; drop files here to upload</small>
+                        <ul class="mt-2 list-unstyled" id="list-attachments-items"></ul>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-primary btn_select_attachments">
+                            Select files
+                        </button>
+                        <button type="button" class="btn btn-danger reset-attachments">
+                            Reset attachments
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- sidebar -->
+        <div class="col-md-3 gap-3 d-flex flex-column-reverse flex-md-column mb-md-0 mb-5">
+
+            <!-- save or cancle action -->
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="card-title"> Publish </h4>
+                </div>
+                <div class="card-body">
+                    <div class="btn-list">
+                        <button class="btn btn-primary" type="submit" value="apply" name="submitter">
+                            <svg class="icon icon-left svg-icon-ti-ti-device-floppy" xmlns="http://www.w3.org/2000/svg"
+                                width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+                                <path d="M6 4h10l4 4v10a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2"></path>
+                                <path d="M12 14m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"></path>
+                                <path d="M14 4l0 4l-6 0l0 -4"></path>
+                            </svg> Save </button>
+                        <button class="btn" type="submit" name="submitter" value="save">
+                            <svg class="icon icon-left svg-icon-ti-ti-transfer-in" xmlns="http://www.w3.org/2000/svg"
+                                width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+                                <path d="M4 18v3h16v-14l-8 -4l-8 4v3"></path>
+                                <path d="M4 14h9"></path>
+                                <path d="M10 11l3 3l-3 3"></path>
+                            </svg> Save &amp; Exit </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- project status -->
+            <div class="card meta-boxes">
+                <div class="card-header">
+                    <h4 class="card-title">
+                        <label class="form-label form-label required" for="status"> Status </label>
+                    </h4>
+                </div>
+                <div class=" card-body">
+                    <select class="form-control form-select" required="required" id="active" name="active"
+                        aria-required="true">
+                        <option value="1" <?= ($data->active == '1') ? 'selected' : ''; ?>>Active</option>
+                        <option value="2" <?= ($data->active == '2') ? 'selected' : ''; ?>>Draft</option>
+                        <option value="3" <?= ($data->active == '3' || $data->active == '0') ? 'selected' : ''; ?>>
+                            Inactive</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- project progress progress -->
+            <div class="card meta-boxes">
+                <div class="card-header">
+                    <h4 class="card-title">
+                        <label class="form-label form-label required" for="progress"> Progress </label>
+                    </h4>
+                </div>
+                <div class=" card-body">
+                    <select class="form-control form-select" required="required" id="progress" name="progress"
+                        aria-required="true">
+                        <option value="ongoing" <?= ($data->progress == 'ongoing') ? 'selected' : ''; ?>>Ongoing
+                        </option>
+                        <option value="upcomming" <?= ($data->progress == 'upcomming') ? 'selected' : ''; ?>>Upcomming
+                        </option>
+                        <option value="completed" <?= ($data->progress == 'completed') ? 'selected' : ''; ?>>Completed
+                        </option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- ======================
+            AVATAR IMAGE (single)
+            ====================== -->
+            <div class="card meta-boxes">
+                <div class="card-header">
+                    <h4 class="card-title">
+                        <label class="form-label" for="image">Avatar Image</label>
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <div class="image-box image-box-image" data-field="image">
+                        <!-- the hidden <input> that holds the URL -->
+                        <input class="image-data" name="image" type="hidden"
+                            value="<?= htmlspecialchars($data->avatar, ENT_QUOTES) ?>">
+
+                        <!-- preview wrapper -->
+                        <div style="width:100%;" class="preview-image-wrapper mb-1">
+                            <div class="preview-image-inner position-relative">
+                                <img class="preview-image <?= empty($data->banner) ? 'image-change' : ''; ?>"
+                                    data-default="<?= $wo['config']['theme_url'] ?>/img/placeholder.png"
+                                    src="<?= !empty($data->avatar) ? $wo['config']['site_url'] . '/' . $data->avatar : $wo['config']['theme_url'].'/img/placeholder.png' ?>"
+                                    alt="Avatar" style="width:100%; height:auto; display:block;">
+                                <button type="button"
+                                    class="btn btn-sm btn-danger position-absolute top-0 end-0 image-remove"
+                                    title="Remove image">&times;</button>
+                            </div>
+                        </div>
+
+                        <!-- a styled link to “change” -->
+                        <button type="button" class="btn btn-outline-secondary image-change">Change image</button>
+
+                        <!-- hidden file input -->
+                        <input type="file" accept="image/*" class="d-none single-file-input" data-field="image">
+                    </div>
+                </div>
+            </div>
+
+
+            <!-- ========================
+            BANNER IMAGE (single)
+            ======================== -->
+            <div class="card meta-boxes">
+                <div class="card-header">
+                    <h4 class="card-title">
+                        <label class="form-label" for="banner_image">Banner Image (1920×170px)</label>
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <div class="image-box image-box-banner_image" data-field="banner_image">
+                        <input class="image-data" name="banner_image" type="hidden"
+                            value="<?= htmlspecialchars($data->banner, ENT_QUOTES) ?>">
+                        <div style="width:100%" class="preview-image-wrapper mb-1">
+                            <div class="preview-image-inner position-relative">
+                                <img class="preview-image <?= empty($data->banner) ? 'image-change' : ''; ?>"
+                                    data-default="<?= $wo['config']['theme_url'] ?>/img/placeholder.png"
+                                    src="<?= !empty($data->banner) ? $wo['config']['site_url'] . '/' . $data->banner : $wo['config']['theme_url'].'/img/placeholder.png' ?>"
+                                    alt="Banner" style="width:100%; height:auto; display:block;">
+                                <button type="button"
+                                    class="btn btn-sm btn-danger position-absolute top-0 end-0 image-remove"
+                                    title="Remove banner">&times;</button>
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-outline-secondary image-change">Change banner</button>
+                        <input type="file" accept="image/*" class="d-none single-file-input" data-field="banner_image">
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+</form>
+<script>
+jQuery(function($) {
+    const map = L.map('project_map_editor', {
+        fullscreenControl: true
+    }).setView([23.8103, 90.4125], 13);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    // FeatureGroup will hold polygon, rectangle and marker layers
+    const drawnItems = new L.FeatureGroup().addTo(map);
+
+    // custom home icon
+    const homeIcon = L.icon({
+        iconUrl: '<?= addslashes($marker_icon) ?>',
+        iconSize: [42, 57],
+        iconAnchor: [21, 57],
+        popupAnchor: [0, -60]
+    });
+
+    // draw control config
+    map.addControl(new L.Control.Draw({
+        edit: {
+            featureGroup: drawnItems,
+            edit: true,
+            remove: true
+        },
+        draw: {
+            polygon: {
+                allowIntersection: false,
+                showArea: true
+            },
+            rectangle: {
+                shapeOptions: {
+                    color: '#00aaff'
+                }
+            },
+            marker: {
+                icon: homeIcon
+            },
+            polyline: false,
+            circle: false,
+            circlemarker: false
+        }
+    }));
+
+    // load any existing shapes from hidden
+    (function() {
+        const v = $('#location_shapes').val();
+        if (!v) return;
+        try {
+            const obj = JSON.parse(v);
+            if (obj.polygon) {
+                const poly = L.polygon(obj.polygon).addTo(drawnItems);
+                map.fitBounds(poly.getBounds());
+            }
+            if (obj.rectangle) {
+                const rect = L.polygon(obj.rectangle).addTo(drawnItems);
+                map.fitBounds(rect.getBounds());
+            }
+            if (obj.marker) {
+                L.marker(obj.marker, {
+                        icon: homeIcon
+                    })
+                    .addTo(drawnItems)
+                    .bindPopup('Home Location');
+            }
+        } catch (e) {
+            console.warn('invalid shapes', e);
+        }
+    })();
+
+    // central save function: grab ALL layers and serialize by type
+    function saveAllShapes() {
+        const out = {
+            polygon: null,
+            rectangle: null,
+            marker: null
+        };
+        drawnItems.eachLayer(layer => {
+            if (layer instanceof L.Polygon && !(layer instanceof L.Rectangle)) {
+                out.polygon = layer.getLatLngs()[0].map(p => [p.lat, p.lng]);
+            } else if (layer instanceof L.Rectangle) {
+                out.rectangle = layer.getLatLngs()[0].map(p => [p.lat, p.lng]);
+            } else if (layer instanceof L.Marker) {
+                const ll = layer.getLatLng();
+                out.marker = [ll.lat, ll.lng];
+            }
+        });
+        const json = JSON.stringify(out);
+        $('#location_shapes').val(json);
+        $('#location_shapes_display').val(json);
+    }
+
+    // on create, edit, delete → re-save everything
+    map.on(L.Draw.Event.CREATED, e => {
+        drawnItems.addLayer(e.layer);
+        if (e.layerType === 'marker') {
+            e.layer.bindPopup('Home Location').openPopup();
+        }
+        saveAllShapes();
+    });
+    map.on(L.Draw.Event.EDITED, () => saveAllShapes());
+    map.on(L.Draw.Event.DELETED, () => saveAllShapes());
+
+    // optional: pan map when user pastes a Google-URL
+    $('#location_url').on('blur', function() {
+        const m = this.value.match(/@([-0-9.]+),([-0-9.]+)/);
+        if (m) map.setView([+m[1], +m[2]], 16);
+    });
+});
+</script>
+
+
+
+
+<script>
+jQuery(function($) {
+    const $form = $('#editor_form');
+    const siteUrl = "<?= rtrim($wo['config']['site_url'], '/') ?>";
+    const themeUrl = "<?= rtrim($wo['config']['theme_url'], '/') ?>";
+    let working = false;
+
+    // -------------------------------
+    // GLOBAL: catch ENTER in ANY text input
+    // -------------------------------
+    $form.on('keydown', 'input:not([type="file"])', function(e) {
+        if (e.key === 'Enter' || e.keyCode === 13) {
+            e.preventDefault();
+            e.stopPropagation();
+            $form.submit();
+        }
+    });
+
+    // -------------------------------
+    // GLOBAL: catch Ctrl+S anywhere to submit form
+    // -------------------------------
+    $(document).on('keydown', function(e) {
+        if ((e.key === 's' || e.keyCode === 83) && (e.ctrlKey || e.metaKey)) {
+            e.preventDefault();
+            $form.submit();
+        }
+    });
+
+    $form.on('change', 'select', function(e) {
+        e.stopPropagation();
+        $form.submit();
+    });
+
+    // -------------------------------
+    // 1) Single Image Handler
+    // -------------------------------
+    function bindSingleImage(field) {
+        const $box = $(`.image-box-${field}, .image-box[data-field="${field}"]`);
+        const $hidden = $box.find('.image-data');
+        const $preview = $box.find('.preview-image');
+        const $remove = $box.find('.image-remove');
+        const $input = $box.find(`.single-file-input[data-field="${field}"]`);
+
+        function updateState() {
+            const has = !!$hidden.val();
+            $remove.toggle(has);
+            $preview.toggleClass('image-change', !has);
+        }
+        updateState();
+
+        // “Change” button
+        $box.on('click', '.image-change', e => {
+            e.stopPropagation();
+            $input.click();
+        });
+
+        // File selected
+        $input.on('change', function(e) {
+            e.stopPropagation();
+            const file = this.files[0];
+            if (!file) return;
+
+            const oldUrl = $hidden.val();
+            const del = oldUrl ?
+                $.post(Wo_Ajax_Requests_File() +
+                    '?f=manage_site&s=editor&action=editor_delete_images', {
+                        images: [oldUrl]
+                    }) :
+                $.Deferred().resolve();
+
+            del.always(() => {
+                const fd = new FormData();
+                fd.append('images[]', file);
+                $.ajax({
+                    url: Wo_Ajax_Requests_File() +
+                        '?f=manage_site&s=editor&action=editor_upload_images',
+                    type: 'POST',
+                    data: fd,
+                    processData: false,
+                    contentType: false,
+                    dataType: 'json'
+                }).done(resp => {
+                    typeof resp === 'string' && (resp = JSON.parse(resp));
+                    if (resp.status === 200 && resp.images[0]) {
+                        const url = resp.images[0];
+                        $hidden.val(url);
+                        $preview.attr('src', url.startsWith('http') ? url : siteUrl +
+                            '/' + url);
+                        updateState();
+                        $form.submit();
+                        pos5_success_noti('Image uploaded');
+                    } else {
+                        pos4_error_noti('Upload failed: ' + (resp.error || 'Unknown'));
+                    }
+                });
+            });
+
+            $(this).val('');
+        });
+
+        // “×” remove
+        $remove.on('click', function(e) {
+            e.stopPropagation();
+            const url = $hidden.val();
+            if (!url) return;
+            $.post(Wo_Ajax_Requests_File() + '?f=manage_site&s=editor&action=editor_delete_images', {
+                    images: [url]
+                })
+                .done(resp => {
+                    typeof resp === 'string' && (resp = JSON.parse(resp));
+                    if (resp.status === 200) {
+                        $hidden.val('');
+                        $preview.attr('src', $preview.data('default'));
+                        updateState();
+                        $form.submit();
+                        pos5_success_noti('Image removed');
+                    } else {
+                        pos4_error_noti('Delete failed: ' + (resp.error || 'Unknown'));
+                    }
+                });
+        });
+    }
+
+    // -------------------------------
+    // 2) Gallery Handler (Multiple)
+    // -------------------------------
+    function renderGallery() {
+        const data = JSON.parse($('#gallery-data').val() || '[]');
+        const $c = $('#list-photos-items').empty();
+        data.forEach((url, idx) => {
+            const src = url.startsWith('http') ? url : `${siteUrl}/${url}`;
+            const $col = $(`
+              <div class="col-3 position-relative mb-2" data-idx="${idx}">
+                <img src="${src}" class="img-fluid rounded">
+                <button class="btn btn-sm btn-danger position-absolute top-0 end-0 btn-remove-photo">&times;</button>
+              </div>
+            `);
+            $col.on('click', e => e.stopPropagation());
+            $col.find('.btn-remove-photo').on('click', function(e) {
+                e.stopPropagation();
+                const real = data[idx];
+                $.post(Wo_Ajax_Requests_File() +
+                        '?f=manage_site&s=editor&action=editor_delete_images', {
+                            images: [real]
+                        })
+                    .done(resp => {
+                        typeof resp === 'string' && (resp = JSON.parse(resp));
+                        if (resp.status === 200) {
+                            data.splice(idx, 1);
+                            $('#gallery-data').val(JSON.stringify(data));
+                            renderGallery();
+                            $form.submit();
+                            pos5_success_noti('Gallery image deleted');
+                        } else if (resp.status === 404) {
+                            data.splice(idx, 1);
+                            $('#gallery-data').val(JSON.stringify(data));
+                            renderGallery();
+                            $form.submit();
+                            pos4_error_noti('Gallery image deleted');
+                        } else {
+
+                            pos4_error_noti('Delete failed: ' + (resp.error || 'Unknown'));
+                        }
+                    });
+            });
+            $c.append($col);
+        });
+    }
+
+    function bindGallery() {
+        const $drop = $('#gallery-dropzone');
+        const $hid = $('#gallery-data');
+        const $file = $('#gallery-files');
+
+        $drop.on('click', () => $file.click())
+            .on('dragover', e => e.preventDefault())
+            .on('drop', function(e) {
+                e.preventDefault();
+                $file[0].files = e.originalEvent.dataTransfer.files;
+                $file.trigger('change');
+            });
+
+        $('.btn_select_gallery').click(() => $file.click());
+        $('.reset-gallery').click(() => {
+            $hid.val('[]');
+            renderGallery();
+        });
+
+        $file.on('change', function() {
+            const files = Array.from(this.files);
+            if (!files.length) return;
+            const fd = new FormData();
+            files.forEach(f => fd.append('images[]', f));
+            $.ajax({
+                url: Wo_Ajax_Requests_File() +
+                    '?f=manage_site&s=editor&action=editor_upload_images',
+                type: 'POST',
+                data: fd,
+                processData: false,
+                contentType: false,
+                dataType: 'json'
+            }).done(resp => {
+                typeof resp === 'string' && (resp = JSON.parse(resp));
+                if (resp.status === 200 && resp.images) {
+                    const arr = JSON.parse($hid.val() || '[]');
+                    resp.images.forEach(u => arr.push(u));
+                    $hid.val(JSON.stringify(arr));
+                    renderGallery();
+                    $form.submit();
+                    pos5_success_noti('Gallery images uploaded');
+                } else {
+                    pos4_error_noti('Upload failed: ' + (resp.error || 'Unknown'));
+                }
+            });
+            $(this).val('');
+        });
+
+        renderGallery();
+    }
+
+    // -------------------------------
+    // 3) Attachments Handler
+    // -------------------------------
+    function renderAttachments() {
+        const data = JSON.parse($('#attachments-data').val() || '[]');
+        const $list = $('#list-attachments-items').empty();
+        data.forEach((att, idx) => {
+            const href = att.file_path.startsWith('http') ? att.file_path : siteUrl + '/' + att
+                .file_path;
+            const fname = att.file_path.split('/').pop();
+            const $li = $(`
+              <li class="d-flex align-items-center mb-2" data-idx="${idx}">
+                <input type="text" class="form-control me-2" style="max-width:200px;"
+                       value="${att.name}" placeholder="Title">
+                <a href="${href}" target="_blank" class="me-2 text-truncate" style="flex:1;text-align:start;color:#000;font-weight:500;">
+                   ${fname}
+                </a>
+                <button class="btn btn-sm btn-danger btn-remove-att">&times;</button>
+              </li>
+            `);
+
+            $li.on('click', e => e.stopPropagation());
+
+            // rename
+            $li.find('input').on('input', function() {
+                data[idx].name = $(this).val();
+                $('#attachments-data').val(JSON.stringify(data));
+            });
+
+            // delete AJAX
+            $li.find('.btn-remove-att').on('click', function(e) {
+                e.stopPropagation();
+                const real = data[idx].file_path;
+                $.post(Wo_Ajax_Requests_File() +
+                        '?f=manage_site&s=editor&action=editor_delete_attachments', {
+                            attachments: [real]
+                        })
+                    .done(resp => {
+                        typeof resp === 'string' && (resp = JSON.parse(resp));
+                        if (resp.status === 200) {
+                            data.splice(idx, 1);
+                            $('#attachments-data').val(JSON.stringify(data));
+                            renderAttachments();
+                            $form.submit();
+                            pos5_success_noti('Attachment deleted');
+                        } else {
+                            pos4_error_noti('Delete failed: ' + (resp.error || 'Unknown'));
+                        }
+                    });
+            });
+
+            $list.append($li);
+        });
+    }
+
+    function bindAttachments() {
+        const $drop = $('#attachments-dropzone');
+        const $hid = $('#attachments-data');
+        const $file = $('#attachments-files');
+
+        $drop.on('click', function(e) {
+                if (e.target === this) $file.click();
+            })
+            .on('dragover', e => e.preventDefault())
+            .on('drop', function(e) {
+                e.preventDefault();
+                $file[0].files = e.originalEvent.dataTransfer.files;
+                $file.trigger('change');
+            });
+
+        $('.btn_select_attachments').click(() => $file.click());
+        $('.reset-attachments').click(() => {
+            $hid.val('[]');
+            renderAttachments();
+        });
+
+        $file.on('change', function() {
+            const files = Array.from(this.files);
+            if (!files.length) return;
+            const fd = new FormData();
+            files.forEach(f => fd.append('attachments[]', f));
+            $.ajax({
+                url: Wo_Ajax_Requests_File() +
+                    '?f=manage_site&s=editor&action=editor_upload_attachments',
+                type: 'POST',
+                data: fd,
+                processData: false,
+                contentType: false,
+                dataType: 'json'
+            }).done(resp => {
+                typeof resp === 'string' && (resp = JSON.parse(resp));
+                if (resp.status === 200 && resp.attachments) {
+                    const arr = JSON.parse($hid.val() || '[]');
+                    resp.attachments.forEach(a => arr.push({
+                        name: '',
+                        file_path: a
+                    }));
+                    $hid.val(JSON.stringify(arr));
+                    renderAttachments();
+                    $form.submit();
+                    pos5_success_noti('Attachments uploaded');
+                } else {
+                    pos4_error_noti('Upload failed: ' + (resp.error || 'Unknown'));
+                }
+            });
+            $(this).val('');
+        });
+
+        renderAttachments();
+    }
+    // -------------------------------
+    // 4) PRICING TABLE Handler
+    // -------------------------------
+    function renderPricing() {
+        const data = JSON.parse($('#pricing-data').val() || '[]');
+        const $body = $('#pricing-body').empty();
+        data.forEach((row, idx) => {
+            const $tr = $(`
+                <tr data-idx="${idx}">
+                  <td><input type="text" class="form-control pricing-category" value="${row.category||''}" placeholder="Category"></td>
+                  <td><input type="text" class="form-control pricing-single" value="${row.single||''}" placeholder="Single"></td>
+                  <td><input type="text" class="form-control pricing-24" value="${row.month24||''}" placeholder="24-month"></td>
+                  <td><input type="text" class="form-control pricing-60" value="${row.month60||''}" placeholder="60-month"></td>
+                  <td><button class="btn btn-sm btn-danger btn-remove-pricing">&times;</button></td>
+                </tr>
+            `);
+            // remove row
+            $tr.find('.btn-remove-pricing').on('click', function() {
+                data.splice(idx, 1);
+                $('#pricing-data').val(JSON.stringify(data));
+                renderPricing();
+                $form.submit();
+            });
+            // on any input change update JSON
+            $tr.find('input').on('input', function() {
+                data[idx] = {
+                    category: $tr.find('.pricing-category').val(),
+                    single: $tr.find('.pricing-single').val(),
+                    month24: $tr.find('.pricing-24').val(),
+                    month60: $tr.find('.pricing-60').val()
+                };
+                $('#pricing-data').val(JSON.stringify(data));
+            });
+            $body.append($tr);
+        });
+    }
+
+    function bindPricing() {
+        const $hid = $('#pricing-data');
+
+        // Add new blank row
+        $('.btn_add_pricing').on('click', function() {
+            const arr = JSON.parse($hid.val() || '[]');
+            arr.push({
+                category: '',
+                single: '',
+                month24: '',
+                month60: ''
+            });
+            $hid.val(JSON.stringify(arr));
+            renderPricing();
+        });
+
+        // Reset entire table
+        $('.btn_reset_pricing').on('click', function() {
+            $hid.val('[]');
+            renderPricing();
+        });
+
+        // initial render
+        renderPricing();
+    }
+    // -------------------------------
+    // 5) ADDITIONAL DETAILS Handler
+    // -------------------------------
+    function renderAdditional() {
+        const data = JSON.parse($('#additional-data').val() || '[]');
+        const $body = $('#additional-body').empty();
+        data.forEach((row, idx) => {
+            const $tr = $(`
+      <tr data-idx="${idx}">
+        <td><input type="text" class="form-control additional-key"
+                   value="${row.key||''}" placeholder="Key"></td>
+        <td><input type="text" class="form-control additional-value"
+                   value="${row.value||''}" placeholder="Value"></td>
+        <td>
+          <button class="btn btn-sm btn-danger btn-remove-additional">&times;</button>
+        </td>
+      </tr>
+    `);
+            // remove row
+            $tr.find('.btn-remove-additional').on('click', function() {
+                data.splice(idx, 1);
+                $('#additional-data').val(JSON.stringify(data));
+                renderAdditional();
+                $form.submit();
+            });
+            // on any input change update JSON
+            $tr.find('input').on('input', function() {
+                data[idx] = {
+                    key: $tr.find('.additional-key').val(),
+                    value: $tr.find('.additional-value').val()
+                };
+                $('#additional-data').val(JSON.stringify(data));
+            });
+            $body.append($tr);
+        });
+    }
+
+    function bindAdditional() {
+        const $hid = $('#additional-data');
+
+        // Add new blank row
+        $('.btn_add_additional').on('click', function() {
+            const arr = JSON.parse($hid.val() || '[]');
+            arr.push({
+                key: '',
+                value: ''
+            });
+            $hid.val(JSON.stringify(arr));
+            renderAdditional();
+        });
+
+        // Reset entire table
+        $('.btn_reset_additional').on('click', function() {
+            $hid.val('[]');
+            renderAdditional();
+        });
+
+        // initial render
+        renderAdditional();
+    }
+    // -------------------------------
+    // VIDEO GALLERY Handler (with thumbnail upload)
+    // -------------------------------
+    function renderVideo() {
+        const data = JSON.parse($('#video-data').val() || '[]');
+        const $body = $('#video-body').empty();
+        data.forEach((row, idx) => {
+            const url = row.url || '';
+            const title = row.title || '';
+            const thumb = row.thumb || ''; // thumbnail URL
+            const $tr = $(`
+      <tr data-idx="${idx}">
+        <td>
+          <input
+            type="text"
+            class="form-control video-url"
+            value="${url}"
+            placeholder="Video URL">
+        </td>
+        <td>
+          <input
+            type="text"
+            class="form-control video-title"
+            value="${title}"
+            placeholder="Title">
+        </td>
+        <td class="d-flex align-items-center">
+          <img 
+            src="${thumb ? (thumb.startsWith('http') ? thumb : siteUrl + '/' + thumb) : themeUrl + '/img/placeholder.png'}"
+            class="thumb-preview me-2" 
+            style="width:60px;height:40px;object-fit:cover" 
+          >
+          <button class="btn btn-sm btn-secondary btn-upload-thumb">Upload</button>
+          <input type="file" accept="image/*" class="video-thumb-input" style="display:none">
+        </td>
+        <td>
+          <button class="btn btn-sm btn-danger btn-remove-video">&times;</button>
+        </td>
+      </tr>
+    `);
+
+            // 1) Remove
+            // NEW – delete both video entry AND its thumbnail file
+            $tr.find('.btn-remove-video').on('click', () => {
+                const thumbUrl = data[idx].thumb;
+                // if we have an uploaded thumb, delete it on the server
+                if (thumbUrl) {
+                    $.post(
+                        Wo_Ajax_Requests_File() +
+                        '?f=manage_site&s=editor&action=editor_delete_images', {
+                            images: [thumbUrl]
+                        }
+                    );
+                }
+                // now remove the row from the JSON, re-render and save
+                data.splice(idx, 1);
+                $('#video-data').val(JSON.stringify(data));
+                renderVideo();
+                $form.submit();
+            });
+
+
+            // 2) URL / title edits
+            $tr.find('input.video-url, input.video-title').on('input', () => {
+                data[idx].url = $tr.find('.video-url').val();
+                data[idx].title = $tr.find('.video-title').val();
+                $('#video-data').val(JSON.stringify(data));
+            });
+
+            // 3) Thumbnail upload button
+            $tr.find('.btn-upload-thumb').on('click', () => {
+                $tr.find('.video-thumb-input').click();
+            });
+
+            // 4) On file select → AJAX upload → update thumbnail URL
+            $tr.find('.video-thumb-input').on('change', function(e) {
+                const file = this.files[0];
+                if (!file) return;
+                // prepare form data
+                const fd = new FormData();
+                fd.append('images[]', file);
+                // DELETE old thumb if any
+                const old = data[idx].thumb;
+                const del = old ?
+                    $.post(
+                        Wo_Ajax_Requests_File() +
+                        '?f=manage_site&s=editor&action=editor_delete_images', {
+                            images: [old]
+                        }
+                    ) :
+                    $.Deferred().resolve();
+                del.always(() => {
+                    // upload new
+                    $.ajax({
+                        url: Wo_Ajax_Requests_File() +
+                            '?f=manage_site&s=editor&action=editor_upload_images',
+                        type: 'POST',
+                        data: fd,
+                        processData: false,
+                        contentType: false,
+                        dataType: 'json'
+                    }).done(resp => {
+                        resp = typeof resp === 'string' ? JSON.parse(resp) :
+                            resp;
+                        if (resp.status === 200 && resp.images && resp.images[
+                                0]) {
+                            data[idx].thumb = resp.images[0];
+                            $('#video-data').val(JSON.stringify(data));
+                            renderVideo();
+                            $form.submit();
+                        } else {
+                            alert('Thumbnail upload failed: ' + (resp.error ||
+                                'Unknown'));
+                        }
+                    });
+                });
+                $(this).val('');
+            });
+
+            $body.append($tr);
+        });
+    }
+
+    function bindVideo() {
+        const $hid = $('#video-data');
+
+        // Add new blank row
+        $('.btn_add_video').on('click', () => {
+            const arr = JSON.parse($hid.val() || '[]');
+            arr.push({
+                url: '',
+                title: '',
+                thumb: ''
+            });
+            $hid.val(JSON.stringify(arr));
+            renderVideo();
+        });
+
+        // Reset entire list
+        $('.btn_reset_video').on('click', () => {
+            $hid.val('[]');
+            renderVideo();
+        });
+
+        // initial render
+        renderVideo();
+    }
+
+    // -------------------------------
+    // Init + AJAX‑form hookup
+    // -------------------------------
+    bindSingleImage('image');
+    bindSingleImage('banner_image');
+    bindGallery();
+    bindAttachments();
+    bindAdditional();
+    bindPricing(); // ← NEW
+    bindVideo(); // ← NEW
+
+    $form.ajaxForm({
+        url: Wo_Ajax_Requests_File() + '?f=manage_site&s=editor&action=save_changes',
+        beforeSend: () => {
+            working = true;
+        },
+        success: data => {
+            working = false;
+            data = (typeof data === 'string') ? JSON.parse(data) : data;
+            if (data.status === 200 || data.status === 600) {
+                pos5_success_noti(data.message || 'Saved successfully');
+                if (data.location) {
+                    setTimeout(() => {
+                        if (data.location === 'goback') window.history.back();
+                        else if (data.location === 'reload') window.location.reload();
+                        else window.location.href = data.location;
+                    }, 1000);
+                }
+            } else {
+                pos4_error_noti((data.errors || [data.message]).join('\n'));
+            }
+        }
+    });
+});
+</script>

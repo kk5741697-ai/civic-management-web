@@ -1,0 +1,75 @@
+<!-- Client Information Card -->
+<div class="card mt-4 border-0 shadow-sm">
+  <div class="card-header bg-light border-0 py-3">
+    <h6 class="mb-0 fw-semibold text-dark">Client Information</h6>
+  </div>
+  <div class="card-body">
+    <div class="row g-3">
+      <div class="col-md-6">
+        <div class="d-flex align-items-center mb-3">
+          <ion-icon name="person-circle" class="text-primary fs-5 me-2"></ion-icon>
+          <div>
+            <small class="text-muted">Name</small>
+            <div class="fw-medium"><?= htmlspecialchars($wo['client']['name']) ?></div>
+          </div>
+        </div>
+        
+        <div class="d-flex align-items-center mb-3">
+          <ion-icon name="location" class="text-primary fs-5 me-2"></ion-icon>
+          <div>
+            <small class="text-muted">Address</small>
+            <div class="fw-medium"><?= htmlspecialchars($wo['client']['address']) ?></div>
+          </div>
+        </div>
+        
+        <div class="d-flex align-items-center mb-3">
+          <ion-icon name="call" class="text-primary fs-5 me-2"></ion-icon>
+          <div>
+            <small class="text-muted">Phone</small>
+            <div class="fw-medium"><?= htmlspecialchars($wo['client']['phone']) ?></div>
+          </div>
+        </div>
+
+        <?php if (!empty($wo['additional']['reference'])): ?>
+          <div class="d-flex align-items-center mb-3">
+            <ion-icon name="link" class="text-primary fs-5 me-2"></ion-icon>
+            <div>
+              <small class="text-muted">Reference</small>
+              <div class="fw-medium"><?= htmlspecialchars(Wo_UserData($wo['additional']['reference'])['name']) ?></div>
+            </div>
+          </div>
+        <?php endif; ?>
+      </div>
+
+      <div class="col-md-6">
+        <?php if ($wo['additional']): ?>
+          <h6 class="fw-semibold mb-3">Additional Details</h6>
+          <div class="table-responsive">
+            <table class="table table-sm table-borderless mb-0">
+              <tbody>
+                <?php foreach ([
+                  'spouse_name'=>'Spouse Name','fathers_name'=>'Father\'s Name','permanent_addr'=>'Permanent Address',
+                  'email'=>'Email','nationality'=>'Nationality','birthday'=>'Birthday','religion'=>'Religion',
+                  'nid'=>'National ID','passport'=>'Passport'
+                ] as $key=>$label): if (!empty($wo['additional'][$key])):
+                  $val = htmlspecialchars($wo['additional'][$key]);
+                ?>
+                  <tr>
+                    <td class="text-muted small" style="width:40%"><?= $label ?></td>
+                    <td class="fw-medium"><?= $val ?></td>
+                  </tr>
+                <?php endif; endforeach; ?>
+              </tbody>
+            </table>
+          </div>
+        <?php endif; ?>
+      </div>
+    </div>
+
+    <div class="mt-4 pt-3 border-top">
+      <button class="btn btn-outline-primary show-booking-form">
+        <i class="lni lni-print me-1"></i> Print Booking Form
+      </button>
+    </div>
+  </div>
+</div>

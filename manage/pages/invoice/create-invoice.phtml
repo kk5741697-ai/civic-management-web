@@ -1,0 +1,507 @@
+<div class="ms-auto button_flex_middle">
+ <div id="dataSheet_download" style="margin-right: 10px;"></div>
+ <style>
+	#dataSheet_download button.btn {
+		border: 2px solid transparent;
+		padding: 6px 2px;
+		width: 40px;
+		border-radius: 8px;
+	}
+	#dataSheet_download button.btn:hover {
+		background: white;
+		border: 2px solid #6c757d;
+		color: #6c757d;
+	}
+ </style>
+	<!-- Button trigger modal -->
+	<button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#create_invoiceModal">Create Invoice</button>
+	<!-- Modal -->
+	<div class="modal fade" id="create_invoiceModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+		<div class="modal-dialog">
+			<div class="modal-content">
+				<div class="modal-body">
+					<div class="form_toggle">
+							<h5 class="mb-1 text-center create_invoice_title">Create Invoice</h5>
+							<h5 class="mb-1 text-center assign_project_title">Assign Project</h5>
+							<hr>
+							<div class="col-12 manupulate mb-3">
+								<label class="form-label" for="select-client">Select Client</label>
+								<select id="select-client" name="client" class="form-select manupulate" required multiple></select>
+							</div>
+					  <form id="create-invoice" class="row g-3">
+							<div class="col-12 select-project d-none">
+								<label class="form-label" for="select-project">Select Project</label>
+								<select id="select-project" name="purchase" class="form-select" required>
+									<!-- Options will be obtained from the AJAX response in the script -->
+								</select>
+							</div>
+							<div class="col-12">
+								<div class="row bg-light align-items-center m-0">
+								  <div class="col col-auto p-4">
+									 <p class="mb-0">Total Amount</p>
+									 <h4 class="mb-0">৳<data id="total_amount">0</data></h4>
+								  </div>
+								  <div class="col col-auto p-4">
+									 <i class="bi bi-plus-lg text-muted"></i>
+								  </div>
+								  <div class="col col-auto p-4">
+									 <p class="mb-0">Due</p>
+									 <h4 class="mb-0">৳<data id="due_amount">0</data></h4>
+								  </div>
+								</div><!--end row-->
+							</div>
+							
+								<div class="col-12">
+									<label class="form-label" for="pay_type">Payment Type</label>
+									<select id="pay_type" name="pay_type" class="form-select" required>
+										<option value="">Choose Payment Type</option>
+										<option value="cash">Cash</option>
+										<option value="cheque">Cheque</option>
+										<option value="online transfer">Online Transfer</option>
+									</select>
+								</div>
+								<div class="col-6 bank_name_cont" style="display: none;">
+									<label class="form-label" for="bank_name">Select Bank</label>
+									<select id="bank_name" name="bank_name" class="form-select">
+										<option value="">Choose Bank</option>
+										<?php
+										foreach ($wo['payment_banks'] as $bank) {
+											echo '<option value="' . $bank . '">' . $bank . '</option>';
+										}
+										?>
+									</select>
+								</div>
+								<div class="col-6 bank_branch_cont" style="display: none;">
+									<label class="form-label" for="bank_branch">Select Branch</label>
+									<select id="bank_branch" name="bank_branch" class="form-select">
+										<option value="">Choose Branch</option>
+										<?php
+										foreach ($wo['bank_branches'] as $branch) {
+											echo '<option value="' . $branch . '">' . $branch . '</option>';
+										}
+										?>
+									</select>
+								</div>								
+								<div class="col-6">
+								  <label class="form-label">Date</label>
+								  <input type="datetime-local" name="pay_date" class="form-control" value="<?php echo date('Y-m-d\TH:i'); ?>" required>
+								</div>								
+								<div class="col-6">
+								  <label class="form-label">Pay</label>
+								  <div class="with_sign"><sign>৳</sign><input type="number" name="pay_amount" class="form-control" required></div>
+								</div>
+								<div class="col-12">
+								  <label class="form-label">Remarks</label>
+								  <input type="text" name="remarks" class="form-control" value="" maxlength="42">
+								</div>
+							
+							<div class="d-flex col-12" style=" align-items: center; ">
+									<button type="button" class="btn p-0 pb-1 show_assign_property"><i class="lni lni-chevron-right-circle"></i></button>
+									<div class="form-check" style=" padding-top: 2px; ">
+										<input class="form-check-input" type="checkbox" value="1" id="flexCheckDefault" name="is_booking_money">
+										<label class="form-check-label" for="flexCheckDefault">Booking Money</label>
+									</div>
+								<div class="ms-auto">
+									<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+									<button type="submit" class="btn btn-primary create_btn">Create</button>
+								</div>
+							</div>
+					  </form>
+					  <form id="assign-project" class="row g-3">
+							<div class="col-12 select-project2 d-none">
+								<label class="form-label" for="select-project">Select Project</label>
+								<select id="select-project2" name="project" class="form-select" required>
+									<?php
+										$projects	= $db->orderBy('id', 'ASC')->get(T_PROJECTS);
+										foreach ($projects as $project) {
+											echo '<option value="' . $project->id . '">' . $project->name . '</option>';
+										}
+									?>
+								</select>
+							</div>
+							
+							
+								<div class="col-6">
+									<label class="form-label" for="select-block">Select Block</label>
+									<select id="select-block" name="block" class="form-select" required>
+										<option value="a">A Block</option>
+										<option value="b">B Block</option>
+										<option value="c">C Block</option>
+									</select>
+								</div>
+								<div class="col-6">
+									<label class="form-label" for="select-plot">Select Plot</label>
+									<select id="select-plot" name="plot[]" class="form-select" required multiple>
+									</select>
+								</div>
+								<div class="col-6">
+									<label class="form-label" for="select-katha">Select Katha</label>
+									<select id="select-project2" name="katha" class="form-select" required>
+										<option value="3">3 Katha</option>
+										<option value="5">5 Katha</option>
+										<option value="7">7 Katha</option>
+										<option value="10">10 Katha</option>
+									</select>
+								</div>
+								
+								<div class="col-6">
+									  <label class="form-label">Per Katha</label>
+									  <div class="with_sign"><sign>৳</sign><input type="number" name="per_katha" class="form-control" required></div>
+								</div>
+							<div class="d-flex col-12">
+								<button type="button" class="btn p-0 pb-1 show_assign_property"><i class="lni lni-chevron-left-circle"></i></button>
+								<div class="ms-auto">
+									<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+									<button type="submit" class="btn btn-primary assign_btn">Assign</button>
+								</div>
+							</div>
+					  </form>
+					  <style>
+						  .form_toggle #assign-project, .form_toggle .assign_project_title {
+							  display: none;
+						  }
+						  .form_toggle.toggled #create-invoice, .form_toggle.toggled .create_invoice_title {
+							  display: none;
+						  }
+						  .form_toggle.toggled #assign-project {
+							  display: flex;
+						  }
+						  .form_toggle.toggled .assign_project_title {
+							  display: block;
+						  }
+						  
+						  .with_sign {display: flex; align-items: center;}
+							.with_sign sign {
+								padding: 6.5px 8px;
+								background: #dee2e6;
+								margin-right: -28px;
+								border: 1px solid #dee2e6;
+								z-index: 9;
+								border-radius: 5px;
+							}
+						  .with_sign input.form-control {padding-left: 35px;}
+						  .manupulate .select2-container--bootstrap-5 .select2-selection {height: 39px;}
+						  .manupulate .select2-search textarea { opacity: 0; }
+						  .manupulate .select2-search__field[aria-controls=select2-select-client-results] { opacity: 1; }
+						  .manupulate .select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__rendered .select2-selection__choice {width: 100%;padding: 0;border: none;}
+						  .manupulate .select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__rendered .select2-selection__choice .select2-selection__choice__remove {margin-right: 8px;}
+					  </style>
+						<script>
+							$(".show_assign_property").on("click", function() {
+								$(".form_toggle").toggleClass("toggled");
+							})
+							// Function to perform calculation based on selected values
+							function do_calculation(selectedPurchase, selectedClient) {
+								// Perform AJAX request to fetch calculation based on the selected project and client
+								$.ajax({
+									url: Wo_Ajax_Requests_File() + '?f=manage_settings&s=get_calculation',
+									type: 'GET',
+									data: {
+										purchase: selectedPurchase,
+										client: selectedClient
+									},
+									dataType: 'json',
+									success: function (response) {
+										$('#total_amount').text(response.total);
+										$('#due_amount').text(response.due);
+										if (response.due <= 0) {
+											// Disable the button if the due amount is less than or equal to 0
+											$('.create_btn').attr('disabled', true);
+											pos4_error_noti('This account are no due!');
+										} else {
+											// Enable the button if the due amount is greater than 0
+											$('.create_btn').attr('disabled', false);
+										}
+
+									},
+									error: function (error) {
+										pos4_error_noti('Error fetching calculation: ' + error);
+									}
+								});
+							}
+							
+							function clear_forms() {
+								// Clear values and reset selections for the create-invoice form
+								$('#select-client').val(null).trigger('change');
+								$('#select-project').val(null).trigger('change');
+								$('input[name="pay_amount"]').val('');
+								
+								// Clear values and reset selections for the assign-project form
+								$('#select-client2').val(null).trigger('change');
+								$('#select-project2').val(null).trigger('change');
+								$('#select-block').val(null).trigger('change');
+								$('#select-plot').val(null).trigger('change');
+								$('#pay_type').val(null).trigger('change');
+								$('input[name="is_booking_money"]').val(null).trigger('change');
+								$('#bank_name').val(null).trigger('change');
+								$('#bank_branch').val(null).trigger('change');
+								$('select[name="katha"]').val(null).trigger('change');
+								$('input[name="per_katha"]').val('');
+								$('input[name="remarks"]').val('');
+								
+								$(".form_toggle").removeClass("toggled");
+								
+								// Hide the create_invoiceModal modal
+								$('#create_invoiceModal').modal('hide');
+							}
+							
+							// Function to get options for the second select
+							function get_result(selectedClient) {
+								$('.select-project').addClass('d-none');
+								$('#total_amount').text('0');
+								$('#due_amount').text('0');
+								// Perform AJAX request to fetch options based on the selected client
+								$.ajax({
+									url: Wo_Ajax_Requests_File() + '?f=manage_settings&s=get_project_options',
+									type: 'GET',
+									data: {
+										client: selectedClient
+									},
+									dataType: 'json',
+									success: function (response) {
+										// Check if response has an 'items' property that is an array
+										if (response && response.items && Array.isArray(response.items)) {
+											// Update options for the second select
+											$('#select-project').empty();
+											$('.select-project').removeClass('d-none');
+											response.items.forEach(function (project) {
+												$('#select-project').append('<option value="' + project.id + '" ' + project.selected + '>' + project.text + '</option>');
+												if (project.selected == 'selected') {
+													do_calculation(project.id, selectedClient);
+												}
+											});
+										} else {
+											$(".form_toggle").addClass("toggled");
+											pos4_error_noti('Project are not assigned for <b>' + response.clientName+'</b>');
+										}
+									},
+									error: function (error) {
+										console.error('Error fetching options:', error);
+									}
+								});
+							}
+							
+
+							$(document).ready(function () {
+								$('#pay_type').on('change', function () {
+									// Get the selected project_id
+									var pay_type = $(this).val();
+									if (pay_type == 'cheque' || pay_type == 'online transfer') {
+										$('.bank_name_cont').show();
+										$('.bank_branch_cont').show();
+									} else {
+										$('.bank_name_cont').hide();
+										$('.bank_branch_cont').hide();
+										$('#bank_name').val(null).trigger('change');
+										$('#bank_branch').val(null).trigger('change');
+									}
+								});
+								$('#select-project2').on('change', function () {
+									// Get the selected project_id
+									var project_id = $(this).val();
+
+									// Make AJAX request to get default rate
+									$.ajax({
+										url: Wo_Ajax_Requests_File() + '?f=manage_settings&s=default_rate&project_id=' + project_id,
+										type: 'GET',
+										dataType: 'json', // Adjust the data type based on your response
+										success: function (response) {
+											// Check if response contains default_rate
+											if (response && response.default_rate !== undefined) {
+												// Set the default value for per_katha input
+												$('input[name="per_katha"]').val(response.default_rate);
+											}
+										},
+										error: function (xhr, status, error) {
+											// Handle error if needed
+											console.error(error);
+										}
+									});
+								});
+								// Generate data for the first select (1 to 100)
+								var selectData = [];
+								for (var i = 1; i <= 100; i++) {
+									selectData.push({
+										id: i,
+										text: i.toString()
+									});
+								}
+
+								// Initialize Select2 for the first select
+								$('#select-plot').select2({
+									data: selectData, // Use the generated data
+									dropdownParent: $('#create_invoiceModal'),
+									placeholder: 'Search...',
+									theme: 'bootstrap-5',
+									closeOnSelect: true,
+									minimumInputLength: 1
+								});
+								$('#select-client').select2({
+									ajax: {
+										url: Wo_Ajax_Requests_File() + '?f=manage_settings&s=fetch_customers',
+										dataType: 'json',
+										delay: 250,
+										data: function (params) {
+											return {
+												q: params.term,
+												page: params.page
+											};
+										},
+										processResults: function (data, params) {
+											return {
+												results: data.items,
+												pagination: {
+													more: false
+												}
+											};
+										},
+										cache: true
+									},
+									dropdownParent: $('#create_invoiceModal'),
+									placeholder: 'Search...',
+									theme: 'bootstrap-5',
+									closeOnSelect: true,
+									minimumInputLength: 1
+								}).on('select2:select', function (event) {
+									// Handle selection change
+									var selectedValue = event.params.data.id;
+									// Update the selection
+									$(this).val(selectedValue).trigger('change');
+
+									// Update the selection in the first select
+									$('#select-client2').val(selectedValue).trigger('change');
+									$('.select-project2').removeClass('d-none');
+									// Call the function to get options for the second select
+									get_result(selectedValue);
+								});
+								
+								// Event handler for the second select
+								$('#select-client').on('select2:select', function (event) {
+									// Check if the first select is not empty
+									var selectedProject = $('#select-project').val();
+									if (selectedProject && selectedProject.length > 0) {
+										// Log the values of both selects
+										var selectedClient = event.params.data.id;
+
+										// Perform AJAX request to update based on selected values
+										$.ajax({
+											url: Wo_Ajax_Requests_File() + '?f=manage_settings&s=get_status',
+											type: 'POST',
+											data: {
+												project: selectedProject,
+												client: selectedClient
+											},
+											dataType: 'json',
+											success: function (response) {
+											},
+											error: function (error) {
+												pos4_error_noti(error);
+											}
+										});
+									}
+								});
+								
+								// Event handler for the second select
+								$('#select-client2').on('select2:select', function (event) {
+									// Check if the first select is not empty
+									var selectedProject = $('#select-project2').val();
+									if (selectedProject && selectedProject.length > 0) {
+										// Log the values of both selects
+										var selectedClient = event.params.data.id;
+
+										// Perform AJAX request to update based on selected values
+										$.ajax({
+											url: Wo_Ajax_Requests_File() + '?f=manage_settings&s=get_status',
+											type: 'POST',
+											data: {
+												project: selectedProject,
+												client: selectedClient
+											},
+											dataType: 'json',
+											success: function (response) {
+											},
+											error: function (error) {
+												pos4_error_noti(error);
+											}
+										});
+									}
+								});
+
+								// Event handler for #select-project onchange
+								$('#select-project').on('change', function () {
+									// Check if #select-client has a selected value
+									var selectedClient = $('#select-client').val();
+									if (selectedClient && selectedClient.length > 0) {
+										// Call the function to perform calculation
+										do_calculation($(this).val(), selectedClient);
+									}
+								});
+								// Event handler for #select-project onchange
+								$('#select-project2').on('change', function () {
+									// Check if #select-client has a selected value
+									var selectedClient = $('#select-client2').val();
+									if (selectedClient && selectedClient.length > 0) {
+										// Call the function to perform calculation
+										do_calculation($(this).val(), selectedClient);
+									}
+								});
+
+								// Initialize AjaxForm for the create-invoice form
+								$('#create-invoice').ajaxForm({
+									url: Wo_Ajax_Requests_File() + '?f=manage_settings&s=create_invoice',
+									type: 'GET',
+									beforeSend: function () {},
+									success: function (data) {
+										if (data['status'] == 200) {
+											pos5_success_noti(data['message']);
+											clear_forms();
+											DataTableRefresh();
+										} else if (data['message']) {
+											pos4_error_noti(data['message']);
+										}
+									},
+									beforeSubmit: function (formData, jqForm, options) {
+										// Get the selected value from #select-client
+										var selectedClient = $('#select-client').val();
+
+										// Add the selected value to the form data
+										formData.push({ name: 'client', value: selectedClient });
+
+										// You can add more form data as needed
+									}
+								});
+								
+								// Initialize AjaxForm for the create-invoice form
+								$('#assign-project').ajaxForm({
+									url: Wo_Ajax_Requests_File() + '?f=manage_settings&s=assign_project',
+									type: 'GET',
+									beforeSend: function () {},
+									success: function (data) {
+										if (data['status'] == 200) {
+											pos5_success_noti(data['message']);
+											clear_forms();
+											DataTableRefresh();
+										} else if (data['message']) {
+											pos4_error_noti(data['message']);
+										}
+									},
+									beforeSubmit: function (formData, jqForm, options) {
+										// Get the selected value from #select-client
+										var selectedClient = $('#select-client').val();
+
+										// Add the selected value to the form data
+										formData.push({ name: 'client', value: selectedClient });
+
+										// You can add more form data as needed
+									}
+								});
+							});
+						</script>
+
+
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>

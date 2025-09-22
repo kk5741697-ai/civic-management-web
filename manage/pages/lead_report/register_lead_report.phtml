@@ -1,0 +1,93 @@
+<!--start breadcrumb-->
+<div class="page-breadcrumb d-flex align-items-center mb-3 justify-content-between">
+	<div class="breadcrumb-title pe-3">Register lead report</div>
+	<div class="select-panel d-flex">
+		<!-- Use flatpickr for date selection -->
+		<input class="form-select w-auto" type="text" id="date_start_end" name="date_start_end" placeholder="Select attendance date" readonly onchange="fetch_register_attendance()" value="<?php echo !empty($_COOKIE['lead_report_date']) ? htmlspecialchars($_COOKIE['lead_report_date']) : date('Y-m-d'); ?>" style=" max-width: 160px; ">
+	</div>
+</div>
+
+<div class="attandence card m-auto">
+	<div class="card-body">
+		<div class="border p-3 rounded" id="registerAttendance">
+	
+		</div>
+	</div>
+</div>
+
+<script>
+function fetch_register_attendance() {
+    var date = document.getElementById('date_start_end');
+	
+	if (date == null) {
+        return false;
+    }
+    $.ajax({
+        type: "POST",
+        url: Wo_Ajax_Requests_File() + '?f=lead_report&s=form', // Ensure Wo_Ajax_Requests_File() returns the correct URL
+		data: { date: date.value },
+        success: function (response) {
+            if (response['status'] == 200) {
+				$("#registerAttendance").html(response['result']);
+            }
+        }
+    });
+}
+
+$(document).ready(function() {
+	fetch_register_attendance();
+    // Initialize Flatpickr
+    var flatpickrInstance = flatpickr('#date_start_end', {
+        dateFormat: 'Y-m-d',
+        altFormat: 'F j, Y',
+        altInput: false,
+        allowInput: false,
+        clickOpens: true,
+        onChange: function(selectedDates, dateStr, instance) {
+            // Call fetch_register_attendance when the date changes
+            fetch_register_attendance();
+        },
+        onReady: function(selectedDates, dateStr, instance) {
+            // Add custom date range options to the Flatpickr container
+            var datepickerContainer = instance.calendarContainer;
+			var dateRangeOptions = [
+				// { label: 'Today', range: [new Date(), new Date()] },
+				// { label: 'Yesterday', range: [new Date(new Date().setDate(new Date().getDate() - 1)), new Date(new Date().setDate(new Date().getDate() - 1))] },
+			];
+
+			dateRangeOptions.forEach(function(option) {
+				var button = document.createElement('button');
+				button.textContent = option.label;
+				button.addEventListener('click', function() {
+					flatpickrInstance.setDate(option.range);
+					flatpickrInstance.close(); // Close Flatpickr instance
+					fetch_register_attendance();
+				});
+
+				datepickerContainer.prepend(button);
+			});
+
+        }
+    });
+});
+
+</script>
+<style>
+.attandence { width: 100%; }
+.intime_margin { margin: 10px 0; }
+.image_margin { margin-bottom: 15px; }
+@media (min-width:1200px) {
+	.attandence { width: 75%; }
+	.image_margin { margin-bottom: 0px; }
+}
+@media (min-width:1400px) {
+	.attandence { width: 60%; }
+	.image_margin { margin-bottom: 0px; }
+}
+.attandence .row:first-child {
+    margin-top: 0px !important;
+}
+.attandence hr:last-child {
+	display: none;
+}
+</style>

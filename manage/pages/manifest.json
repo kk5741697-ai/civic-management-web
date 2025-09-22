@@ -1,0 +1,39 @@
+{
+  "name": "Civic Management",
+  "short_name": "Civic Management",
+  "description": "Accounting and Management Software | Developed by: Aminul Islam Mehedi @mr1aminul @vrbel",
+  "theme_color": "#fff",
+  "background_color": "#ffffff",
+  "display": "standalone",
+  "orientation": "portrait",
+  "scope": "/",
+  "start_url": "/management",
+  "icons": [
+    {
+      "src": "img/maskable_icon.png",
+      "sizes": "196x196",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "img/icon192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "img/icon256.png",
+      "type": "image/png",
+      "sizes": "256x256"
+    },
+    {
+      "src": "img/icon384.png",
+      "type": "image/png",
+      "sizes": "384x384"
+    },
+    {
+      "src": "img/icon512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ]
+}

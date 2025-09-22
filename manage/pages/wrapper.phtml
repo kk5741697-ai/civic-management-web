@@ -1,0 +1,234 @@
+<?php
+	Global $page;
+	$site_link = $wo['panel_mode'];
+?>
+
+	<div class="panel_switcher fadeIn animated" <?php echo ($wo['panel_switch'] == true) ? '' : 'style="display: none;"'; ?>>
+		<div class="row row-cols-auto g-3">
+			<div class="w-100 text-center">
+				<span class="d-block fs-1">
+					<div class="spinner-grow" style="width: 3rem; height: 3rem;" role="status"> <span class="visually-hidden">Loading...</span></div>
+					<div class="spinner-grow" style="width: 3rem; height: 3rem;" role="status"> <span class="visually-hidden">Loading...</span></div>
+					<div class="spinner-grow" style="width: 3rem; height: 3rem;" role="status"> <span class="visually-hidden">Loading...</span></div>
+				</span>
+				<span class="panel_switcher_content w-100 fs-5 text-black d-block mb-1" <?php echo ($wo['panel_switch'] == true) ? '' : 'style="display: none;"'; ?>>Control Panel are switcing to <b><?php
+				$panel_modes = array(
+					'management' => 'Management',
+					'real_estate' => 'Civic Real Estate Ltd',
+					'civic_group' => 'Civic Group',
+				);
+
+				echo isset($panel_modes[$wo['panel_mode']]) ? $panel_modes[$wo['panel_mode']] : $wo['panel_mode'];
+				?></b> portal.</span>
+				<span class="w-100 fs-6 text-black d-block"></span>
+
+				<span class="contact-administrator"><b>Please Wait... 😊</b></span>
+			</div>
+		</div>
+	</div>
+	<div id="hash_id" data-hash-id="<?php echo Wo_CreateSession(); ?>"></div>
+	<div class="wrapper" id="full_page">
+		<aside class="sidebar-wrapper" data-simplebar="true">
+		  <div class="sidebar-header" style=" overflow: hidden; ">
+			<div><img src="<?php echo Wo_LoadManageLink('assets/images/logo-icon-2.png') . '?version=' . $wo['config']['version']; ?>" class="logo-icon" alt="logo icon"></div>
+			<div>
+			<?php if ($site_link != 'management') { echo '<small class="logo-text" style=" margin-left: 10px; color: white;font-size: 12px; ">Manage Site</small>'; } ?>
+				<h4 class="logo-text <?php if ($site_link == 'management') { echo 'mt-1'; } ?>" style="width: 179px;"><?php echo str_replace('_', ' ', strtoupper($site_link)); ?></h4>
+			</div>
+		  </div>
+		  <?php echo Wo_LoadManagePage("left"); ?>
+		</aside>
+		<header class="top-header">
+		  <?php echo Wo_LoadManagePage("top"); ?>
+		</header>
+		<div class="page-content-wrapper">
+		  <div class="page-content" id="contnet">
+			<?php echo Wo_LoadManagePage("$page/content"); ?>
+		  </div>
+		</div>
+		<footer class="footer">
+		  <div class="footer-text">
+			Copyright © <?php echo date('Y');?>. All right reserved.
+		  </div>
+		  <div class="designby">Designed &amp; Developed by <a href="https://www.facebook.com/mr1aminul" style="color: #000; font-weight: 600;">Aminul Islam</a>. </div>
+		</footer>
+		<div class="overlay nav-toggle-icon"></div>
+	</div>
+
+	<script src="<?php echo Wo_LoadManageLink('assets/plugins/simplebar/js/simplebar.min.js') . '?version=' . $wo['config']['version']; ?>"></script>
+	<script src="<?php echo Wo_LoadManageLink('assets/plugins/metismenu/js/metisMenu.min.js') . '?version=' . $wo['config']['version']; ?>"></script>
+	<script src="<?php echo Wo_LoadManageLink('assets/js/bootstrap.bundle.min.js') . '?version=' . $wo['config']['version']; ?>"></script>
+
+	<script src="<?php echo Wo_LoadManageLink('assets/plugins/notifications/js/lobibox.min.js') . '?version=' . $wo['config']['version']; ?>"></script>
+	<script src="<?php echo Wo_LoadManageLink('assets/plugins/notifications/js/notifications.min.js') . '?version=' . $wo['config']['version']; ?>"></script>
+	<script src="<?php echo Wo_LoadManageLink('assets/plugins/datatable/js/jquery.dataTables.min.js') . '?version=' . $wo['config']['version']; ?>"></script>
+	<script src="<?php echo Wo_LoadManageLink('assets/plugins/datatable/js/dataTables.bootstrap5.min.js') . '?version=' . $wo['config']['version']; ?>"></script>
+	<link rel="stylesheet" href="<?php echo Wo_LoadManageLink('assets/css/jquery-ui.css') . '?version=' . $wo['config']['version']; ?>">
+	<script src="<?php echo Wo_LoadManageLink('assets/js/jquery-ui.js') . '?version=' . $wo['config']['version']; ?>"></script>
+
+  <script>
+	<?php if (!empty($wo['user']['manage_pass'])) { ?>
+		$(document).ready(function() {
+			function makeAjaxRequest() {
+				$.ajax({
+					url: Wo_Ajax_Requests_File() + '?f=manage_settings&s=lockout_check',
+					type: 'POST',
+					dataType: 'json',
+					success: function(data) {
+						if(data.unseen_notification > 0 || data.unseen_notification == '9+') {
+							$('.notify-badge').removeClass('d-none');
+							$('.notify-badge').html(data.unseen_notification);
+						} else {
+							$('.notify-badge').addClass('d-none');
+						}
+						var modal = document.getElementById('lockout_modal');
+						if (!modal) {
+							if (data.status == 400) {
+								SMColibri.spa_reload();
+							}
+						}
+					},
+					error: function(xhr, status, error) {
+						console.error(error);
+					}
+				});
+			}
+
+			setInterval(makeAjaxRequest, 15000);
+
+			let lastExecutionTime = 0;
+			const intervalDuration = 15 * 1000;
+
+			function update_lockout_time() {
+                var hash_id = $('#hash_id').data('hash-id');
+            
+                $.ajax({
+                    url: Wo_Ajax_Requests_File() + '?f=manage_settings&s=lockout_update&hash_id=' + hash_id,
+                    type: 'POST',
+                    dataType: 'json',
+                    success: function(data) {
+                        if (data.unseen_notification > 0 || data.unseen_notification == '9+') {
+                            $('.notify-badge').removeClass('d-none');
+                            $('.notify-badge').html(data.unseen_notification);
+                        } else {
+                            $('.notify-badge').addClass('d-none');
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('Error:', error);
+                        console.error('Response Text:', xhr.responseText); // Log the response text for debugging
+                    }
+                });
+            }
+
+
+			function handleUserActivity() {
+				const currentTime = new Date().getTime();
+
+				if (currentTime - lastExecutionTime >= intervalDuration) {
+					lastExecutionTime = currentTime;
+
+					update_lockout_time();
+				}
+			}
+
+			$(document).on('mousemove keypress keydown touchstart scroll', handleUserActivity);
+
+			$(window).on('resize orientationchange', handleUserActivity);
+
+			var scrollTimeout;
+			$(window).on('scroll', function() {
+				clearTimeout(scrollTimeout);
+				scrollTimeout = setTimeout(handleUserActivity, 200);
+			});
+		});
+	<?php } else { ?>
+
+		$(document).ready(function() {
+			let lastExecutionTime = 0;
+			const intervalDuration = 15 * 1000;
+
+			function update_lockout_time() {
+				var hash_id = $('#hash_id').data('hash-id');
+				
+				$.ajax({
+					url: Wo_Ajax_Requests_File() + '?f=manage_settings&s=lockout_update&hash_id=' + hash_id,
+					type: 'POST',
+					dataType: 'json',
+					success: function(data) {
+						if(data.unseen_notification > 0 || data.unseen_notification == '9+') {
+							$('.notify-badge').removeClass('d-none');
+							$('.notify-badge').html(data.unseen_notification);
+						} else {
+							$('.notify-badge').addClass('d-none');
+						}
+					},
+					error: function(xhr, status, error) {
+						console.error(error);
+					}
+				});
+			}
+
+			function handleUserActivity() {
+				const currentTime = new Date().getTime();
+
+				if (currentTime - lastExecutionTime >= intervalDuration) {
+					lastExecutionTime = currentTime;
+
+					update_lockout_time();
+				}
+			}
+
+			$(document).on('mousemove keypress keydown touchstart scroll', handleUserActivity);
+
+			$(window).on('resize orientationchange', handleUserActivity);
+
+			var scrollTimeout;
+			$(window).on('scroll', function() {
+				clearTimeout(scrollTimeout);
+				scrollTimeout = setTimeout(handleUserActivity, 200);
+			});
+		});
+	<?php } ?>
+function pos4_error_noti(msg) {
+	if (!msg) {
+		var msg = 'Simple Success Message!';
+	}
+	Lobibox.notify('error', {
+		pauseDelayOnHover: true,
+		icon: 'bx bx-x-circle',
+		size: 'mini',
+		continueDelayOnInactiveTab: false,
+		position: 'top right',
+		msg: msg
+	});
+}
+function pos5_success_noti(msg) {
+	if (!msg) {
+		var msg = 'Simple Alert Message!';
+	}
+	Lobibox.notify('success', {
+		pauseDelayOnHover: true,
+		size: 'mini',
+		icon: 'bx bx-check-circle',
+		continueDelayOnInactiveTab: false,
+		position: 'top right',
+		msg: msg
+	});
+}
+$(function() {
+	"use strict";
+    
+	$(function () {
+        $('[data-bs-toggle="popover"]').popover();
+        $('[data-bs-toggle="tooltip"]').tooltip();
+    })
+});
+
+	<?php if ($wo['panel_switch'] == true) { ?>
+		$('.wrapper').fadeOut(100);
+		wo_panelswitchStart();
+		wo_panelswitchEnd();
+	<?php } ?>
+  </script>
+<script src="<?php echo Wo_LoadManageLink('assets/js/main.js') . '?version=' . $wo['config']['version']; ?>"></script>

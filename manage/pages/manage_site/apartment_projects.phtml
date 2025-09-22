@@ -1,0 +1,188 @@
+<?php
+
+// $query_one = " SELECT * FROM " . T_PROJECTS . " WHERE id = " . $id;
+// $query     = mysqli_query($sqlConnect, $query_one);
+// if (mysqli_num_rows($query)) {
+	// $data = array();
+	// $i = 0;
+	// while ($fetched_data = mysqli_fetch_assoc($query)) {
+		// $i++;
+		// $selected = ($i == 1) ? 'selected' : '';
+		// $fetched_data['selected'] = $selected;
+
+		// $data = $fetched_data;
+	// }
+	// return $data;
+// }
+// return array();
+	
+$data_table = T_PROJECTS;
+$site_link = $wo['panel_mode'];
+?>
+<div class="page-breadcrumb d-flex align-items-center mb-3">
+    <div class="breadcrumb-title pe-3">Land Projects</div>
+    <div class="ms-auto button_flex_middle">
+        <button type="button" class="btn btn-primary" onclick="showland_projectsModal();">Add Project</button>
+    </div>
+</div>
+
+
+<div class="card radius-10 w-100">
+    <div class="card-body">
+        <div class="table-responsive mt-2">
+            <table id="invoiceTable" class="table align-middle mb-0" style="width: 100%;">
+                <thead class="table-light">
+					<tr>
+						<?php
+						$get_status = array('ID', 'Name', 'Type', 'Location', 'Date', 'Progress', 'Status', 'Action');
+
+						foreach ($get_status as $status) {
+							// Correctly apply the ternary operator
+							$width = ($status == "ID" || $status == "Type" || $status == "Progress" || $status == "Status" || $status == "Action") ? "10px" : "265px";
+							echo '<th style="width: ' . $width . ';">' . htmlspecialchars($status) . '</th>';
+						}
+						?>
+					</tr>
+
+				</thead>
+				<tbody>
+					<?php 
+					if ($site_link == 'civic_group') {
+						$datas = $db->where('type', 'apartment')->get($data_table);
+					} else {
+						$datas = $db->where('type', 'apartment')->where('website', $site_link)->get($data_table);
+					}
+					foreach ($datas as $data) {
+						if ($data->active == '1') {
+							$status = '<span class="badge bg-success">Active</span>';
+						} else if ($data->active == '2') {
+							$status = '<span class="badge bg-success">Draft</span>';
+						} else {
+							$status = '<span class="badge bg-warning">Inactive</span>';
+						}
+						if ($data->progress == 'ongoing') {
+							$progress = '<span class="badge bg-warning">Ongoing</span>';
+						} else if ($data->progress == 'upcomming') {
+							$progress = '<span class="badge bg-info">Upcomming</span>';
+						} else if ($data->progress == 'completed') {
+							$progress = '<span class="badge bg-success">Completed</span>';
+						} else {
+							$progress = '<span class="badge bg-danger">N/A</span>';
+						}
+						?>
+						<tr role="row" class="odd" data-id="<?php echo htmlspecialchars($data->id); ?>" <?php echo ($user->is_team_leader) ? 'style="--bs-table-bg: #ffffff1f;"' : ''; ?> data-bs-toggle="tooltip" data-bs-placement="top" data-bs-original-title="<?= htmlspecialchars(ucfirst($data->land_projects)); ?>">
+							<td><?= htmlspecialchars(ucfirst($data->id)); ?></td>
+							<td><img src="/<?= htmlspecialchars($data->image); ?>" class="user-img d-none" style=" width: 24px; height: 24px; border-radius: 35px; margin-right: 8px; "><?= htmlspecialchars(ucfirst($data->name)); ?></td>
+							<td><?= htmlspecialchars(ucfirst($data->type)); ?></td>
+							<td style="max-width: 250px;overflow-x: hidden;text-overflow: ellipsis;" ><?= htmlspecialchars(ucfirst($data->location)); ?></td>
+							<td><?= htmlspecialchars(date('Y-m-d h:i A', $data->posted)); ?></td>
+							<td><?= $progress; ?></td>
+							<td><?= $status; ?></td>
+							<td>
+								<div class="d-flex align-items-center gap-3 fs-6">
+									<a href="<?php echo(Wo_LoadManageLinkSettings('manage_site?tab=edit&id=' . $data->id)) ?>" data-spa="true" class="text-warning d-flex" data-bs-toggle="tooltip" data-bs-placement="bottom" title="" data-bs-original-title="Edit info" aria-label="Edit">
+										<i class="fadeIn animated bx bx-edit-alt"></i>
+									</a>
+									<a href="javascript:;" class="text-danger" data-bs-toggle="tooltip" data-bs-placement="bottom" title="" data-bs-original-title="Delete" aria-label="Delete" onclick="deleteland_projects(<?php echo htmlspecialchars($data->id); ?>)">
+										<i class='fadeIn animated bx bx-trash' ></i>
+									</a>
+								</div>
+							</td>
+						</tr>
+					<?php } ?>
+				</tbody>
+            </table>
+        </div>
+    </div>
+</div>
+<!-- Add land_projects Modal -->
+<div class="modal fade" id="add-land_projects-modal" role="dialog">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content p-3">
+            <form class="row g-3 needs-validation" id="add-land_projects-form">
+                <div class="col-12">
+                    <label for="project-name" class="form-label">Project Name</label>
+                    <input type="text" class="form-control" id="project-name" name="project_name" placeholder="Project's name" required>
+                </div>
+                <div class="col-12">
+                    <label for="project-location" class="form-label">Location</label>
+                    <input type="text" class="form-control" id="project-location" name="project_location" placeholder="Project's location" required>
+                </div>
+				<input type="text" class="d-none" id="project-type" name="project_type" value="land">
+				<input type="text" class="d-none" id="website" name="website" value="<?php echo $site_link; ?>">
+                <div class="col-12">
+                    <label for="project-status" class="form-label">Status</label>
+                    <select id="project-status" name="project_status" class="form-select">
+						<option value="1" >Active</option>
+						<option value="2">Draft</option>
+						<option value="3" selected>Inactive</option>
+					</select>
+                </div>
+                <div class="col-12">
+                    <label for="project-pogress" class="form-label">Progress</label>
+                    <select id="project-pogress" name="project_pogress" class="form-select">
+						<option value="ongoing" selected>Ongoing</option>
+						<option value="upcomming">Upcomming</option>
+						<option value="completed">Completed</option>
+					</select>
+                </div>
+				
+                <div class="text-center mt-3">
+                    <button type="submit" class="btn btn-primary w-100">Save Project</button>
+                </div>
+            </form>
+
+            <script>
+                $(document).ready(function() {
+					$('[data-bs-toggle="popover"]').popover();
+					$('[data-bs-toggle="tooltip"]').tooltip();
+				
+                    $('#add-land_projects-form').ajaxForm({
+                        url: Wo_Ajax_Requests_File() + '?f=manage_site&s=manage_projects&action=add',
+                        type: "POST",
+                        beforeSend: function() {
+                            // Optionally add a loader here
+                        },
+                        success: function(data) {
+                            if (data['status'] == 200) {
+                                pos5_success_noti(data['message']); // Change to your notification function
+                                $("#add-land_projects-modal").modal('hide');
+								SMColibri.spa_reload();
+                            } else {
+                                pos4_error_noti(data['message']); // Change to your error notification function
+                            }
+                        }
+                    });
+                });
+
+                function showland_projectsModal() {
+                    $("#add-land_projects-modal").modal('show');
+                }
+				
+				function deleteland_projects(id) {
+					if (confirm("Are you sure you want to delete this project?")) {
+						$.ajax({
+							url: Wo_Ajax_Requests_File() + '?f=manage_site&s=manage_projects&action=delete',
+							type: "POST",
+							data: { id: id },
+							beforeSend: function() {
+								// Optionally add a loader here
+							},
+							success: function(data) {
+								if (data['status'] == 200) {
+									pos5_success_noti(data['message']); // Change to your notification function
+								} else {
+									pos4_error_noti(data['message']); // Change to your error notification function
+								}
+								SMColibri.spa_reload();
+							},
+							error: function(jqXHR, textStatus, errorThrown) {
+								alert("An error occurred: " + textStatus);
+							}
+						});
+					}
+				}
+            </script>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,241 @@
+<?php
+$data_table = T_CLIENTS_REVIEW;
+?>
+<div class="page-breadcrumb d-flex align-items-center mb-3">
+    <div class="breadcrumb-title pe-3">Clients Review</div>
+    <div class="ms-auto button_flex_middle">
+        <button type="button" class="btn btn-primary" onclick="showReviewModal();">Add Review</button>
+    </div>
+</div>
+
+
+<div class="card radius-10 w-100">
+    <div class="card-body">
+        <div class="table-responsive mt-2">
+            <table id="invoiceTable" class="table align-middle mb-0" style="width: 100%;">
+                <thead class="table-light">
+					<tr>
+						<?php
+						$get_status = array('Name', 'Designation', 'Review', 'Product', 'Rating', 'Featured', 'Date', 'Action');
+
+						foreach ($get_status as $status) {
+							// Correctly apply the ternary operator
+							$width = ($status == "Action") ? "10px" : "65px";
+							echo '<th style="width: ' . $width . ';">' . htmlspecialchars($status) . '</th>';
+						}
+						?>
+					</tr>
+
+				</thead>
+				<tbody>
+					<?php 
+					$datas = $db->get($data_table);
+					foreach ($datas as $data) {
+						?>
+						<tr role="row" class="odd" data-id="<?php echo htmlspecialchars($data->id); ?>" <?php echo ($user->is_team_leader) ? 'style="--bs-table-bg: #ffffff1f;"' : ''; ?> data-bs-toggle="tooltip" data-bs-placement="top" data-bs-original-title="<?= htmlspecialchars(ucfirst($data->review)); ?>">
+							<td><img src="/<?= htmlspecialchars($data->image); ?>" class="user-img" style=" width: 24px; height: 24px; border-radius: 35px; margin-right: 8px; "><?= htmlspecialchars(ucfirst($data->name)); ?></td>
+							<td><?= htmlspecialchars(ucfirst($data->designation)); ?></td>
+							<td style="max-width: 250px;overflow-x: hidden;text-overflow: ellipsis;" ><?= htmlspecialchars(ucfirst($data->review)); ?></td>
+							<td><?= htmlspecialchars(ucfirst($data->product)); ?></td>
+							<td><?= htmlspecialchars(ucfirst($data->rating)); ?></td>
+							<td><?= htmlspecialchars(ucfirst($data->featured)); ?></td>
+							<td><?= htmlspecialchars(date('Y-m-d H:i:s', $data->time)); ?></td>
+							<td>
+								<div class="d-flex align-items-center gap-3 fs-6">
+									<a href="javascript:;" class="text-warning d-flex" data-bs-toggle="tooltip" data-bs-placement="bottom" title="" data-bs-original-title="Edit info" aria-label="Edit" onclick="loadEditReviewData(<?php echo htmlspecialchars(json_encode($data)); ?>)">
+										<i class="fadeIn animated bx bx-edit-alt"></i>
+									</a>
+									<a href="javascript:;" class="text-danger" data-bs-toggle="tooltip" data-bs-placement="bottom" title="" data-bs-original-title="Delete" aria-label="Delete" onclick="deleteReview(<?php echo htmlspecialchars($data->id); ?>)">
+										<i class='fadeIn animated bx bx-trash' ></i>
+									</a>
+								</div>
+							</td>
+						</tr>
+					<?php } ?>
+				</tbody>
+            </table>
+        </div>
+    </div>
+</div>
+<!-- Add Review Modal -->
+<div class="modal fade" id="add-review-modal" role="dialog">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content p-3">
+            <form class="row g-3 needs-validation" id="add-review-form">
+                <div class="col-6">
+                    <label for="client-name" class="form-label">Name</label>
+                    <input type="text" class="form-control" id="client-name" name="client_name" placeholder="Client's name" required>
+                </div>
+                <div class="col-6">
+                    <label for="client-name" class="form-label">Designation</label>
+                    <input type="text" class="form-control" id="designation" name="designation" placeholder="write description" required>
+                </div>
+                <div class="col-12">
+                    <label for="review" class="form-label">Review</label>
+                    <textarea class="form-control" id="review" name="review" rows="4" placeholder="Write short review..." required></textarea>
+                </div>
+                <div class="col-12">
+                    <label for="rating" class="form-label">Rating</label>
+                    <select id="rating" name="rating" class="form-select">
+						<option value="1" >1 Star</option>
+						<option value="2" >2 Star</option>
+						<option value="3" >3 Star</option>
+						<option value="4" >4 Star</option>
+						<option value="5" selected="true">5 Star</option>
+					</select>
+                </div>
+                <div class="col-12">
+                    <label for="photo" class="form-label">Client's Photo</label>
+                    <input type="file" class="form-control" id="photo" name="photo" allowed=".jpg" required>
+                </div>
+                <div class="col-12">
+                    <label for="featured" class="form-label">Is Featured</label>
+                    <select id="featured" name="featured" class="form-select">
+						<option value="1" >Yes</option>
+						<option value="2" selected>No</option>
+					</select>
+                </div>
+				
+                <div class="text-center mt-3">
+                    <button type="submit" class="btn btn-primary w-100">Save Review</button>
+                </div>
+            </form>
+
+            <script>
+                $(document).ready(function() {
+					$('[data-bs-toggle="popover"]').popover();
+					$('[data-bs-toggle="tooltip"]').tooltip();
+				
+                    $('#add-review-form').ajaxForm({
+                        url: Wo_Ajax_Requests_File() + '?f=manage_site&s=clients_review&action=add_review',
+                        type: "POST",
+                        beforeSend: function() {
+                            // Optionally add a loader here
+                        },
+                        success: function(data) {
+                            if (data['status'] == 200) {
+                                pos5_success_noti(data['message']); // Change to your notification function
+                                reset_form_data();
+                                $("#add-review-modal").modal('hide');
+                            } else {
+                                pos4_error_noti(data['message']); // Change to your error notification function
+                            }
+                        }
+                    });
+                });
+
+                function showReviewModal() {
+                    $("#add-review-modal").modal('show');
+                }
+
+                function reset_form_data() {
+                    $('#add-review-form')[0].reset();
+                }
+            </script>
+        </div>
+    </div>
+</div>
+<!-- Edit Review Modal -->
+<div class="modal fade" id="edit-review-modal" role="dialog">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content p-3">
+            <form class="row g-3 needs-validation" id="edit-review-form">
+                <input type="hidden" name="review_id" id="edit-review-id">
+                <div class="col-6">
+                    <label for="edit-client-name" class="form-label">Client Name</label>
+                    <input type="text" class="form-control" id="edit-client-name" name="client_name" required>
+                </div>
+                <div class="col-6">
+                    <label for="edit-designation" class="form-label">Designation</label>
+                    <input type="text" class="form-control" id="edit-designation" name="designation" required>
+                </div>
+                <div class="col-12">
+                    <label for="edit-review" class="form-label">Review</label>
+                    <textarea class="form-control" id="edit-review" name="review" rows="4" required></textarea>
+                </div>
+                <div class="col-12">
+                    <label for="rating" class="form-label">Rating</label>
+					<select id="edit-rating" name="rating" class="form-select">
+						<option value="1">1 Star</option>
+						<option value="2">2 Star</option>
+						<option value="3">3 Star</option>
+						<option value="4">4 Star</option>
+						<option value="5" selected="true">5 Star</option>
+					</select>
+                </div>
+				
+                <div class="col-12">
+                    <label for="featured" class="form-label">Is Featured</label>
+					<select id="edit-featured" name="featured" class="form-select">
+						<option value="1">Yes</option>
+						<option value="0" selected>No</option>
+					</select>
+                </div>
+				
+                <div class="text-center mt-3">
+                    <button type="submit" class="btn btn-primary w-100">Update Review</button>
+                </div>
+            </form>
+
+            <script>
+                $(document).ready(function() {
+                    $('#edit-review-form').ajaxForm({
+                        url: Wo_Ajax_Requests_File() + '?f=manage_site&s=clients_review&action=edit_review',
+                        type: "POST",
+                        beforeSend: function() {
+                            // Optionally add a loader here
+                        },
+                        success: function(data) {
+                            if (data['status'] == 200) {
+                                alert(data['message']); // Change to your notification function
+                                reset_form_data();
+                                $("#edit-review-modal").modal('hide');
+                            } else {
+                                alert(data['message']); // Change to your error notification function
+                            }
+							SMColibri.spa_reload();
+                        }
+                    });
+                });
+				
+				function deleteReview(id) {
+					if (confirm("Are you sure you want to delete this review?")) {
+						$.ajax({
+							url: Wo_Ajax_Requests_File() + '?f=manage_site&s=clients_review&action=delete_review',
+							type: "POST",
+							data: { review_id: id },
+							beforeSend: function() {
+								// Optionally add a loader here
+							},
+							success: function(data) {
+								if (data['status'] == 200) {
+									alert(data['message']);
+								} else {
+									alert(data['message']); // Change to your error notification function
+								}
+								SMColibri.spa_reload();
+							},
+							error: function(jqXHR, textStatus, errorThrown) {
+								alert("An error occurred: " + textStatus);
+							}
+						});
+					}
+				}
+				
+				function loadEditReviewData(review) {
+					$('#edit-review-id').val(review.id);
+					$('#edit-client-name').val(review.name);
+					$('#edit-designation').val(review.designation);
+					$('#edit-review').val(review.review);
+					$('#edit-rating').val(review.rating); // This should work as is
+					$('#edit-featured').val(review.featured ? 1 : 0); // Adjust based on how your data is stored
+					$("#edit-review-modal").modal('show');
+				}
+				
+                function reset_form_data() {
+                    $('#edit-review-form')[0].reset();
+                }
+            </script>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,186 @@
+<?php
+	$get_project = array(
+		'all' => 'All',
+		'moon_hill' => 'Moon Hill',
+		'hill_town' => 'Hill Town',
+	);
+	
+?>
+<!--start breadcrumb-->
+<div class="page-breadcrumb d-flex align-items-center mb-3">
+  <div class="breadcrumb-title pe-3">Lead Report</div>
+	<div class="ms-auto button_flex_middle gap-3">
+		<select id="project" name="project" class="form-select w-auto wm-100" onchange="fetch_report()">
+			<?php 
+				foreach ($get_project as $key => $name) {
+					echo '<option' . ($_COOKIE['project'] == $key ? ' selected' : '') . " value='{$key}'>{$name}</option>";
+				}
+			?>
+		</select>
+		
+		<input class="form-select w-auto ml-auto" type="text" id="date_start_end" name="date_start_end" placeholder="Select date range" readonly onchange="fetch_report()" value="<?php echo urldecode($_COOKIE['fetch_lead_report_date'] ?? '') ?: date('Y-m-01') . ' to ' . date('Y-m-t'); ?>" style="max-width: 200px;">
+		<!-- Button trigger modal -->
+		<?php if (check_permission('manage-lead-report') || Wo_IsAdmin() || Wo_IsModerator()) { ?>
+			<a type="button" class="btn btn-primary d-none" href="<?php echo(Wo_LoadManageLinkSettings('lead_report?action=register_lead_report')) ?>" data-spa="true">Register</a>
+		<?php } ?>
+	</div>
+</div>
+
+<div class="row row-cols-2 row-cols-lg-2 row-cols-xl-2 row-cols-xxl-5">
+	<div class="col">
+		<div class="card radius-10">
+		  <div class="card-body">
+			<div class="d-flex align-items-start gap-2">
+			  <div>
+				<p class="mb-0 fs-6">Total Leads</p>
+			  </div>
+			</div>
+			<div class="d-flex align-items-center mt-3">
+			  <div>
+				<h4 class="mb-0 intotal">**</h4>
+			  </div>
+			  <div class="ms-auto"></div>
+			</div>
+		  </div>
+		</div>
+	  </div>
+	<div class="col">
+		<div class="card radius-10">
+		  <div class="card-body">
+			<div class="d-flex align-items-start gap-2">
+			  <div>
+				<p class="mb-0 fs-6">Pending Leads</p>
+			  </div>
+			</div>
+			<div class="d-flex align-items-center mt-3">
+			  <div>
+				<h4 class="mb-0 intotalPendings">**</h4>
+			  </div>
+			  <div class="ms-auto"></div>
+			</div>
+		  </div>
+		</div>
+	  </div>
+	<div class="col">
+		<div class="card radius-10">
+		  <div class="card-body">
+			<div class="d-flex align-items-start gap-2">
+			  <div>
+				<p class="mb-0 fs-6">Total Positive</p>
+			  </div>
+			</div>
+			<div class="d-flex align-items-center mt-3">
+			  <div>
+				<h4 class="mb-0 intotalPositive">**</h4>
+			  </div>
+			  <div class="ms-auto"></div>
+			</div>
+		  </div>
+		</div>
+	  </div>
+	<div class="col">
+		<div class="card radius-10">
+		  <div class="card-body">
+			<div class="d-flex align-items-start gap-2">
+			  <div>
+				<p class="mb-0 fs-6">Total Negative</p>
+			  </div>
+			</div>
+			<div class="d-flex align-items-center mt-3">
+			  <div>
+				<h4 class="mb-0 intotalNegative">**</h4>
+			  </div>
+			  <div class="ms-auto"></div>
+			</div>
+		  </div>
+		</div>
+	  </div>
+	<div class="col">
+		<div class="card radius-10">
+		  <div class="card-body">
+			<div class="d-flex align-items-start gap-2">
+			  <div>
+				<p class="mb-0 fs-6">Total parcent</p>
+			  </div>
+			</div>
+			<div class="d-flex align-items-center mt-3">
+			  <div>
+				<h4 class="mb-0 intotalParcent">**</h4>
+			  </div>
+			  <div class="ms-auto"></div>
+			</div>
+		  </div>
+		</div>
+	</div>
+</div>
+<div class="row row-cols-1 row-cols-lg-2 row-cols-xl-2 row-cols-xxl-3" id="result"></div>
+<!--end row-->
+
+<script>
+	function fetch_report() {
+		var dateRange = document.getElementById('date_start_end').value;
+		// If date range is not selected, use the single selected date
+		var dates = dateRange.split(' to ');
+		var data_start = dates[0];
+		var data_end = dates.length > 1 ? dates[1] : data_start;
+		var project = document.getElementById('project').value;
+		
+					
+		$.ajax({
+			type: "POST",
+			url: Wo_Ajax_Requests_File() + '?f=lead_report&s=fetch_report',
+			data: { data_start: data_start, data_end: data_end, project:project },
+			success: function (response) {
+				if (response['status'] == 200) {
+					$("#result").html(response['result']);
+					$(".intotal").html($('#intotal').val());
+					$(".intotalPendings").html($('#intotalPendings').val());
+					$(".intotalPositive").html($('#intotalPositive').val());
+					$(".intotalNegative").html($('#intotalNegative').val());
+					$(".intotalParcent").html($('#intotalParcent').val());
+				}
+			}
+		});
+	}
+	
+    $(document).ready(function() {
+        // Initialize Flatpickr
+        var flatpickrInstance = flatpickr('#date_start_end', {
+            mode: 'range',
+            dateFormat: 'Y-m-d',
+            altFormat: 'F j, Y',
+            altInput: false,
+            allowInput: false,
+            clickOpens: true,
+            onChange: function(selectedDates, dateStr, instance) {
+                // console.log(selectedDates);
+                // // You can add additional logic here if needed
+            },
+            onReady: function(selectedDates, dateStr, instance) {
+                // Add custom date range options to the Flatpickr container
+                var datepickerContainer = instance.calendarContainer;
+
+                var dateRangeOptions = [
+                    { label: 'Today', range: [new Date(), new Date()] },
+                    { label: 'Yesterday', range: [new Date(new Date().setDate(new Date().getDate() - 1)), new Date(new Date().setDate(new Date().getDate() - 1))] },
+                    { label: 'This Month', range: [new Date(new Date().getFullYear(), new Date().getMonth(), 1), new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0)] },
+                    { label: 'Last Month', range: [new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1), new Date(new Date().getFullYear(), new Date().getMonth(), 0)] },
+                ];
+
+                dateRangeOptions.forEach(function(option) {
+                    var button = document.createElement('button');
+                    button.textContent = option.label;
+                    button.addEventListener('click', function() {
+                        flatpickrInstance.setDate(option.range);
+                        flatpickrInstance.close(); // Close Flatpickr instance
+                        fetch_report();
+                    });
+
+                    datepickerContainer.prepend(button);
+                });
+            }
+        });
+		fetch_report();
+	});
+	
+</script>

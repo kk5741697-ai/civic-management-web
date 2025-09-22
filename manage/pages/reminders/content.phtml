@@ -1,0 +1,299 @@
+<?php
+if (check_permission('leads') || Wo_IsAdmin() || Wo_IsModerator()) {
+echo Wo_LoadManagePage('view_notif/content');
+	?>
+<!--start breadcrumb-->
+<div class="page-breadcrumb d-flex align-items-center mb-3">
+  <div class="breadcrumb-title pe-3"><?php echo $wo['title']; ?></div>
+  <?php echo Wo_LoadManagePage('reminders/add_new'); ?>
+</div>
+<!--end breadcrumb-->
+
+<div class="mb-3">
+	<div class="row row-cols-auto g-3">
+		<div class="col">
+		</div>
+	</div>
+</div>
+
+<style>
+.ellipsis {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 400px; /* Default max-width for larger screens */
+}
+
+@media screen and (max-width: 768px) {
+    .ellipsis {
+        max-width: 250px;
+    }
+}
+@media screen and (max-width: 500px) {
+    .ellipsis {
+        max-width: 160px; /* Adjust max-width for smaller screens */
+    }
+}
+</style>
+
+<div class="attandence mb-3">
+	<div class="select-panel d-flex justify-content-between">
+		<?php
+		if (Wo_IsAdmin() || Wo_IsModerator() || check_permission('manage-leads') || $wo['user']['is_team_leader'] == true) {
+			?>
+			<div class="d-flex col-md-6" style=" gap: 10px; ">
+				<select id="user_id" name="user_id" class="form-select w-auto wm-100" onchange="DataTableReset()">
+					<option value="999">All User</option>
+					<option value="888">Banned User</option>
+					<?php 
+						if ($wo['user']['is_team_leader'] == true) {
+							$get_users = $db->orderBy('position', 'ASC')->where('active', '1')->where('leader_id', $wo['user']['user_id'])->orwhere('user_id', $wo['user']['user_id'])->get(T_USERS);
+						} else {
+							$get_users = $db->orderBy('position', 'ASC')->where('active', '1')->where('leader_id', '0', '>')->orwhere('is_team_leader', '1')->get(T_USERS);
+						}
+						foreach ($get_users as $userlist) {
+							$user   = Wo_UserData($userlist->user_id);
+							echo '<option' . ($_COOKIE['default_u'] == $user['user_id'] ? ' selected' : '') . " value='{$user['user_id']}'>{$user['name']}</option>";
+						}
+					?>
+				</select>
+			</div>
+		<?php } else { ?>
+			<select id="user_id" name="user_id" class="form-select w-auto wm-120 <?php echo (Wo_IsAdmin() || Wo_IsModerator()) ? '' : 'd-none'; ?>" onchange="DataTableReset()">
+				<option value="<?php echo $wo['user']['user_id'];?>" ><?php echo $wo['user']['name'];?></option>
+				<?php 
+					$get_users = $db->orderBy('position', 'ASC')->where('active', '1')->where('is_team_leader', '0')->where('leader_id', $wo['user']['user_id'])->get(T_USERS);
+					foreach ($get_users as $userlist) {
+						$user   = Wo_UserData($userlist->user_id);
+                        echo '<option' . (($_COOKIE['default_u'] ?? '') == $user['user_id'] ? ' selected' : '') . " value='{$user['user_id']}'>" . short_name($user['name']) . '</option>';
+					}
+				?>
+			</select>
+		<?php } ?>
+		
+		<!-- Use flatpickr for date selection -->
+		<input class="form-select w-auto wm-120" type="text" id="date_start_end" name="date_start_end" placeholder="Select date range" readonly onchange="DataTableReset()" value="<?php echo urldecode($_COOKIE['start_end'] ?? '') ?: date('Y-m-01') . ' to ' . date('Y-m-t'); ?>">
+	</div>
+</div>
+
+<!-- Your HTML code starts here -->
+<div class="card radius-10 w-100 no_border">
+    <div class="card-body">
+        <div class="table-responsive mt-2">
+            <table id="invoiceTable" class="table align-middle mb-0" style="width: 100%;">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ellipsis" style="width: 300px; max-width: 500px;">Remarks</th>
+                        <th style="width: 90px;">Remind At</th>
+                        <th class="ellipsis" style="width: 200px; max-width: 300px;" style="width: 200px;">Name</th>
+                        <th style="width: 300px;">Project</th>
+						<?php if (Wo_IsAdmin() || Wo_IsModerator() || check_permission('manage-leads')) { ?>
+                        <th style="width: 60px;">Member</th>
+						<?php } else if ($wo['user']['is_team_leader'] == true) { ?>
+                        <th style="width: 60px;">Member</th>
+						<?php } ?>
+                    </tr>
+                </thead>
+                <tbody>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+function assignLead() {
+    $.ajax({
+        type: "POST",
+        url: Wo_Ajax_Requests_File() + '?f=manage_leads&s=assign_lead_modal', // Ensure Wo_Ajax_Requests_File() returns the correct URL
+        success: function (response) {
+            if (response['status'] == 200) {
+				$("#contnet").append(response['result']);
+				$("#assignLead-modal").modal('show');
+            }
+			DataTableReset();
+        }
+    });
+}
+function viewLead(lead_id) {
+    if (lead_id == null) {
+        return false;
+    }
+    $.ajax({
+        type: "POST",
+        url: Wo_Ajax_Requests_File() + '?f=manage_leads&s=view_reminder_modal',
+        data: { lead_id: lead_id },
+        success: function (response) {
+            if (response['status'] == 200) {
+                
+            	window.history.pushState({state: "new", back_url: location.href}, "", location.href + '?lead_id='+lead_id);
+            	
+				$("#contnet").append(response['result']);
+				$("#viewReminder-modal").modal('show');
+            }
+        }
+    });
+}
+function deleteLead(lead_id) {
+    if (lead_id == null) {
+        return false;
+    }
+
+    // Show confirmation dialog
+    var confirmed = confirm("Are you sure you want to delete this lead?");
+    if (!confirmed) {
+        return false; // Cancel the operation if user clicks Cancel
+    }
+
+    // Proceed with AJAX request to delete the lead
+    $.ajax({
+        type: "POST",
+        url: Wo_Ajax_Requests_File() + '?f=manage_leads&s=delete_lead', // Ensure Wo_Ajax_Requests_File() returns the correct URL
+        data: { lead_id: lead_id },
+        success: function (response) {
+            DataTableRefresh(); // Refresh DataTable on success
+        },
+        error: function(xhr, status, error) {
+            console.error('Error deleting lead:', error);
+            // Handle error here if needed
+        }
+    });
+}
+$(document).ready(function() {
+    
+    // Add event listener for row click to trigger the edit_entry_modal(id) function
+    $('#invoiceTable tbody').on('click', 'tr', function() {
+        var id = $(this).data('id');
+        if (id) {
+            viewLead(id);
+        }
+    });
+    
+    
+	// Initialize Flatpickr
+	var flatpickrInstance = flatpickr('#date_start_end', {
+		mode: 'range',
+		dateFormat: 'Y-m-d',
+		altFormat: 'F j, Y',
+		altInput: false,
+		allowInput: false,
+		clickOpens: true,
+		onChange: function(selectedDates, dateStr, instance) {
+			// console.log(selectedDates);
+			// // You can add additional logic here if needed
+		},
+		onReady: function(selectedDates, dateStr, instance) {
+			// Add custom date range options to the Flatpickr container
+			var datepickerContainer = instance.calendarContainer;
+
+			var dateRangeOptions = [
+				{ label: 'This Month', range: [new Date(new Date().getFullYear(), new Date().getMonth(), 1), new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0)] },
+				{ label: 'Last Month', range: [new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1), new Date(new Date().getFullYear(), new Date().getMonth(), 0)] },
+				{ label: 'This Year', range: [new Date(new Date().getFullYear(), 0, 1), new Date(new Date().getFullYear(), 11, 31)] },
+				{ label: 'Last Year', range: [ new Date(new Date().getFullYear() - 1, 0, 1), new Date(new Date().getFullYear() - 1, 11, 31) ] }
+			];
+
+			dateRangeOptions.forEach(function(option) {
+				var button = document.createElement('button');
+				button.textContent = option.label;
+				button.addEventListener('click', function() {
+					flatpickrInstance.setDate(option.range);
+					flatpickrInstance.close(); // Close Flatpickr instance
+					DataTableReset();
+				});
+
+				datepickerContainer.prepend(button);
+			});
+		}
+	});
+    // Initialize DataTables without buttons
+    var table = $('#invoiceTable').DataTable({
+        "processing": true,
+		"serverSide": true,
+        "pageLength": 25,  // Set the default number of entries per page
+        "ajax": {
+            "url": Wo_Ajax_Requests_File() + '?f=manage_leads&s=fetch_reminders',
+            "type": "POST",
+			"data": function (d) {
+				// Include additional parameters for the AJAX request
+				d.user_id = $('#user_id').val();
+				d.status_id = $('#status_id').val();
+				var dateRange = document.getElementById('date_start_end').value;
+				// If date range is not selected, use the single selected date
+				var dates = dateRange.split(' to ');
+				var data_start = dates[0];
+				var data_end = dates.length > 1 ? dates[1] : data_start;
+				
+				d.data_start = data_start;
+				d.data_end = data_end;
+			},
+            "beforeSend": function(xhr) {
+				$('#length_count').remove();
+				$('#invoiceTable_length label').append('<span id="length_count"><span>');
+                // Set opacity to 0 before the Ajax request
+                $('#invoiceTable').css('opacity', .5);
+            },
+            "complete": function(xhr) {
+				// Parse the JSON response
+				var responseData = JSON.parse(xhr.responseText);
+				// Access the recordsTotal value
+				var recordsTotal = responseData.recordsTotal;
+                // Set opacity to 1 after the Ajax request is complete
+                $('#invoiceTable').css('opacity', 1);
+                $('#length_count').html('of <b>' + recordsTotal + '</b>');
+            }
+        },
+        "columns": [
+            { "data": "remarks", "orderable": false, "className": "ellipsis" },
+            { "data": "remind_at", "orderable": true },
+            { "data": "name", "orderable": false, "className": "ellipsis"  },
+            { "data": "project", "orderable": false },
+			<?php if (Wo_IsAdmin() || Wo_IsModerator() || check_permission('manage-leads')) { ?>
+            { "data": "member", "orderable": false },
+			<?php } else if ($wo['user']['is_team_leader'] == true) { ?>
+            { "data": "member", "orderable": false },
+			<?php } ?>
+        ],
+        "order": [],
+        "language": {
+            "emptyTable": "No data available in the table",
+            "infoEmpty": "Showing 0 to 0 of 0 entries",
+            "infoFiltered": "(filtered from _MAX_ total entries)",
+            "zeroRecords": "No matching records found"
+        },
+		"rowCallback": function(row, data) {
+			$(row).attr('data-id', data.id);
+		}
+    });
+	
+	<?php if (Wo_IsAdmin() || Wo_IsModerator() || check_permission('manage-leads')) { ?>
+	<?php } else { ?>
+		$('#user_id').change(function() {
+			var user_id = $(this).val(); // Get the selected value from #user_id
+
+			// Compare selected user_id with PHP variable $wo['user']['user_id']
+			if (user_id == <?php echo $wo['user']['user_id']; ?>) {
+				table.column(':last').visible(true); // Show the last column of DataTable
+			} else {
+				table.column(':last').visible(false); // Hide the last column of DataTable
+			}
+		});
+	<?php } ?>
+	
+    // DataTableReset function to reset the DataTable
+    window.DataTableReset = function() {
+        table.ajax.reload();
+    };
+	
+	window.DataTableRefresh = function() {
+		table.ajax.reload(null, false); // Reload the DataTable
+
+		// After reload, restore the state (including pagination)
+		var state = table.state.loaded();
+		if (state) {
+			table.state.restore(state);
+		}
+	};
+});
+</script>
+<?php } else { echo Wo_LoadManagePage('permission-required/content'); } ?>

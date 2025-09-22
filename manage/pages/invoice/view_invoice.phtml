@@ -1,0 +1,59 @@
+<?php
+$customer = GetCustomerById($wo['invoice']['customer_id']);
+$purchase = GetPurchaseById($wo['invoice']['purchase_id']);
+$project = GetProjectById($purchase['project_id']);
+
+$numberToWords = new \amirsanni\numbertowords\NumberToWords();
+$taka_in_words = $numberToWords->convertToWords($wo['invoice']['pay_amount']);
+?>
+<div class="print_margin step1">
+	<span class="receipt_no"><?php echo $wo['invoice']['inv_id']; ?></span>
+	<span class="receipt_date"><?php echo date('d-m-Y', strtotime($wo['invoice']['inv_time'])); ?></span>
+	<span class="receipt_client_id"><?php echo $customer['id']; ?></span>
+	<span class="receipt_name"><?php echo $customer['name']; ?></span>
+	<span class="receipt_address"><?php echo $customer['address']; ?></span>
+	<span class="receipt_pay_amount"><?php if ($wo['invoice']['pay_amount'] >= 1) { echo number_format($wo['invoice']['pay_amount']) . '/-'; } ?></span>
+	<span class="receipt_in_words"><?php if ($wo['invoice']['pay_amount'] >= 1) { echo $taka_in_words; } ?></span>
+	<span class="receipt_pay_type"><?php echo $wo['invoice']['pay_type']; ?></span>
+	<span class="receipt_date_in_body"><?php echo date('d-m-Y', strtotime($wo['invoice']['inv_time'])); ?></span>
+	<span class="receipt_bank"><?php echo $wo['invoice']['bank_name']; ?></span>
+	<span class="receipt_branch"><?php echo $wo['invoice']['bank_branch']; ?></span>
+	<span class="receipt_booking_money"><?php if ($wo['invoice']['pay_amount'] >= 1) { echo number_format($wo['invoice']['pay_amount']) . '/-'; } ?></span>
+	<span class="receipt_down_payment"><?php if ($wo['invoice']['down_pay'] >= 1) { echo number_format($wo['invoice']['down_pay']) . '/-'; } ?></span>
+	<span class="receipt_project"><?php echo $project['name']; ?></span>
+	<span class="receipt_remarks"><?php echo $wo['invoice']['remarks']; ?></span>
+</div>
+<div class="print_margin step2">
+	<span class="receipt_no"><?php echo $wo['invoice']['inv_id']; ?></span>
+	<span class="receipt_date"><?php echo date('d-m-Y', strtotime($wo['invoice']['inv_time'])); ?></span>
+	<span class="receipt_client_id"><?php echo $customer['id']; ?></span>
+	<span class="receipt_name"><?php echo $customer['name']; ?></span>
+	<span class="receipt_address"><?php echo $customer['address']; ?></span>
+	<span class="receipt_pay_amount"><?php if ($wo['invoice']['pay_amount'] >= 1) { echo number_format($wo['invoice']['pay_amount']) . '/-'; } ?></span>
+	<span class="receipt_in_words"><?php if ($wo['invoice']['pay_amount'] >= 1) { echo $taka_in_words; } ?></span>
+	<span class="receipt_pay_type"><?php echo $wo['invoice']['pay_type']; ?></span>
+	<span class="receipt_date_in_body"><?php echo date('d-m-Y', strtotime($wo['invoice']['inv_time'])); ?></span>
+	<span class="receipt_bank"><?php echo $wo['invoice']['bank_name']; ?></span>
+	<span class="receipt_branch"><?php echo $wo['invoice']['bank_branch']; ?></span>
+	<span class="receipt_booking_money"><?php if ($wo['invoice']['pay_amount'] >= 1) { echo number_format($wo['invoice']['pay_amount']) . '/-'; } ?></span>
+	<span class="receipt_down_payment"><?php if ($wo['invoice']['down_pay'] >= 1) { echo number_format($wo['invoice']['down_pay']) . '/-'; } ?></span>
+	<span class="receipt_project"><?php echo $project['name']; ?></span>
+	<span class="receipt_remarks"><?php echo $wo['invoice']['remarks']; ?></span>
+</div>
+<div class="print_margin step2">
+	<span class="receipt_no"><?php echo $wo['invoice']['inv_id']; ?></span>
+	<span class="receipt_date"><?php echo date('d-m-Y', strtotime($wo['invoice']['inv_time'])); ?></span>
+	<span class="receipt_client_id"><?php echo $customer['id']; ?></span>
+	<span class="receipt_name"><?php echo $customer['name']; ?></span>
+	<span class="receipt_address"><?php echo $customer['address']; ?></span>
+	<span class="receipt_pay_amount"><?php if ($wo['invoice']['pay_amount'] >= 1) { echo number_format($wo['invoice']['pay_amount']) . '/-'; } ?></span>
+	<span class="receipt_in_words"><?php if ($wo['invoice']['pay_amount'] >= 1) { echo $taka_in_words; } ?></span>
+	<span class="receipt_pay_type"><?php echo $wo['invoice']['pay_type']; ?></span>
+	<span class="receipt_date_in_body"><?php echo date('d-m-Y', strtotime($wo['invoice']['inv_time'])); ?></span>
+	<span class="receipt_bank"><?php echo $wo['invoice']['bank_name']; ?></span>
+	<span class="receipt_branch"><?php echo $wo['invoice']['bank_branch']; ?></span>
+	<span class="receipt_booking_money"><?php if ($wo['invoice']['pay_amount'] >= 1) { echo number_format($wo['invoice']['pay_amount']) . '/-'; } ?></span>
+	<span class="receipt_down_payment"><?php if ($wo['invoice']['down_pay'] >= 1) { echo number_format($wo['invoice']['down_pay']) . '/-'; } ?></span>
+	<span class="receipt_project"><?php echo $project['name']; ?></span>
+	<span class="receipt_remarks"><?php echo $wo['invoice']['remarks']; ?></span>
+</div>

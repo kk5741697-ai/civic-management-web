@@ -1,0 +1,139 @@
+<div class="modal fade" id="sendSMS-modal" role="dialog">
+	<div class="modal-dialog modal-lg wow_mat_mdl">
+		<form method="post" id="send-sms-form">
+			<div class="modal-content">
+				<div class="modal-header" style="display: flex;justify-content: space-between;align-items: center;">
+					<h4 class="modal-title">Send SMS</h4>
+					<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" data-remove-code="true"></button>
+				</div>
+				<div class="modal-body">
+					<div id="create-ads-alert" class="w100" style="padding-bottom: 10px;"></div>
+					<div class="col w-100 mb-2">
+						<fieldset class="checkbox-group">
+							<div class="checkbox">
+								<label class="checkbox-wrapper">
+									<input type="checkbox" class="checkbox-input" value="installment_wish" name="sms_type" <?php echo (isset($_COOKIE['sms_type']) && $_COOKIE['sms_type'] == 'installment_wish') ? 'checked' : ''; ?> />
+									<span class="checkbox-tile">
+										<span class="checkbox-icon"></span>
+										<span class="checkbox-label">Installment Wish</span>
+									</span>
+								</label>
+							</div>
+							<div class="checkbox">
+								<label class="checkbox-wrapper">
+									<input type="checkbox" class="checkbox-input" value="want_installment" name="sms_type" <?php echo (isset($_COOKIE['sms_type']) && $_COOKIE['sms_type'] == 'want_installment') ? 'checked' : ''; ?> />
+									<span class="checkbox-tile">
+										<span class="checkbox-icon"></span>
+										<span class="checkbox-label">Want Installment</span>
+									</span>
+								</label>
+							</div>
+							<div class="checkbox">
+								<label class="checkbox-wrapper">
+									<input type="checkbox" class="checkbox-input" value="birthday_wish" name="sms_type" <?php echo (isset($_COOKIE['sms_type']) && $_COOKIE['sms_type'] == 'birthday_wish') ? 'checked' : ''; ?> />
+									<span class="checkbox-tile">
+										<span class="checkbox-icon"></span>
+										<span class="checkbox-label">Birthday Wish</span>
+									</span>
+								</label>
+							</div>
+							<div class="checkbox">
+								<label class="checkbox-wrapper">
+									<input type="checkbox" class="checkbox-input" value="custom" name="sms_type" <?php echo (isset($_COOKIE['sms_type']) && $_COOKIE['sms_type'] == 'custom') ? 'checked' : ''; ?> />
+									<span class="checkbox-tile">
+										<span class="checkbox-icon"></span>
+										<span class="checkbox-label">Custom</span>
+									</span>
+								</label>
+							</div>
+						</fieldset>
+					</div>
+					
+					<div id="sms_form" class="mt-4"></div>
+					
+					<h4 class="text-center" id="loader" style="height: 404px;display: flex;align-items: center;justify-content: center;gap: 20px;">
+						<div class="spinner-grow spinner-grow-sm" role="status"> <span class="visually-hidden">Loading...</span> </div>
+						<div class="spinner-grow spinner-grow-sm" role="status"> <span class="visually-hidden">Loading...</span> </div>
+						<div class="spinner-grow spinner-grow-sm" role="status"> <span class="visually-hidden">Loading...</span> </div>
+					</h4>
+				</div>
+			</div>
+		</form>
+	</div>
+	<script type="text/javascript">
+		$(document).ready(function() {
+			function get_sms_form(user_id, sms_type = '') {
+				$.ajax({
+					url: Wo_Ajax_Requests_File() + '?f=bulk_sms&s=sms_form',
+					type: 'POST',
+					beforeSend: function() {
+						$("#loader").fadeIn(0);
+						$("#contacts").remove();
+						$("#sms_form").html('').fadeOut(0);
+					},
+					data: {
+						sms_type: sms_type,
+						user_id: user_id
+					},
+					success: function(response) {
+						$("#loader").fadeOut(0);
+						$('#sms_form').html(response.result).fadeIn(0);
+					},
+					error: function(xhr, sms_type, error) {
+						console.error('Error:', error);
+					}
+				});
+			}
+			$('input[type="checkbox"]').change(function() {
+				// Uncheck all other checkboxes in the same group
+				$('input[type="checkbox"]').not(this).prop('checked', false);
+				
+				// Get the value of the checked checkbox
+				var sms_type = $(this).val();
+				var user_id = $('#user_id').val();
+
+				// Call your function with the user ID and the selected SMS type
+				get_sms_form(user_id, sms_type);
+			});
+			   // Initial call to get the user ID
+    var user_id2 = $('#user_id').val();
+
+    // Function to call get_sms_form with the current user ID and SMS type
+    function updateSmsForm(smsType) {
+        user_id2 = $('#user_id').val(); // Update user_id2 dynamically
+        get_sms_form(user_id2, smsType);
+    }
+
+    // Event listener for changes to the user ID input
+    $('#user_id').change(function() {
+        <?php if (isset($_COOKIE['sms_type'])) { ?>
+            updateSmsForm('<?php echo $_COOKIE['sms_type']; ?>');
+        <?php } else { ?>
+            updateSmsForm('installment_wish');
+        <?php } ?>
+    });
+
+    // Initial function call based on the cookie check
+    <?php if (isset($_COOKIE['sms_type'])) { ?>
+        updateSmsForm('<?php echo $_COOKIE['sms_type']; ?>');
+    <?php } else { ?>
+        updateSmsForm('installment_wish');
+    <?php } ?>
+		});
+		
+
+				
+		$('#sendSMS-modal [data-dismiss="modal"]').on('click', function() {
+			setTimeout(function() {
+				$(".send_sms_modal_btn").prop("disabled", false);
+			}, 100);
+		});
+		// Attach a listener for the modal hidden event
+		$('#sendSMS-modal').on('hidden.bs.modal', function() {
+			setTimeout(function() {
+				$(".send_sms_modal_btn").prop("disabled", false);
+			}, 100);
+		});
+	</script>
+</div>
+<style> .custom-remarks { display: flex; width: 100%; } .custom-remarks button { border: none; border-radius: 0px 0px 6px 0px; box-shadow: 0 5px 10px rgba(0, 0, 0, 0.1); border-left: 0px; color: #fff; background-color: #2260ff; outline: none; padding: 4px 15px; transition: 0.375s ease; } .custom-remarks input { width: 100%; border: none; background: #f1f1f1; border-bottom: 1px solid #b5bfd9; border-radius: 0px 0px 0px 6px; border-right: none; color: #525252; outline: none; padding: 5px 10px; transition: 0.375s ease; } .custom-remarks input:focus { border-color: #2260ff; } .checkbox-group { display: flex; flex-wrap: wrap; justify-content: center; width: 100%; margin-left: auto; margin-right: auto; -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none; } .checkbox-group > * { margin: 0.25rem 0.5rem; } .checkbox-group-legend { font-size: 1.25rem; font-weight: 700; color: #9c9c9c; text-align: center; line-height: 1.125; } .checkbox-input { clip: rect(0 0 0 0); -webkit-clip-path: inset(100%); clip-path: inset(100%); height: 1px; overflow: hidden; position: absolute; white-space: nowrap; width: 1px; } .checkbox-input:checked + .checkbox-tile { border-color: #2260ff; box-shadow: 0 5px 10px rgba(0, 0, 0, 0.1); color: #2260ff; } .checkbox-input:checked + .checkbox-tile:before { transform: scale(1); opacity: 1; background-color: #2260ff; border-color: #2260ff; } .checkbox-input:checked + .checkbox-tile .checkbox-icon, .checkbox-input:checked + .checkbox-tile .checkbox-label { color: #2260ff; } .checkbox-input:focus + .checkbox-tile { border-color: #2260ff; box-shadow: 0 5px 10px rgba(0, 0, 0, 0.1), 0 0 0 4px #b5c9fc; } .checkbox-input:focus + .checkbox-tile:before { transform: scale(1); opacity: 1; } .checkbox-tile { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 2.5rem; border-radius: 0.5rem; border: 2px solid #b5bfd9; background-color: #fff; box-shadow: 0 5px 10px rgba(0, 0, 0, 0.1); transition: 0.15s ease; cursor: pointer; position: relative; padding: 5px 20px; } .checkbox-tile:before { content: ""; position: absolute; display: block; width: 1.25rem; height: 1.25rem; border: 2px solid #b5bfd9; background-color: #fff; border-radius: 6px; top: -2px; left: -2px; opacity: 0; transform: scale(0); transition: 0.25s ease; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='192' height='192' fill='%23FFFFFF' viewBox='0 0 256 256'%3E%3Crect width='256' height='256' fill='none'%3E%3C/rect%3E%3Cpolyline points='216 72.005 104 184 48 128.005' fill='none' stroke='%23FFFFFF' stroke-linecap='round' stroke-linejoin='round' stroke-width='32'%3E%3C/polyline%3E%3C/svg%3E"); background-size: 12px; background-repeat: no-repeat; background-position: 50% 50%; } .checkbox-tile:hover { border-color: #2260ff; } .checkbox-tile:hover:before { transform: scale(1); opacity: 1; } .checkbox-icon { transition: 0.375s ease; color: #494949; } .checkbox-icon svg { width: 3rem; height: 3rem; } .checkbox-label { color: #707070; transition: 0.375s ease; text-align: center; } </style>

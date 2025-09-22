@@ -1,0 +1,489 @@
+<?php echo Wo_LoadManagePage('view_notif/content');	?>
+	
+<!--start breadcrumb-->
+<div class="page-breadcrumb d-flex align-items-center mb-3">
+  <div class="breadcrumb-title pe-3">Leave Report</div>
+  <?php echo Wo_LoadManagePage('leave_report/print-buttons'); ?>
+</div>
+<!--end breadcrumb-->
+
+<div class="mb-3">
+	<div class="row row-cols-auto g-3">
+		<div class="col">
+		</div>
+	</div>
+</div>
+<style>
+tr:hover, tr:focus, tr:active {
+    --bs-table-bg: #f3f3f3;
+}
+.dark-theme tr:hover, .dark-theme tr:focus, .dark-theme tr:active {
+    --bs-table-bg: #ffffff1f;
+}
+.dataTables_wrapper {
+	overflow-x: auto !important;
+}
+</style>
+<!-- Your HTML code starts here -->
+<div class="attandence mb-3">
+	<div class="select-panel d-flex justify-content-between">
+	<?php if (Wo_IsAdmin() || Wo_IsModerator() || check_permission('update-leave') || check_permission('leave-application') || $wo['user']['is_team_leader'] == true) { ?>
+        <select id="user_id" name="user_id" class="form-select w-auto wm-150" onchange="DataTableRefresh()">
+            <option value="999">All User</option>
+            <?php 
+                if ($wo['user']['is_team_leader'] == true) {
+                    $get_users = $db->where('active', '1')->where('leader_id', $wo['user']['user_id'])->orWhere('user_id', $wo['user']['user_id'])->orderBy('serial', 'ASC')->get(T_USERS);
+                } else {
+                    $get_users = $db->where('active', '1')->orderBy('serial', 'ASC')->get(T_USERS);
+                }
+                
+                $selected_user_id = isset($_COOKIE['default_u_atten']) && !empty($_COOKIE['default_u_atten']) 
+                    ? $_COOKIE['default_u_atten'] 
+                    : $wo['user']['user_id'];
+                
+                foreach ($get_users as $userlist) {
+                    $first_name = cleanName($userlist->first_name);
+                    $selected = ($selected_user_id == $userlist->user_id) ? ' selected' : '';
+                    echo "<option value='{$userlist->user_id}'{$selected}>{$first_name} {$userlist->last_name}</option>";
+                }
+            ?>
+        </select>
+	<?php } else { ?>
+		<input class="d-none" type="hidden" id="user_id" name="user_id" value="<?php echo $wo['user']['user_id']; ?>">
+	<?php } ?>
+		<!-- Use flatpickr for date selection -->
+		<input class="form-select w-auto wm-120" type="text" id="date_start_end" name="date_start_end" placeholder="Select date range" readonly onchange="DataTableReset()" value="<?php echo urldecode($_COOKIE['start_end2'] ?? '') ?: date('Y-01-01') . ' to ' . date('Y-12-31'); ?>">
+	</div>
+</div>
+<div class="row row-cols-2 row-cols-lg-4 row-cols-xxl-4">
+	<div class="col">
+		<div class="card radius-10">
+			<div class="card-body">
+				<div class="d-flex align-items-start gap-2">
+					<div>
+						<p class="mb-0 fs-6">Total Leave</p>
+					</div>
+					<div class="ms-auto">
+						<ion-icon name="bar-chart" role="img" class="md hydrated" aria-label="bar-chart"></ion-icon>
+					</div>
+				</div>
+				<div class="d-flex align-items-center mt-3">
+					<div style=" display: flex; align-items: flex-end; gap: 5px; ">
+						<h4 class="mb-0" id="total_leave">*</h4>
+						<span style="margin-bottom: 2px;color: gray;">Days</span>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+	<div class="col">
+		<div class="card radius-10">
+			<div class="card-body">
+				<div class="d-flex align-items-start gap-2">
+					<div>
+						<p class="mb-0 fs-6">Approved</p>
+					</div>
+					<div class="ms-auto">
+						<ion-icon name="bar-chart" role="img" class="md hydrated" aria-label="bar-chart"></ion-icon>
+					</div>
+				</div>
+				<div class="d-flex align-items-center mt-3">
+					<div style=" display: flex; align-items: flex-end; gap: 5px; ">
+						<h4 class="mb-0" id="total_approved">*</h4>
+						<span style="margin-bottom: 2px;color: gray;">Days</span>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+	
+	<div class="col">
+		<div class="card radius-10">
+			<div class="card-body">
+				<div class="d-flex align-items-start gap-2">
+					<div>
+						<p class="mb-0 fs-6">Pending</p>
+					</div>
+					<div class="ms-auto">
+						<ion-icon name="bar-chart" role="img" class="md hydrated" aria-label="bar-chart"></ion-icon>
+					</div>
+				</div>
+				<div class="d-flex align-items-center mt-3">
+					<div style=" display: flex; align-items: flex-end; gap: 5px; ">
+						<h4 class="mb-0" id="total_pending">*</h4>
+						<span style="margin-bottom: 2px;color: gray;">Days</span>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+	<div class="col">
+		<div class="card radius-10">
+			<div class="card-body">
+				<div class="d-flex align-items-start gap-2">
+					<div>
+						<p class="mb-0 fs-6">Rejected</p>
+					</div>
+					<div class="ms-auto">
+						<ion-icon name="bar-chart" role="img" class="md hydrated" aria-label="bar-chart"></ion-icon>
+					</div>
+				</div>
+				<div class="d-flex align-items-center mt-3">
+					<div style=" display: flex; align-items: flex-end; gap: 5px; ">
+						<h4 class="mb-0" id="total_rejected">*</h4>
+						<span style="margin-bottom: 2px;color: gray;">Days</span>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+	<div class="col">
+		<div class="card radius-10">
+			<div class="card-body" id="remaining_days">
+				<div class="d-flex align-items-start gap-2">
+					<div>
+						<p class="mb-0 fs-6">Casual</p>
+					</div>
+					<div class="ms-auto">
+						<ion-icon name="bar-chart" role="img" class="md hydrated" aria-label="bar-chart"></ion-icon>
+					</div>
+				</div>
+				<div class="d-flex align-items-center mt-3">
+					<div style=" display: flex; align-items: flex-end; gap: 5px; ">
+						<h4 class="mb-0">* of **</h4>
+						<span style="margin-bottom: 2px;color: gray;">Remaining</span>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+	<div class="col">
+		<div class="card radius-10">
+			<div class="card-body" id="sick_remaining_days">
+				<div class="d-flex align-items-start gap-2">
+					<div>
+						<p class="mb-0 fs-6">Sick</p>
+					</div>
+					<div class="ms-auto">
+						<ion-icon name="bar-chart" role="img" class="md hydrated" aria-label="bar-chart"></ion-icon>
+					</div>
+				</div>
+				<div class="d-flex align-items-center mt-3">
+					<div style=" display: flex; align-items: flex-end; gap: 5px; ">
+						<h4 class="mb-0">*</h4>
+						<span style="margin-bottom: 2px;color: gray;">Used</span>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+	<div class="col">
+		<div class="card radius-10">
+			<div class="card-body" id="earned_remaining_days">
+				<div class="d-flex align-items-start gap-2">
+					<div>
+						<p class="mb-0 fs-6">Earned</p>
+					</div>
+					<div class="ms-auto">
+						<ion-icon name="bar-chart" role="img" class="md hydrated" aria-label="bar-chart"></ion-icon>
+					</div>
+				</div>
+				<div class="d-flex align-items-center mt-3">
+					<div style=" display: flex; align-items: flex-end; gap: 5px; ">
+						<h4 class="mb-0">*</h4>
+						<span style="margin-bottom: 2px;color: gray;">Used</span>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+	<div class="col">
+		<div class="card radius-10">
+			<div class="card-body" id="maternity_remaining_days">
+				<div class="d-flex align-items-start gap-2">
+					<div>
+						<p class="mb-0 fs-6">Maternity</p>
+					</div>
+					<div class="ms-auto">
+						<ion-icon name="bar-chart" role="img" class="md hydrated" aria-label="bar-chart"></ion-icon>
+					</div>
+				</div>
+				<div class="d-flex align-items-center mt-3">
+					<div style=" display: flex; align-items: flex-end; gap: 5px; ">
+						<h4 class="mb-0">*</h4>
+						<span style="margin-bottom: 2px;color: gray;">Used</span>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+
+
+<!-- Your HTML code starts here -->
+<div class="card radius-10 w-100">
+    <div class="card-body">
+        <div class="table-responsive mt-2">
+            <table id="invoiceTable" class="table align-middle mb-0" style="width: 100%;">
+                <thead class="table-light">
+                    <tr>
+                        <th style="max-width: 10px;">#ID</th>
+                        <th>Name</th>
+                        <th style="width: 100px;">Type</th>
+                        <th>Reason</th>
+                        <th style="width: 100px;">App. Date</th>
+                        <th style="width: 100px;">Leave From</th>
+                        <th style="width: 100px;">Leave To</th>
+                        <th style="width: 50px;">Days</th>
+                        <th style="width: 50px;">Paid/Unpaid</th>
+                        <th style="width: 100px;">Status</th>
+                        <th style="width: 50px;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody style="padding-bottom: 15px">
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+function download_report() {
+	var dateRange = document.getElementById('date_start_end').value;
+	var user_id = document.getElementById('user_id').value;
+	// If date range is not selected, use the single selected date
+	var dates = dateRange.split(' to ');
+	var data_start = dates[0];
+	var data_end = dates.length > 1 ? dates[1] : data_start;
+	
+    $.ajax({
+        type: "POST",
+        url: Wo_Ajax_Requests_File() + '?f=manage_leave&s=download_report', // Ensure Wo_Ajax_Requests_File() returns the correct URL
+		data: { data_start: data_start, data_end: data_end, user_id: user_id },
+        success: function (response) {
+			if (response['status'] == 200) {
+				window.location.href = response['result'];
+			} else {
+				pos4_error_noti(response['message']);
+			}
+        }
+    });
+}
+function download_leave(leave_id) {
+	if (leave_id == null) {
+        return false;
+    }
+    $.ajax({
+        type: "POST",
+        url: Wo_Ajax_Requests_File() + '?f=manage_leave&s=download_leave', // Ensure Wo_Ajax_Requests_File() returns the correct URL
+		data: { leave_id: leave_id },
+        success: function (response) {
+			if (response['status'] == 200) {
+				window.location.href = response['result'];
+			} else {
+				pos4_error_noti(data['message']);
+			}
+        }
+    });
+}
+function delete_leave(leave_id) {
+    // Show confirmation dialog
+    var confirmed = confirm("Are you sure you want to delete leave application?");
+    if (!confirmed) {
+        return false; // Cancel the operation if user clicks Cancel
+    }
+	
+	if (leave_id == null) {
+        return false;
+    }
+	
+    $.ajax({
+        type: "POST",
+        url: Wo_Ajax_Requests_File() + '?f=manage_leave&s=delete_leave', // Ensure Wo_Ajax_Requests_File() returns the correct URL
+		data: { leave_id: leave_id },
+        success: function (response) {
+            if (response['status'] == 200) {
+				pos5_success_noti(response['message']);
+            } else {
+				pos4_error_noti(response['message']);
+			}
+			DataTableReset();
+        }
+    });
+}
+function update_leave(leave_id) {
+	if (leave_id == null) {
+        return false;
+    }
+    $.ajax({
+        type: "POST",
+        url: Wo_Ajax_Requests_File() + '?f=manage_leave&s=update_leave_Modal', // Ensure Wo_Ajax_Requests_File() returns the correct URL
+		data: { leave_id: leave_id },
+        success: function (response) {
+            if (response['status'] == 200) {
+				$("#contnet").append(response['result']);
+				$("#updateLeave-modal").modal('show');
+            }
+        }
+    });
+}
+function apply_leave() {
+	var user_id = $('#user_id').val();
+    $.ajax({
+        type: "POST",
+        url: Wo_Ajax_Requests_File() + '?f=manage_leave&s=apply_leave_Modal', // Ensure Wo_Ajax_Requests_File() returns the correct URL
+		data: { user_id: user_id },
+        success: function (response) {
+            if (response['status'] == 200) {
+				$("#contnet").append(response['result']);
+				$("#applyLeave-modal").modal('show');
+            }
+        }
+    });
+}
+$(document).ready(function() {
+	// Initialize Flatpickr
+	var flatpickrInstance = flatpickr('#date_start_end', {
+		mode: 'range',
+		dateFormat: 'Y-m-d',
+		altFormat: 'F j, Y',
+		altInput: false,
+		allowInput: false,
+		clickOpens: true,
+		onChange: function(selectedDates, dateStr, instance) {
+			// console.log(selectedDates);
+			// // You can add additional logic here if needed
+		},
+		onReady: function(selectedDates, dateStr, instance) {
+			// Add custom date range options to the Flatpickr container
+			var datepickerContainer = instance.calendarContainer;
+
+			var dateRangeOptions = [
+				{ label: 'Today', range: [new Date(), new Date()] },
+				{ label: 'This Month', range: [new Date(new Date().getFullYear(), new Date().getMonth(), 1), new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0)] },
+				{ label: 'Last Month', range: [new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1), new Date(new Date().getFullYear(), new Date().getMonth(), 0)] },
+				{ label: 'This Year', range: [new Date(new Date().getFullYear(), 0, 1), new Date(new Date().getFullYear(), 11, 31)] },
+			];
+
+
+			dateRangeOptions.forEach(function(option) {
+				var button = document.createElement('button');
+				button.textContent = option.label;
+				button.addEventListener('click', function() {
+					flatpickrInstance.setDate(option.range);
+					flatpickrInstance.close(); // Close Flatpickr instance
+					DataTableReset();
+				});
+
+				datepickerContainer.prepend(button);
+			});
+		}
+	});
+    // Initialize DataTables without buttons
+    var table = $('#invoiceTable').DataTable({
+        "processing": true,
+		"serverSide": true,
+        "pageLength": 25,  // Set the default number of entries per page
+        "ajax": {
+            "url": Wo_Ajax_Requests_File() + '?f=manage_leave&s=fetch_report',
+            "type": "POST",
+			"data": function (d) {
+				// Include additional parameters for the AJAX request
+				d.user_id = $('#user_id').val();
+				var dateRange = document.getElementById('date_start_end').value;
+				// If date range is not selected, use the single selected date
+				var dates = dateRange.split(' to ');
+				var data_start = dates[0];
+				var data_end = dates.length > 1 ? dates[1] : data_start;
+				
+				d.data_start = data_start;
+				d.data_end = data_end;
+			},
+            "beforeSend": function(xhr) {
+				$('#length_count').remove();
+				$('#invoiceTable_length label').append('<span id="length_count"><span>');
+                // Set opacity to 0 before the Ajax request
+                $('#invoiceTable').css('opacity', .5);
+            },
+            "complete": function(xhr) {
+				// Parse the JSON response
+				var responseData = JSON.parse(xhr.responseText);
+				// Access the recordsTotal value
+				var recordsTotal = responseData.recordsTotal;
+				var totalLeave = responseData.totalLeave;
+				var totalApproved = responseData.totalApproved;
+				var totalPending = responseData.totalPending;
+				var totalRejected = responseData.totalRejected;
+				var remaining_days = responseData.remaining_days;
+				var sick_remaining_days = responseData.sick_remaining_days;
+				var maternity_remaining_days = responseData.maternity_remaining_days;
+				var earned_remaining_days = responseData.earned_remaining_days;
+				
+                // Set opacity to 1 after the Ajax request is complete
+                $('#invoiceTable').css('opacity', 1);
+                $('#length_count').html('of <b>' + recordsTotal + '</b>');
+                $('#total_leave').html(totalLeave);
+                $('#total_approved').html(totalApproved);
+                $('#total_pending').html(totalPending);
+                $('#total_rejected').html(totalRejected);
+                $('#remaining_days').html(remaining_days);
+                $('#sick_remaining_days').html(sick_remaining_days);
+                $('#maternity_remaining_days').html(maternity_remaining_days);
+                $('#earned_remaining_days').html(earned_remaining_days);
+            }
+        },
+        "columns": [
+            { "data": "id", "orderable": true },  // ID column is orderable
+            { "data": "name", "orderable": false },
+            { "data": "type", "orderable": false },
+            { "data": "reason", "orderable": false },
+            { "data": "posted", "orderable": false },
+            { "data": "leave_from", "orderable": false },
+            { "data": "leave_to", "orderable": false },
+            { "data": "days", "orderable": false },
+            { "data": "paid_unpaid", "orderable": false },
+            { "data": "status", "orderable": false },
+            { "data": "actions", "orderable": false }
+        ],
+        "order": [],
+        "language": {
+            "emptyTable": "No data available in the table",
+            "infoEmpty": "Showing 0 to 0 of 0 entries",
+            "infoFiltered": "(filtered from _MAX_ total entries)",
+            "zeroRecords": "No matching records found"
+        },
+		"rowCallback": function(row, data) {
+			$(row).attr('data-id', data.id);
+		}
+    });
+	
+	<?php if (Wo_IsAdmin() || Wo_IsModerator() || check_permission('update-leave')) { ?>
+	<?php } else { ?>
+		$('#user_id').change(function() {
+			var user_id = $(this).val(); // Get the selected value from #user_id
+
+			// Compare selected user_id with PHP variable $wo['user']['user_id']
+			if (user_id == <?php echo $wo['user']['user_id']; ?>) {
+				table.column(':last').visible(true); // Show the last column of DataTable
+			} else {
+				table.column(':last').visible(false); // Hide the last column of DataTable
+			}
+		});
+	<?php } ?>
+	
+    // DataTableReset function to reset the DataTable
+    window.DataTableReset = function() {
+        table.ajax.reload();
+    };
+	
+	window.DataTableRefresh = function() {
+		table.ajax.reload(null, false); // Reload the DataTable
+
+		// After reload, restore the state (including pagination)
+		var state = table.state.loaded();
+		if (state) {
+			table.state.restore(state);
+		}
+	};
+});
+</script>

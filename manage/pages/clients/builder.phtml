@@ -1,0 +1,428 @@
+<?php
+$builder = $_GET['builder'] ?? '';
+
+if ($builder == 'moon-hill') {
+    $project_id = '1';
+} elseif ($builder == 'hill-town') {
+    $project_id = '2';
+} else {
+    echo "Invalid or missing builder slug.";
+    exit;
+}
+
+$project = GetProjectById($project_id);
+if (!is_array($project)) {
+    echo "Invalid project ID.";
+    exit;
+}
+
+$positions = [];
+$res = $db->where('project_id', (int)$project_id)->get('field_positions');
+
+foreach ($res as $row) {
+    $positions[] = [
+        'name' => $row->field_name,
+        'style' => json_decode($row->style_json, true)
+    ];
+}
+
+$fields = [
+  'client_id',
+  'applicant_name',
+  'project_name',
+  'block',
+  'plot',
+  'katha',
+  'road',
+  'facing',
+  'date',
+  // Additional fields
+  'spouse_name',
+  'fathers_name',
+  'mothers_name',
+  'permanent_addr',
+  'reference',
+  'email',
+  'phone',
+  'nationality',
+  'birthday',
+  'religion',
+  'nid',
+  'passport',
+  'nomine_name',
+  'nomine_address',
+  'nomine_relation'
+];
+
+// Helper function to get display value per field
+function getFieldDisplayValue($field) {
+    switch ($field) {
+        case 'date':
+            return '00 00 0000';
+        case 'client_id':
+            return '1234567890123';
+        case 'phone':
+        case 'mobile':
+            return '01744841662';
+        case 'nid':
+            return '01234567890123';
+        default:
+            return $field;
+    }
+}
+?>
+
+<div style="text-align:center; margin-bottom: 10px;">
+    <?php foreach ($fields as $f): ?>
+        <button draggable="true" class="drag-button"
+                ondragstart="event.dataTransfer.setData('text/plain', '<?= $f ?>');"
+                onclick="addField('<?= $f ?>')">
+            <?= $f ?>
+        </button>
+    <?php endforeach; ?>
+    <button onclick="save()">💾 Save</button>
+</div>
+
+<div id="builderContainer" class="builder-container">
+    <div id="builderArea" class="builder-area"
+         ondragover="event.preventDefault();"
+         ondrop="handleDrop(event)">
+        <?php foreach ($positions as $entry): ?>
+            <?php
+            $style = $entry['style'];
+            $field = $entry['name'];
+            $top = $style['top'] ?? '100px';
+            $left = $style['left'] ?? '100px';
+            $width = $style['width'] ?? 'auto';
+            $fontSize = $style['fontSize'] ?? '15px';
+            $letterSpacing = $style['letterSpacing'] ?? '0px';
+            $textAlign = $style['textAlign'] ?? 'left';
+            $displayValue = getFieldDisplayValue($field);
+            ?>
+            <div class="field" data-name="<?= htmlspecialchars($field) ?>"
+                 style="top:<?= $top ?>; left:<?= $left ?>; width:<?= $width ?>; font-size:<?= $fontSize ?>; text-align:<?= $textAlign ?>; letter-spacing:<?= $letterSpacing ?>;white-space: normal;line-height: 1.4;">
+                <?= htmlspecialchars($displayValue) ?>
+                <div class="resize-handle-left"></div>
+                <div class="resize-handle"></div>
+            </div>
+        <?php endforeach; ?>
+    </div>
+</div>
+
+<style>
+body { overflow: hidden; }
+.builder-container {
+    overflow: auto;
+    border: 1px solid #888;
+    height: 80vh;
+    display: flex;
+    justify-content: center;
+}
+.builder-area {
+    position: relative;
+      width: 8.5in;
+      height: 14in;
+    background: #f9f9f9 url('/manage/pages/clients/<?= htmlspecialchars($project['slug']) ?>.jpg') no-repeat center;
+    background-size: cover;
+    border: 2px dashed #999;
+}
+.field {
+    position: absolute;
+    background: rgba(255,255,255,0.2);
+    border: 1px solid #666;
+    padding: 2px 6px;
+    min-width: 40px;
+    min-height: 20px;
+    box-sizing: border-box;
+    resize: none;
+    overflow: hidden;
+    cursor: move;
+    user-select: none;
+    line-height: 1;
+}
+.field.selected {
+    outline: 1px solid #007BFF;
+}
+.resize-handle {
+    position: absolute;
+    width: 2px;
+    height: 100%;
+    right: 0;
+    top: 0;
+    background: #007BFF;
+    cursor: ew-resize;
+}
+.resize-handle-left {
+    position: absolute;
+    width: 2px;
+    height: 100%;
+    left: 0;
+    top: 0;
+    background: #007BFF;
+    cursor: ew-resize;
+    user-select: none;
+    z-index: 10;
+}
+#styleControls {
+    margin: 10px auto;
+    display: none;
+    justify-content: center;
+    gap: 10px;
+}
+#styleControls input, #styleControls select {
+    padding: 4px;
+}
+</style>
+
+<div id="styleControls">
+    <label>Font Size: <input type="number" id="fontSizeInput" value="16" style="width:60px;"></label>
+    <label>Letter Spacing: <input type="number" id="letterSpacingInput" value="0" style="width:60px;"></label>
+    <label>Align:
+        <select id="textAlignInput">
+            <option value="left">Left</option>
+            <option value="center">Center</option>
+            <option value="right">Right</option>
+        </select>
+    </label>
+</div>
+
+<script>
+const builderArea = document.getElementById('builderArea');
+const fontSizeInput = document.getElementById('fontSizeInput');
+const letterSpacingInput = document.getElementById('letterSpacingInput');
+const textAlignInput = document.getElementById('textAlignInput');
+
+let selected = null;
+
+// Mapping for display values per field
+const displayValues = {
+    'date': '00 00 0000',
+    'client_id': '1234567890123'
+};
+
+function getDisplayValue(fieldName) {
+    return displayValues[fieldName] || fieldName;
+}
+
+function addField(name) {
+    if (document.querySelector('[data-name="' + name + '"]')) return;
+    const div = document.createElement("div");
+    div.className = "field";
+    div.setAttribute("data-name", name);
+    div.style.top = "100px";
+    div.style.left = "100px";
+    div.style.width = "150px";
+    div.style.fontSize = "15px";
+    div.style.textAlign = "left";
+    div.style.lineHeight = "1.4";
+    div.style.whiteSpace = "normal";
+    div.style.letterSpacing = "0px";
+    div.innerHTML = getDisplayValue(name) + '<div class="resize-handle-left"></div><div class="resize-handle"></div>';
+    builderArea.appendChild(div);
+    makeDraggable(div);
+    selectField(div);
+}
+
+function handleDrop(event) {
+    event.preventDefault();
+    const field = event.dataTransfer.getData("text/plain");
+    const x = event.offsetX;
+    const y = event.offsetY;
+
+    const div = document.createElement('div');
+    div.className = 'field';
+    div.setAttribute('data-name', field);
+    div.style.top = y + 'px';
+    div.style.left = x + 'px';
+    div.style.width = '150px';
+    div.style.fontSize = '15px';
+    div.style.textAlign = 'left';
+    div.style.letterSpacing = '0px';
+    div.innerHTML = getDisplayValue(field) + '<div class="resize-handle-left"></div><div class="resize-handle"></div>';
+
+    builderArea.appendChild(div);
+    makeDraggable(div);
+}
+
+function makeDraggable(el) {
+    const resizeHandleLeft = el.querySelector(".resize-handle-left");
+    const resizeHandleRight = el.querySelector(".resize-handle");
+
+    el.addEventListener("mousedown", function(e) {
+        if (e.target === resizeHandleLeft || e.target === resizeHandleRight) return;
+
+        e.preventDefault();
+        selectField(el);
+
+        const containerRect = builderArea.getBoundingClientRect();
+        const shiftX = e.clientX - el.getBoundingClientRect().left;
+        const shiftY = e.clientY - el.getBoundingClientRect().top;
+
+        function moveAt(e) {
+            el.style.left = (e.clientX - containerRect.left - shiftX) + 'px';
+            el.style.top = (e.clientY - containerRect.top - shiftY) + 'px';
+        }
+
+        function onMouseMove(e) { moveAt(e); }
+
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', function up() {
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', up);
+        });
+    });
+
+    // Right resize handle - resize width by dragging right edge
+    resizeHandleRight.addEventListener("mousedown", function(e) {
+        e.preventDefault();
+        const startX = e.clientX;
+        const startW = parseInt(window.getComputedStyle(el).width);
+
+        function onMouseMove(e) {
+            el.style.width = (startW + (e.clientX - startX)) + 'px';
+        }
+
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', function up() {
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', up);
+        });
+    });
+
+    // Left resize handle - resize width and move left edge
+    resizeHandleLeft.addEventListener("mousedown", function(e) {
+        e.preventDefault();
+        const startX = e.clientX;
+        const startLeft = parseInt(el.style.left) || 0;
+        const startWidth = parseInt(window.getComputedStyle(el).width);
+
+        function onMouseMove(e) {
+            let diff = e.clientX - startX;
+            let newLeft = startLeft + diff;
+            let newWidth = startWidth - diff;
+            if (newWidth > 40) { // minimum width limit
+                el.style.left = newLeft + 'px';
+                el.style.width = newWidth + 'px';
+            }
+        }
+
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', function up() {
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', up);
+        });
+    });
+
+    el.ondragstart = () => false;
+}
+
+function selectField(el) {
+    document.querySelectorAll(".field").forEach(f => f.classList.remove("selected"));
+    el.classList.add("selected");
+    selected = el;
+
+    document.getElementById("styleControls").style.display = "flex";
+    fontSizeInput.value = parseInt(el.style.fontSize || 16);
+    letterSpacingInput.value = parseInt(el.style.letterSpacing || 0);
+    textAlignInput.value = el.style.textAlign || "left";
+}
+
+fontSizeInput.addEventListener("input", () => {
+    if (selected) selected.style.fontSize = fontSizeInput.value + "px";
+});
+letterSpacingInput.addEventListener("input", () => {
+    if (selected) selected.style.letterSpacing = letterSpacingInput.value + "px";
+});
+textAlignInput.addEventListener("change", () => {
+    if (selected) selected.style.textAlign = textAlignInput.value;
+});
+
+document.querySelectorAll(".field").forEach(makeDraggable);
+
+function save() {
+    let items = [];
+    document.querySelectorAll(".field").forEach(el => {
+        items.push({
+            name: el.dataset.name,
+            style: {
+                top: el.style.top,
+                left: el.style.left,
+                width: el.style.width,
+                height: el.style.height,
+                fontSize: el.style.fontSize,
+                letterSpacing: el.style.letterSpacing,
+                textAlign: el.style.textAlign
+            }
+        });
+    });
+
+    fetch(Wo_Ajax_Requests_File() + '?f=builder', {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            project_id: <?= (int)$project_id ?>,
+            fields: items
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        alert(data.message || "Saved successfully");
+    })
+    .catch(err => {
+        alert("Save error: " + err.message);
+    });
+}
+
+// Keyboard controls for selected field
+document.addEventListener('keydown', (e) => {
+    if (!selected) return;
+
+    const step = e.shiftKey ? 10 : 1;
+
+    switch (e.key) {
+        case 'ArrowLeft':
+            e.preventDefault();
+            selected.style.left = (parseInt(selected.style.left || 0) - step) + 'px';
+            break;
+        case 'ArrowRight':
+            e.preventDefault();
+            selected.style.left = (parseInt(selected.style.left || 0) + step) + 'px';
+            break;
+        case 'ArrowUp':
+            e.preventDefault();
+            selected.style.top = (parseInt(selected.style.top || 0) - step) + 'px';
+            break;
+        case 'ArrowDown':
+            e.preventDefault();
+            selected.style.top = (parseInt(selected.style.top || 0) + step) + 'px';
+            break;
+        case 'Delete':
+            e.preventDefault();
+            selected.remove();
+            selected = null;
+            document.getElementById("styleControls").style.display = "none";
+            break;
+        case 'd':
+        case 'D':
+            if (e.ctrlKey) {
+                e.preventDefault();
+                const clone = selected.cloneNode(true);
+                let left = parseInt(selected.style.left || 0) + 20;
+                let top = parseInt(selected.style.top || 0) + 20;
+                clone.style.left = left + 'px';
+                clone.style.top = top + 'px';
+                builderArea.appendChild(clone);
+                makeDraggable(clone);
+                selectField(clone);
+            }
+            break;
+        case 's':
+        case 'S':
+            if (e.ctrlKey) {
+                e.preventDefault();
+                save();
+            }
+            break;
+    }
+});
+</script>

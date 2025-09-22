@@ -1,0 +1,382 @@
+<?php if (check_permission('manage-salary') || Wo_IsAdmin() || Wo_IsModerator()) {
+	echo Wo_LoadManagePage('view_notif/content');
+?>
+<!--start breadcrumb-->
+<div class="page-breadcrumb d-flex align-items-center mb-3">
+  <div class="breadcrumb-title pe-3">Salary Report</div>
+	<div class="ms-auto button_flex_middle">
+		<div id="attendanceSheet_download"></div>
+		<style>
+			#attendanceSheet_download button.btn {
+				border: 2px solid transparent;
+				padding: 6px 2px;
+				width: 40px;
+				border-radius: 8px;
+			}
+			#attendanceSheet_download button.btn:hover {
+				background: white;
+				border: 2px solid #6c757d;
+				color: #6c757d;
+			}
+			.dataTables_wrapper {
+				overflow-x: auto !important;
+			}
+		</style>
+	</div>
+</div>
+<!--end breadcrumb-->
+<div class="mb-3">
+	<div class="row row-cols-auto g-3">
+		<div class="col">
+		</div>
+	</div>
+</div>
+
+    <!-- Your HTML code starts here -->
+
+      <div class="attandence mb-3">
+        <div class="select-panel d-flex justify-content-between">
+			<select id="user_id" name="user_id" class="form-select w-auto" onchange="DataTableRefresh()">
+				<option value="999">All User</option>
+				<option value="888">Management Part</option>
+				<option value="777">Employee</option>
+			</select>
+
+			<input class="form-control w-auto" type="month" id="month_year" name="month_year" placeholder="Select date range" onchange="DataTableRefresh()" value="<?php echo (!empty(urldecode($_COOKIE['month_year']))) ? urldecode($_COOKIE['month_year']) : date('Y-m'); ?>">
+        </div>
+    </div>
+    <div class="card radius-10 w-100">
+        <div class="card-body">
+            <div class="table-responsive atten_container" id="atten_container">
+                <table class="table align-middle mb-0 atten_container" id="invoiceTable" style="width: 100%;">
+                    <thead class="table-light" style=" position: sticky; top: 0; background: white; ">
+                        <tr>
+                            <th class="w18" style="width: 18px;">SL</th>
+                            <th>Name</th>
+                            <th>Designation</th>
+                            <th class="w50" style="width: 50px;">Total Day</th>
+                            <th class="w50" style="width: 50px;">Late</th>
+                            <th class="w50" style="width: 50px;">Unpaid</th>
+                            <th class="w50" style="width: 50px;">Gross Salary</th>
+                            <th class="hide_in_print w50" style="width: 50px;">Payable</th>
+                            <th>Signature</th>
+                        </tr>
+                    </thead>
+                    <tbody id="result">
+                        <!-- Your PHP-generated table rows go here -->
+                        <!-- Example row provided -->
+                        <?php echo $your_php_generated_rows; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+<style>
+	.atten_container .reason {
+		--bs-table-bg: #eafff0;
+		--bs-table-color: #00702e;
+		background: #eafff0;
+		color: #00702e;
+	}
+	.atten_container .dataTables_info {
+		display: none !important;
+	}
+	.atten_container .absent {
+		--bs-table-bg: #fff5f5;
+		--bs-table-color: #b70000;
+		background: #fff5f5;
+		color: #b70000;
+	}
+	.atten_container .late {
+		--bs-table-bg: #fcf3ff;
+		--bs-table-color: #6e0089;
+		background: #fcf3ff;
+		color: #6e0089;
+	}
+	.atten_container .weekend {
+		--bs-table-bg: #e8f6ff;
+		--bs-table-color: #0400ff;
+		background: #e8f6ff;
+		color: #0400ff;
+	}
+	.atten_container .eid_ajha {
+		--bs-table-bg: #e8f6ff;
+		--bs-table-color: #0400ff;
+		background: #e8f6ff;
+		color: #0400ff;
+	}
+	table.dataTable {
+		margin-top: 0px !important;
+		margin-bottom: 0px !important;
+	}
+	
+	.flatpickr-calendar button {
+		border-radius: 0;
+		padding: 8px 38px;
+		color: #000000;
+		border: none;
+		border-bottom: 1px solid #e7e7e7;
+		background-color: #ffffff;
+		width: 100%;
+	}
+	table,
+	td,
+	th {
+		border: 1px solid rgba(0, 0, 0, 0.1);
+	}
+	table {
+		border-collapse: separate;
+		border-spacing: 0;
+		border-width: 1px 0 0 1px;
+		margin: 0 0 1.5em;
+		width: 100%;
+	}
+	th {
+		font-weight: 700;
+	}
+	td,
+	th {
+		padding: 8px;
+		text-align: left;
+		border-width: 0 1px 1px 0;
+	}
+	
+	.atten_container thead th.w1 {
+		width: 10px;
+	}
+	.atten_container thead th.w12 {
+		width: 120px;
+	}
+	.atten_container thead th.in_out {
+		width: 90px;
+	}
+	.atten_container thead th.date {
+		width: 100px;
+	}
+	.atten_container thead th.day {
+		width: 70px;
+	}
+	.atten_container thead th.w24px {
+		width: 24px;
+	}
+	.atten_print_text {
+		align-items: center;
+		
+	}
+	.atten_header {}
+	.atten_details {
+		font-size: 14px;
+	}
+	.w50 {
+		width: 50px !important;
+	}
+	.w18 {
+		width: 18px !important;
+	}
+	.atten_name {}
+	.atten_date {}
+	@media print {
+		body, td, tr {
+			font-size: 12px !important;
+		}
+		body h1 {
+			font-size: 16px !important;
+			text-align: center;
+		}
+		.atten_container .reason {
+			--bs-table-bg: #eafff0;
+			--bs-table-color: #00702e;
+			background: #eafff0;
+			color: #00702e;
+		}
+		.atten_container .absent {
+			--bs-table-bg: #fff5f5;
+			--bs-table-color: #b70000;
+			background: #fff5f5;
+			color: #b70000;
+		}
+		.atten_container .late {
+			--bs-table-bg: #fcf3ff;
+			--bs-table-color: #6e0089;
+			background: #fcf3ff;
+			color: #6e0089;
+		}
+		.atten_container .weekend {
+			--bs-table-bg: #e8f6ff;
+			--bs-table-color: #0400ff;
+			background: #e8f6ff;
+			color: #0400ff;
+		}
+		.atten_container .eid_ajha {
+			--bs-table-bg: #e8f6ff;
+			--bs-table-color: #0400ff;
+			background: #e8f6ff;
+			color: #0400ff;
+		}
+		.w50 {
+			width: 50px !important;
+		}
+		.w18 {
+			width: 18px !important;
+		}
+	}
+</style>
+<!-- Include Bootstrap JS and Bootstrap Datepicker JS -->
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.9.0/js/bootstrap-datepicker.min.js"></script>
+
+   <script>
+	<?php if (Wo_IsAdmin() || Wo_IsModerator() || check_permission('manage-advance-salary')) { ?>
+	function manage_advance(date, user_id) {
+		$.ajax({
+			type: "GET",
+			url: Wo_Ajax_Requests_File() + '?f=manage_settings&s=advance_modal',
+			data: { user_id: user_id, date: date },
+			success: function (response) {
+				if (response['status'] == 200) {
+					$("#contnet").append(response['result']);
+					$("#manage-advance-modal").modal('show');
+				}
+			}
+		});
+	}
+	<?php } ?>
+	
+    $(document).ready(function() {
+		
+
+        // Initialize DataTables without buttons
+		var table = $('#invoiceTable').DataTable({
+			"processing": true,
+			"serverSide": true,
+			"paging": false, // Disable pagination
+			"searching": false, // Disable search
+			"pageLength": 20000,
+			"ajax": {
+				"url": Wo_Ajax_Requests_File() + '?f=manage_settings&s=salary_report',
+				"type": "POST",
+				"data": function (d) {
+					// Include additional parameters for the AJAX request
+					d.user_id = $('#user_id').val();
+					var month_year = document.getElementById('month_year').value;
+					d.month_year = month_year;
+				},
+				"beforeSend": function (xhr) {
+					// Set opacity to 0 before the Ajax request
+					$('#invoiceTable').css('opacity', 0.5);
+				},
+				"complete": function (xhr) {
+					// Set opacity to 1 after the Ajax request is complete
+					$('#invoiceTable').css('opacity', 1);
+				},
+				"dataSrc": function (json) {
+					if (json.status === 200) {
+						// Return the data if the response is successful
+						return json.result;
+					} else {
+						// Handle the error and return an empty array
+						console.error("Error: " + json.error);
+						return [];
+					}
+				}
+			},
+			"columns": [
+				{ "data": "sl", "orderable": false },
+				{ "data": "name", "orderable": false },
+				{ "data": "designation", "orderable": false },
+				{ "data": "working_day", "orderable": false, "className": "text-center" },
+				{ "data": "late", "orderable": false, "className": "text-center" },
+				{ "data": "absent", "orderable": false, "className": "text-center" },
+				{ "data": "gross_salary", "orderable": false, "className": "text-end" },
+				{ "data": "payable", "orderable": false, "className": "text-end" },
+				{ "data": "signature", "orderable": false, "className": "text-center" }
+			],
+			"order": [],
+			"language": {
+				"emptyTable": "No data available in the table",
+				"infoEmpty": "",
+				"infoFiltered": "",
+				"zeroRecords": "No matching records found"
+			},
+			"initComplete": function (settings, json) {
+				if (json.status === 400) {
+					// Handle error when the response status is 400
+					alert("Error: " + json.error); // You can replace this with your own error handling
+				}
+			},
+			"drawCallback": function (settings) {
+				// Apply the class to the rows after each draw
+				$('#invoiceTable tbody tr').each(function () {
+					var data = table.row(this).data();
+					$(this).attr('class', data.class);
+				});
+			}
+		});
+
+
+        new $.fn.dataTable.Buttons(table, {
+            buttons: [
+                { 
+                    extend: 'copy',
+                    text: '<i class="fadeIn animated bx bx-copy"></i>',
+                    titleAttr: 'Copy to clipboard',
+                    exportOptions: {
+                        columns: ':not(:nth(6))'
+                    }
+                },
+                { 
+                    extend: 'excel',
+                    text: '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="18" viewBox="0 0 18 24"><path fill="currentColor" d="M20.34,4.59,16.41.66A2.28,2.28,0,0,0,14.82,0H5.25A2.25,2.25,0,0,0,3,2.25v19.5A2.25,2.25,0,0,0,5.25,24h13.5A2.25,2.25,0,0,0,21,21.75V6.19A2.27,2.27,0,0,0,20.34,4.59ZM18.57,6H15V2.44ZM5.25,21.75V2.25h7.5V7.13a1.12,1.12,0,0,0,1.12,1.12h4.88v13.5ZM15.19,10.5H13.84a.55.55,0,0,0-.49.3A24.54,24.54,0,0,0,12,13.5c-.65-1.36-.32-.81-1.34-2.7a.56.56,0,0,0-.49-.3H8.81a.56.56,0,0,0-.48.85L10.5,15,8.33,18.66a.56.56,0,0,0,.48.84h1.36a.56.56,0,0,0,.49-.29A23.15,23.15,0,0,0,12,16.5c.7,1.42.28.75,1.34,2.71a.57.57,0,0,0,.5.29h1.35a.56.56,0,0,0,.48-.84L13.5,15c0-.05,1.42-2.36,2.17-3.65A.56.56,0,0,0,15.19,10.5Z" transform="translate(-3)"/></svg>',
+                    titleAttr: 'Export to Excel',
+                    exportOptions: {
+                        columns: ':not(:nth(6))'
+                    }
+                },
+                {
+                    extend: 'pdf',
+                    text: '<i class="fadeIn animated bx bxs-file-pdf"></i>',
+                    titleAttr: 'Export to PDF',
+                    exportOptions: {
+                        columns: ':not(:nth(6))'
+                    }
+                },
+                {
+                    extend: 'print',
+                    text: '<i class="fadeIn animated bx bx-printer"></i>',
+                    titleAttr: 'Print',
+                    exportOptions: {
+                        columns: ':not(:nth(6))'
+                    },
+					customize: function (win) {
+						var dateRange = document.getElementById('month_year').value;
+						var get_select = document.getElementById('user_id');
+						var get_select_text = get_select.options[get_select.selectedIndex].text;
+						$(win.document.body).find('h1').html('<div class="atten_print_text d-flex justify-content-between"><span class="atten_header">Salary Report</span><div class="atten_details"><span class="atten_name">' + get_select_text + '</span> <i class="lni lni-pulse"></i> <span class="atten_date">' + dateRange +'</span></div></div>');
+						// Loop through each <tr> and adapt classes
+						$(document.body).find('tr').each(function() {
+							var originalClasses = $(this).attr('class');
+							$(win.document.body).find('tr').eq($(this).index()+1).addClass(originalClasses);
+						});
+						// Add other custom styles if needed
+					}
+                }
+            ]
+        }).container().appendTo('#attendanceSheet_download');
+	
+		// DataTableReset function to reset the DataTable
+		window.DataTableReset = function() {
+			table.ajax.reload();
+		};
+		
+		window.DataTableRefresh = function() {
+			table.ajax.reload(null, false); // Reload the DataTable
+
+			// After reload, restore the state (including pagination)
+			var state = table.state.loaded();
+			if (state) {
+				table.state.restore(state);
+			}
+		};
+	});
+</script>
+<?php } else { echo Wo_LoadManagePage('permission-required/content'); } ?>

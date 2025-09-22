@@ -1,0 +1,143 @@
+<!-- Enhanced CSS Styles -->
+<style>
+/* Dropdown Actions Fix for Overflow */
+.dropdown-actions {
+  position: static !important;
+}
+
+.dropdown-actions-menu {
+  position: fixed !important;
+  z-index: 9999 !important;
+  max-width: 280px;
+  border: none !important;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.15) !important;
+  border-radius: 8px;
+  padding: 0;
+  transform: none !important;
+  will-change: auto !important;
+}
+
+/* Table overflow fix */
+.table-responsive {
+  position: static !important;
+  overflow: visible !important;
+}
+
+.table-responsive table {
+  position: relative;
+}
+
+/* Modern gradients */
+.bg-gradient-primary {
+  background: linear-gradient(45deg, #667eea 0%, #764ba2 100%);
+}
+
+.bg-gradient-success {
+  background: linear-gradient(45deg, #11998e 0%, #38ef7d 100%);
+}
+
+.bg-gradient-warning {
+  background: linear-gradient(45deg, #f093fb 0%, #f5576c 100%);
+}
+
+.bg-gradient-info {
+  background: linear-gradient(45deg, #00d4ff 0%, #090979 100%);
+}
+
+/* Dropdown styling */
+.dropdown-header {
+  font-weight: 600;
+  padding: 8px 15px;
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.dropdown-item {
+  padding: 8px 15px;
+  transition: all 0.2s ease-in-out;
+  font-size: 0.9rem;
+}
+
+.dropdown-item:hover {
+  background-color: rgba(102, 126, 234, 0.1);
+  transform: translateX(3px);
+}
+
+.dropdown-item i {
+  width: 18px;
+  display: inline-block;
+}
+
+.dropdown-divider {
+  margin: 5px 0;
+  border-top: 1px solid rgba(0,0,0,0.1);
+}
+
+/* Card animations */
+.card {
+  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+/* Form controls */
+.form-control, .form-select {
+  border: 1px solid #e0e6ed;
+  transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+.form-control:focus, .form-select:focus {
+  border-color: #667eea;
+  box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+}
+
+/* Select2 Overrides */
+.select2-container {
+  width: 100% !important;
+}
+
+.select2-dropdown {
+  z-index: 9999 !important;
+}
+
+/* Print styles */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  
+  .print_area {
+    display: block !important;
+    page-break-after: always;
+  }
+}
+
+/* Modal improvements */
+.modal-content {
+  border-radius: 15px;
+}
+
+.modal-header {
+  border-radius: 15px 15px 0 0;
+}
+
+/* Badge improvements */
+.badge {
+  padding: 0.5em 0.75em;
+  font-size: 0.75em;
+}
+
+/* Loading states */
+.spinner-border {
+  width: 2rem;
+  height: 2rem;
+}
+
+/* Responsive improvements */
+@media (max-width: 768px) {
+  .dropdown-actions-menu {
+    position: absolute !important;
+    right: 0;
+    left: auto;
+    transform: translateX(-10px);
+  }
+}
+</style>

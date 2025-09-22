@@ -1,0 +1,234 @@
+<!-- Enhanced Update Installment Modal -->
+<div class="modal fade" id="updateInstallmentModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-centered">
+    <div class="modal-content border-0 shadow-lg">
+      <div class="modal-header bg-gradient-success text-white border-0">
+        <h5 class="modal-title mb-0">
+          <i class="lni lni-dollar me-2"></i>Payment Schedule — <span id="ui_project_name"></span>
+        </h5>
+        <div class="d-flex gap-2">
+          <button type="button" class="btn btn-outline-light btn-sm" id="print_schedule_btn" title="Print Schedule">
+            <i class="lni lni-printer"></i>
+          </button>
+          <button type="button" class="btn btn-outline-light btn-sm" id="export_schedule_xlsx" title="Export XLSX">
+            <i class="lni lni-download"></i>
+          </button>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+      </div>
+
+      <div class="modal-body p-4">
+        <input type="hidden" id="ui_purchase_id" value="">
+
+        <!-- Summary Section -->
+        <div class="row g-3 mb-4">
+          <div class="col-md-2">
+            <div class="card bg-primary text-white h-100">
+              <div class="card-body p-3 text-center">
+                <small class="opacity-75">Total Price</small>
+                <div class="h6 mb-0">৳<span id="ui_total_price">0</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-2">
+            <div class="card bg-info text-white h-100">
+              <div class="card-body p-3 text-center">
+                <small class="opacity-75">Booking Money</small>
+                <div class="h6 mb-0">৳<span id="ui_booking_money">0</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-2">
+            <div class="card bg-warning text-white h-100">
+              <div class="card-body p-3 text-center">
+                <small class="opacity-75">Down Payment</small>
+                <div class="h6 mb-0">৳<span id="ui_down_payment">0</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-2">
+            <div class="card bg-secondary text-white h-100">
+              <div class="card-body p-3 text-center">
+                <small class="opacity-75">Remaining</small>
+                <div class="h6 mb-0">৳<span id="ui_remaining">0</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-2">
+            <div class="card bg-dark text-white h-100">
+              <div class="card-body p-3 text-center">
+                <small class="opacity-75">Schedule Total</small>
+                <div class="h6 mb-0">৳<span id="ui_schedule_total">0</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-2">
+            <div class="card bg-success text-white h-100">
+              <div class="card-body p-3 text-center">
+                <small class="opacity-75">Paid Amount</small>
+                <div class="h6 mb-0">৳<span id="ui_paid_amount">0</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Schedule Status Toggle -->
+        <div class="row mb-4">
+          <div class="col-md-6">
+            <div class="d-flex align-items-center gap-3">
+              <label class="form-label mb-0 fw-medium">Schedule Status:</label>
+              <div class="btn-group" role="group">
+                <input type="radio" class="btn-check" name="schedule_status" id="schedule_paid" value="paid">
+                <label class="btn btn-outline-success btn-sm" for="schedule_paid">
+                  <i class="lni lni-checkmark me-1"></i>Paid
+                </label>
+                <input type="radio" class="btn-check" name="schedule_status" id="schedule_unpaid" value="unpaid" checked>
+                <label class="btn btn-outline-warning btn-sm" for="schedule_unpaid">
+                  <i class="lni lni-time me-1"></i>Unpaid
+                </label>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-6 text-end">
+            <button class="btn btn-outline-secondary btn-sm" id="ui_change_schedule" style="display:none;">
+              <i class="lni lni-edit me-1"></i>Change Schedule
+            </button>
+          </div>
+        </div>
+
+        <!-- Payment Configuration Section -->
+        <div id="ui_configuration_section" class="card border-0 shadow-sm mb-4">
+          <div class="card-header bg-light border-0">
+            <h6 class="mb-0 fw-semibold">Payment Configuration</h6>
+          </div>
+          <div class="card-body">
+            <div class="row g-3">
+              <div class="col-md-3">
+                <label class="form-label fw-medium">Mode of Payment</label>
+                <select id="ui_mode" class="form-control">
+                  <option value="1">Full Payment</option>
+                  <option value="2">Installment</option>
+                </select>
+              </div>
+
+              <!-- installment-specific controls -->
+              <div id="ui_installment_controls" class="col-md-9 d-none">
+                <div class="row g-3">
+                  <div class="col-md-2">
+                    <label class="form-label fw-medium">Installments</label>
+                    <input type="number" id="ui_installments" class="form-control" min="1" value="12" step="1">
+                  </div>
+
+                  <div class="col-md-3">
+                    <label class="form-label fw-medium">Adjustment Type</label>
+                    <select id="ui_adjustment_type" class="form-control">
+                      <option value="monthly">Monthly (even split)</option>
+                      <option value="year_start">Year — Start</option>
+                      <option value="year_middle">Year — Middle</option>
+                      <option value="year_end" selected>Year — End</option>
+                      <option value="custom">Custom (no yearly auto)</option>
+                    </select>
+                  </div>
+
+                  <div class="col-md-3">
+                    <label class="form-label fw-medium">Monthly Amount <small class="text-muted">(optional)</small></label>
+                    <input type="number" id="ui_monthly_amount" class="form-control" placeholder="Auto-calc if empty">
+                    <small class="text-muted">If empty, auto-calculated based on remaining amount after yearly adjustments.</small>
+                  </div>
+
+                  <div class="col-md-4">
+                    <label class="form-label fw-medium">Yearly Adjustment <small class="text-muted">(optional)</small></label>
+                    <input type="number" id="ui_yearly_adjustment" class="form-control" placeholder="e.g. 100000">
+                    <small class="text-muted">Fixed amount added once per year (not added to monthly).</small>
+                  </div>
+                </div>
+              </div>
+
+              <div class="col-md-12">
+                <div class="row g-2">
+                  <div class="col-md-4">
+                    <label class="form-label fw-medium">Start Date</label>
+                    <input type="date" id="ui_start_date" class="form-control">
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label fw-medium">Start Option</label>
+                    <select id="ui_start_option" class="form-control">
+                      <option value="start">Start of month (1st)</option>
+                      <option value="middle">Middle (15th)</option>
+                      <option value="end">End of month (last day)</option>
+                      <option value="exact">Exact (keep chosen day)</option>
+                    </select>
+                  </div>
+                  <div class="col-md-4 d-flex align-items-end">
+                    <div class="btn-group w-100" role="group">
+                      <button class="btn btn-primary" id="ui_generate_schedule">
+                        <i class="lni lni-plus me-1"></i>Generate Schedule
+                      </button>
+                      <button class="btn btn-outline-secondary" id="ui_reset_schedule">
+                        <i class="lni lni-refresh me-1"></i>Reset
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Payment Schedule Table -->
+        <div class="card border-0 shadow-sm">
+          <div class="card-header bg-light border-0 d-flex justify-content-between align-items-center">
+            <h6 class="mb-0 fw-semibold">Payment Schedule</h6>
+            <div class="btn-group btn-group-sm" role="group">
+              <button type="button" class="btn btn-outline-success" id="ui_mark_all_paid">
+                <i class="lni lni-checkmark me-1"></i>Mark All Paid
+              </button>
+              <button type="button" class="btn btn-outline-warning" id="ui_mark_all_unpaid">
+                <i class="lni lni-time me-1"></i>Mark All Unpaid
+              </button>
+            </div>
+          </div>
+          <div class="card-body p-0">
+            <div class="table-responsive" style="max-height:420px;overflow:auto;">
+              <table class="table table-hover mb-0" id="ui_schedule_table">
+                <thead class="table-light sticky-top">
+                  <tr>
+                    <th style="width:45px">#</th>
+                    <th style="width:160px">Date</th>
+                    <th>Amount (৳)</th>
+                    <th style="width:140px">Adjustment <small>(manual)</small></th>
+                    <th style="width:120px">Payment Status</th>
+                    <th style="width:90px">Action</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+                <tfoot class="table-light">
+                  <tr class="fw-semibold">
+                    <td colspan="1">Total</td>
+                    <td id="ui_total_date">-</td>
+                    <td>৳<span id="ui_total_amount">0</span></td>
+                    <td colspan="3"></td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer border-0 bg-light d-flex justify-content-between">
+        <div class="text-muted small">
+          <strong>Note:</strong> All amounts are in Bangladeshi Taka (৳)
+        </div>
+        <div class="btn-group" role="group">
+          <button id="ui_save_schedule" class="btn btn-success">
+            <i class="lni lni-save me-1"></i>Save Schedule
+          </button>
+          <button id="ui_close" class="btn btn-secondary" data-bs-dismiss="modal">
+            <i class="lni lni-close me-1"></i>Close
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

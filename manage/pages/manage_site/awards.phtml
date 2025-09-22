@@ -1,0 +1,253 @@
+<?php
+$data_table = T_AWARDS;
+?>
+<div class="page-breadcrumb d-flex align-items-center mb-3">
+    <div class="breadcrumb-title pe-3">Awards</div>
+    <div class="ms-auto button_flex_middle">
+        <button type="button" class="btn btn-primary" onclick="showReviewModal();">Add Photo</button>
+    </div>
+</div>
+<div class="card radius-10 w-100">
+    <div class="card-body">
+        <div class="table-responsive mt-2">
+			<table id="invoiceTable" class="table align-middle mb-0" style="width: 100%;">
+				<thead class="table-light">
+					<tr>
+						<?php
+						$get_status = array('Name', 'Image', 'Product', 'Featured', 'Date', 'Action');
+						foreach ($get_status as $status) {
+							$width = ($status == "Action") ? "10px" : "65px";
+							echo '<th style="width: ' . $width . ';">' . htmlspecialchars($status) . '</th>';
+						}
+						?>
+					</tr>
+				</thead>
+				<tbody id="sortableTableBody">
+					<?php 
+					$datas = $db->orderBy('position', 'ASC')->get($data_table);
+					foreach ($datas as $data) {
+						?>
+						<tr role="row" class="odd" data-id="<?php echo htmlspecialchars($data->id); ?>" <?php echo ($user->is_team_leader) ? 'style="--bs-table-bg: #ffffff1f;"' : ''; ?> data-bs-toggle="tooltip" data-bs-placement="top" data-bs-original-title="<?= htmlspecialchars(ucfirst($data->name)); ?>">
+							<td><?= htmlspecialchars(ucfirst($data->name)); ?></td>
+							<td><img src="/<?= htmlspecialchars(str_replace('_image.', '_image_small.', $data->image)); ?>" class="user-img" style="width: 100px; height: 100px;"></td>
+							<td><?= htmlspecialchars(ucfirst($data->product)); ?></td>
+							<td><?= htmlspecialchars(ucfirst($data->featured)); ?></td>
+							<td><?= htmlspecialchars(date('Y-m-d H:i:s', $data->time)); ?></td>
+							<td>
+								<div class="d-flex align-items-center gap-3 fs-6">
+									<a href="javascript:;" class="text-warning d-flex" data-bs-toggle="tooltip" data-bs-placement="bottom" title="" data-bs-original-title="Edit info" aria-label="Edit" onclick="loadEditReviewData(<?php echo htmlspecialchars(json_encode($data)); ?>)">
+										<i class="fadeIn animated bx bx-edit-alt"></i>
+									</a>
+									<a href="javascript:;" class="text-danger" data-bs-toggle="tooltip" data-bs-placement="bottom" title="" data-bs-original-title="Delete" aria-label="Delete" onclick="deleteReview(<?php echo htmlspecialchars($data->id); ?>)">
+										<i class='fadeIn animated bx bx-trash' ></i>
+									</a>
+								</div>
+							</td>
+						</tr>
+					<?php } ?>
+				</tbody>
+			</table>
+		</div>
+<script>
+$(function() {
+    $("#sortableTableBody").sortable({
+        update: function(event, ui) {
+            // Collect the updated order of items
+            var itemOrder = [];
+            $("#sortableTableBody tr").each(function(index) {
+                var dataId = $(this).data("id");
+                itemOrder.push({ id: dataId, position: index + 1 });
+            });
+
+            // Send the updated order via AJAX
+            $.ajax({
+				url: Wo_Ajax_Requests_File() + '?f=manage_site&s=awards&action=sort',
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ order: itemOrder }),
+                success: function(response) {
+                    console.log('Order updated successfully:', response);
+                },
+                error: function(xhr, status, error) {
+                    console.error('Error updating order:', error);
+                }
+            });
+        }
+    });
+
+    // Initialize tooltips (if needed)
+    $('[data-bs-toggle="tooltip"]').tooltip();
+});
+
+</script>
+
+<style>
+.ui-sortable-helper {
+	display: inline-table;
+}
+</style>
+    </div>
+</div>
+<!-- Add Review Modal -->
+<div class="modal fade" id="add-modal" role="dialog">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content p-3">
+            <form class="row g-3 needs-validation" id="add-review-form">
+                <div class="col-12">
+                    <label for="name" class="form-label">Name</label>
+                    <input type="text" class="form-control" id="name" name="name" placeholder="Photo Name" required>
+                </div>
+                <div class="col-12">
+                    <label for="photo" class="form-label">Photo</label>
+                    <input type="file" class="form-control" id="photo" name="photo" allowed=".jpg" required>
+                </div>
+                <div class="col-12">
+                    <label for="product" class="form-label">Product Name</label>
+                    <select id="product" name="product" class="form-select">
+						<option value="Civic Moonhill" >Civic Moonhill</option>
+						<option value="Civic Design & Development Ltd">Civic Design & Development Ltd</option>
+						<option value="Civic Abedin">Civic Abedin</option>
+					</select>
+                </div>
+                <div class="col-12">
+                    <label for="featured" class="form-label">Is Featured</label>
+                    <select id="featured" name="featured" class="form-select">
+						<option value="1" selected>Yes</option>
+						<option value="2">No</option>
+					</select>
+                </div>
+                <div class="text-center mt-3">
+                    <button type="submit" id="saveButton" class="btn btn-primary w-100">Save</button>
+                </div>
+            </form>
+
+            <script>
+                $(document).ready(function() {
+					$('[data-bs-toggle="popover"]').popover();
+					$('[data-bs-toggle="tooltip"]').tooltip();
+				
+                    $('#add-review-form').ajaxForm({
+                        url: Wo_Ajax_Requests_File() + '?f=manage_site&s=awards&action=add',
+                        type: "POST",
+                        beforeSend: function() {
+                            // Optionally add a loader here
+							$('#saveButton').attr('disabled', true);
+                        },
+                        success: function(data) {
+							$('#saveButton').attr('disabled', false);
+                            if (data['status'] == 200) {
+                                pos5_success_noti(data['message']); // Change to your notification function
+                                reset_form_data();
+                                $("#add-modal").modal('hide');
+								SMColibri.spa_reload();
+                            } else {
+                                pos4_error_noti(data['message']); // Change to your error notification function
+                            }
+                        }
+                    });
+                });
+
+                function showReviewModal() {
+                    $("#add-modal").modal('show');
+                }
+
+                function reset_form_data() {
+                    $('#add-review-form')[0].reset();
+                }
+            </script>
+        </div>
+    </div>
+</div>
+<!-- Edit Review Modal -->
+<div class="modal fade" id="edit-modal" role="dialog">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content p-3">
+            <form class="row g-3 needs-validation" id="edit-form">
+                <input type="hidden" name="id" id="edit-id">
+                <div class="col-12">
+                    <label for="edit-name" class="form-label">Name</label>
+                    <input type="text" class="form-control" id="edit-name" name="name" required>
+                </div>
+                <div class="col-12">
+                    <label for="product" class="form-label">Product</label>
+					<select id="edit-product" name="product" class="form-select">
+						<option value="Civic Moonhill" >Civic Moonhill</option>
+						<option value="Civic Design & Development Ltd">Civic Design & Development Ltd</option>
+						<option value="Civic Abedin">Civic Abedin</option>
+					</select>
+                </div>
+                <div class="col-12">
+                    <label for="featured" class="form-label">Is Featured</label>
+					<select id="edit-featured" name="featured" class="form-select">
+						<option value="1">Yes</option>
+						<option value="0" selected>No</option>
+					</select>
+                </div>
+				
+                <div class="text-center mt-3">
+                    <button type="submit" id="edit-saveButton" class="btn btn-primary w-100">Update</button>
+                </div>
+            </form>
+
+            <script>
+                $(document).ready(function() {
+                    $('#edit-form').ajaxForm({
+                        url: Wo_Ajax_Requests_File() + '?f=manage_site&s=awards&action=edit',
+                        type: "POST",
+                        beforeSend: function() {
+                            // Optionally add a loader here
+							$('#edit-saveButton').attr('disabled', true);
+                        },
+                        success: function(data) {
+							$('#edit-saveButton').attr('disabled', false);
+                            if (data['status'] == 200) {
+                                pos5_success_noti(data['message']);
+                                reset_form_data();
+                                $("#edit-modal").modal('hide');
+                            } else {
+                                pos4_error_noti(data['message']);
+                            }
+							SMColibri.spa_reload();
+                        }
+                    });
+                });
+				
+				function deleteReview(id) {
+					if (confirm("Are you sure you want to delete?")) {
+						$.ajax({
+							url: Wo_Ajax_Requests_File() + '?f=manage_site&s=awards&action=delete',
+							type: "POST",
+							data: { id: id },
+							beforeSend: function() {
+								// Optionally add a loader here
+							},
+							success: function(data) {
+								if (data['status'] == 200) {
+									pos5_success_noti(data['message']);
+								} else {
+									pos4_error_noti(data['message']);
+								}
+								SMColibri.spa_reload();
+							},
+							error: function(jqXHR, textStatus, errorThrown) {
+								alert("An error occurred: " + textStatus);
+							}
+						});
+					}
+				}
+				
+				function loadEditReviewData(review) {
+					$('#edit-id').val(review.id);
+					$('#edit-name').val(review.name);
+					$('#edit-product').val(review.product);
+					$('#edit-featured').val(review.featured ? 1 : 0);
+					$("#edit-modal").modal('show');
+				}
+				
+                function reset_form_data() {
+                    $('#edit-form')[0].reset();
+                }
+            </script>
+        </div>
+    </div>
+</div>

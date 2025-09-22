@@ -1,0 +1,339 @@
+<style>
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    .page-breadcrumb {
+      background: #f5f5f5; padding: 15px; border-radius: 8px; margin-bottom: 15px;
+    }
+    .form-select { padding: 6px 10px; margin-right: 10px; }
+    .attandence { margin-top: 20px; }
+    #attendanceSheet_download button.btn {
+      border: 2px solid transparent; padding: 6px 2px; width: 40px; border-radius: 8px;
+    }
+    #attendanceSheet_download button.btn:hover {
+      background: white; border: 2px solid #6c757d; color: #6c757d;
+    }
+    #location_result {
+      margin-top: 20px; padding: 10px; border: 1px solid #ddd;
+      border-radius: 8px; background: #fff;
+    }
+    #map {
+      height: 400px;
+      margin-top: 20px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      z-index: 1;
+    }
+    
+    .leaflet-marker-icon.user-avatar-icon {
+      border-radius: 50%;
+      border: 2px solid #007bff;
+      box-shadow: 0 0 5px rgba(0,0,0,0.3);
+      object-fit: cover;
+    }
+    .leaflet-tooltip.hover-tooltip {
+      background-color: white;
+      color: #000;
+      border: 1px solid #007bff;
+      border-radius: 6px;
+      padding: 4px 8px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+      font-size: 14px;
+      pointer-events: none; /* avoid accidental clicks */
+    }
+    #routeLegend div:hover {
+      background-color: #f8f9fa;
+      border-radius: 4px;
+    }
+    #closeLegendBtn:hover {
+      color: #dc3545;
+    }
+</style>
+
+<!-- ======= HTML CONTENT (AJAX-INJECTED) ======= -->
+<div class="page-breadcrumb d-flex align-items-center">
+  <div class="breadcrumb-title pe-3">Attendance</div>
+  <div class="ms-auto button_flex_middle">
+    <div class="attandence">
+      <div class="select-panel d-flex">
+        <select id="user_id" class="form-select" onchange="ShowLocations()">
+          <option value="999">All Users</option>
+          <?php 
+            $get_users = $db
+              ->where('active', '1')
+              ->where('app_version', '0', '>')
+              ->orderBy('serial', 'ASC')
+              ->get(T_USERS);
+            foreach ($get_users as $userlist) {
+              $first_name = cleanName($userlist->first_name);
+              $sel = (isset($_COOKIE['loc_user']) && $_COOKIE['loc_user'] == $userlist->user_id)
+                     ? ' selected'
+                     : '';
+              echo "<option{$sel} value='{$userlist->user_id}'>{$first_name} {$userlist->last_name}</option>";
+            }
+          ?>
+        </select>
+        <input
+          class="form-select"
+          type="text"
+          id="date_start_end"
+          placeholder="Select date range"
+          readonly
+          onchange="ShowLocations()"
+          value="<?php echo urldecode($_COOKIE['loc_date'] ?? '') ?: date('Y-m-01') . ' to ' . date('Y-m-t'); ?>"
+        >
+      </div>
+    </div>
+    <div id="attendanceSheet_download"></div>
+  </div>
+</div>
+
+<div id="map"></div>
+
+<script>
+  (function() {
+    // GLOBAL GUARDS
+    window.routingControls = window.routingControls || [];
+    window.userRoutes     = window.userRoutes     || {};
+    window.userColors     = window.userColors     || {};
+
+    // Initialize Leaflet map only once
+    // if (!window._attendanceMapInitialized) {
+      window._attendanceMapInitialized = true;
+      window.map = L.map('map').setView([23.8103, 90.4125], 12);
+      window.markersLayer = L.layerGroup().addTo(window.map);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+      }).addTo(window.map);
+    // }
+
+    const siteUrl = "<?php echo $wo['config']['site_url']; ?>";
+
+    // Initialize Flatpickr only once
+    // document.addEventListener("DOMContentLoaded", function () {
+    //   if (!window._flatpickrInitialized) {
+        window._flatpickrInitialized = true;
+        flatpickr('#date_start_end', {
+          mode: 'range',
+          dateFormat: 'Y-m-d',
+          altFormat: 'F j, Y',
+          altInput: false,
+          allowInput: false,
+          clickOpens: true,
+          onReady: function(selectedDates, dateStr, instance) {
+            const datepickerContainer = instance.calendarContainer;
+            const dateRangeOptions = [
+              { label: 'Today', range: [new Date(), new Date()] },
+              {
+                label: 'Yesterday',
+                range: [
+                  new Date(new Date().setDate(new Date().getDate() - 1)),
+                  new Date(new Date().setDate(new Date().getDate() - 1))
+                ]
+              },
+              {
+                label: 'This Month',
+                range: [
+                  new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+                  new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0)
+                ]
+              },
+              {
+                label: 'Last Month',
+                range: [
+                  new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1),
+                  new Date(new Date().getFullYear(), new Date().getMonth(), 0)
+                ]
+              }
+            ];
+
+            dateRangeOptions.forEach(option => {
+              const btn = document.createElement('button');
+              btn.textContent = option.label;
+              btn.addEventListener('click', () => {
+                instance.setDate(option.range);
+                instance.close();
+                ShowLocations();
+              });
+              datepickerContainer.prepend(btn);
+            });
+          }
+        });
+    //   }
+    // });
+
+    window.ShowLocations = function() {
+      const userId    = document.getElementById('user_id').value;
+      const dateRange = document.getElementById('date_start_end').value;
+      const dates     = dateRange.split(' to ');
+      const startDate = dates[0] || '';
+      const endDate   = dates.length > 1 ? dates[1] : startDate;
+
+      // Clear markers
+      window.markersLayer.clearLayers();
+
+      // Remove old route controls
+      window.routingControls.forEach(ctrl => window.map.removeControl(ctrl));
+      window.routingControls = [];
+
+      // Reset data
+      window.userRoutes = {};
+      window.userColors = {};
+
+      fetch(Wo_Ajax_Requests_File() + '?f=locations&s=fetch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          user_id: userId,
+          data_start: startDate,
+          data_end: endDate
+        })
+      })
+      .then(res => res.json())
+      .then(response => {
+        const data = response.locations || [];
+        let colorIndex = 0;
+
+        if (data.length > 0) {
+          const colors = [
+            '#007bff','#28a745','#dc3545','#ffc107','#6c7571',
+            '#17a2b8','#fd7e14','#20c997','#6610f2','#e83e8c'
+          ];
+
+          data.forEach(loc => {
+            const timeStr = new Date(loc.time * 1000).toLocaleString();
+            const avatarUrl = loc.avatar.startsWith('http')
+              ? loc.avatar
+              : siteUrl + '/' + loc.avatar;
+
+            const userIcon = L.icon({
+              iconUrl: avatarUrl,
+              iconSize: [40, 40],
+              iconAnchor: [20, 40],
+              popupAnchor: [0, -40],
+              className: 'user-avatar-icon'
+            });
+
+            L.marker([loc.lat, loc.lng], { icon: userIcon })
+              .bindTooltip(
+                `<strong>${loc.username}</strong><br>${timeStr}`,
+                {
+                  permanent: false,
+                  direction: 'top',
+                  offset: [0, -40],
+                  opacity: 0.9,
+                  className: 'hover-tooltip'
+                }
+              )
+              .addTo(window.markersLayer);
+
+            if (!window.userRoutes[loc.username]) {
+              window.userRoutes[loc.username] = [];
+              window.userColors[loc.username] = colors[colorIndex % colors.length];
+              colorIndex++;
+            }
+            window.userRoutes[loc.username].push(L.latLng(loc.lat, loc.lng));
+          });
+
+          Object.keys(window.userRoutes).forEach(username => {
+            const waypoints = window.userRoutes[username];
+            const rc = L.Routing.control({
+              waypoints: waypoints,
+              lineOptions: {
+                styles: [{ color: window.userColors[username], weight: 5, opacity: 0.7 }]
+              },
+              addWaypoints: false,
+              draggableWaypoints: false,
+              fitSelectedRoutes: false,
+              createMarker: () => null,
+              routeWhileDragging: false,
+              show: false,
+              collapsible: true,
+              showAlternatives: false
+            }).addTo(window.map);
+            window.routingControls.push(rc);
+          });
+
+          drawLegend(window.userColors);
+        } else {
+          document.getElementById('routeLegend')?.remove();
+        }
+      })
+      .catch(console.error);
+    };
+
+    function drawLegend(userColors) {
+      document.getElementById('routeLegend')?.remove();
+      const legend = document.createElement('div');
+      legend.id = 'routeLegend';
+      Object.assign(legend.style, {
+        position: 'absolute',
+        bottom: '30px',
+        left: '30px',
+        zIndex: '999',
+        background: 'white',
+        border: '1px solid #ccc',
+        borderRadius: '8px',
+        padding: '10px 12px',
+        boxShadow: '0 2px 5px rgba(0,0,0,0.3)',
+        minWidth: '160px',
+        maxHeight: '300px',
+        overflowY: 'auto',
+        fontSize: '14px'
+      });
+
+      const header = document.createElement('div');
+      Object.assign(header.style, {
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: '8px'
+      });
+      header.innerHTML = `
+        <strong>Route Colors</strong>
+        <button id="closeLegendBtn" style="
+          border: none; background: none; font-size: 16px; cursor: pointer;
+        ">×</button>
+      `;
+      legend.appendChild(header);
+
+      Object.entries(userColors).forEach(([user, color]) => {
+        const row = document.createElement('div');
+        Object.assign(row.style, {
+          cursor: 'pointer',
+          marginTop: '4px'
+        });
+        row.innerHTML = `
+          <span style="
+            display:inline-block;
+            width:12px;
+            height:12px;
+            background:${color};
+            margin-right:6px;
+            border-radius:2px;
+          "></span>
+          ${user}
+        `;
+        row.onclick = () => focusUserRoute(user);
+        legend.appendChild(row);
+      });
+
+      const container = document.querySelector('#map') || document.body;
+      container.appendChild(legend);
+
+      document.getElementById('closeLegendBtn').onclick = () => legend.remove();
+    }
+
+    function focusUserRoute(username) {
+      const points = window.userRoutes[username];
+      if (points && points.length > 0) {
+        window.map.fitBounds(L.latLngBounds(points), { padding: [50, 50] });
+      }
+    }
+
+    // Initial load
+    ShowLocations();
+  })();
+  
+    $(document).ready(function() {
+        
+    });
+</script>

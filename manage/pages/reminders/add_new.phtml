@@ -1,0 +1,61 @@
+<div class="ms-auto button_flex_middle">
+	<!-- Button trigger modal -->
+	<button type="button" class="btn btn-primary ai_auto" data-bs-toggle="modal" data-bs-target="#add_reminderModal">Add New</button>
+	<!-- Modal -->
+	<div class="modal fade" id="add_reminderModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+		<div class="modal-dialog">
+			<div class="modal-content">
+				<div class="modal-body">
+					<script>
+				// 		$(document).ready(function() {
+				// 			$('#uploadForm').submit(function(event) {
+				// 				event.preventDefault(); 
+								
+				// 				var formData = new FormData(this); // Assuming 'this' refers to the form element
+
+				// 				$.ajax({
+				// 					url: Wo_Ajax_Requests_File() + '?f=manage_leads&s=process_upload',
+				// 					type: 'POST',
+				// 					data: formData,
+				// 					dataType: 'html',
+				// 					cache: false,
+				// 					contentType: false,
+				// 					processData: false,
+				// 					success: function(response) {
+				// 						$('#uploadResult').html(response);
+				// 						setTimeout(function() {
+				// 							pos5_success_noti('Lead import successful.');
+				// 						}, 200);
+				// 					},
+				// 					error: function() {
+				// 						pos4_error_noti('Error uploading file.');
+				// 					}
+				// 				});
+				// 			});
+				// 		});
+					</script>
+
+					<div>
+						<h5 class="mb-1 text-center create_invoice_title">Import Leads</h5>
+						<hr>
+
+						<form id="uploadForm" enctype="multipart/form-data">
+							<select name="source" class="form-select mb-3">
+								<option value="Facebook" selected>Facebook</option>
+								<option value="Linkedin">Linkedin</option>
+								<option value="Local">Local</option>
+							</select>
+							<input type="file" id="csvFile" name="csvFile" accept=".xls" class="form-control manupulate">
+							<small>XLS files are allowed!</small>
+							<br>
+							<input type="submit" value="Upload" class="btn btn-primary mt-3">
+						</form>
+
+						<pre id="uploadResult"></pre> <!-- To display server response -->
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+</div>

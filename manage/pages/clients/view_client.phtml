@@ -1,0 +1,68 @@
+<?php
+/* view_client.phtml - Main client view file
+   Complete client view with enhanced functionality split into modular components
+*/
+Global $project_mapping;
+global $db, $wo;
+
+// Calculate totals
+$clientId = $wo['client']['id'];
+$total_amount = 0;
+$total_purchase = 0;
+
+try {
+    $helpers = $db->rawQuery("
+        SELECT bh.per_katha, b.katha 
+        FROM `" . T_BOOKING_HELPER . "` bh
+        JOIN `" . T_BOOKING . "` b ON b.id = bh.booking_id
+        WHERE bh.client_id = ? AND bh.status != '4'
+    ", [$clientId]);
+    
+    foreach ($helpers as $helper) {
+        $per_katha = (float)($helper->per_katha ?? 0);
+        $katha = (float)($helper->katha ?? 0);
+        $total_amount += ($per_katha * $katha);
+        $total_purchase++;
+    }
+} catch (Exception $e) {
+    $total_amount = 0;
+    $total_purchase = 0;
+}
+
+$total_paid = (float) $db->where('customer_id', $clientId)->getValue(T_INVOICE, 'SUM(pay_amount)') ?: 0;
+$total_due = $total_amount - $total_paid;
+$total_invoice = (int) $db->where('customer_id', $clientId)->getValue(T_INVOICE, 'COUNT(*)');
+
+// Get nominees
+$get_nominees = $db->where('customer_id', $clientId)->orderBy('name', 'ASC')->get(T_CRM_NOMINEES);
+
+// Get users for references
+$get_users = $db->orderBy('position', 'ASC')->where('active', '1')->where('banned', '0')->get(T_USERS);
+?>
+
+<div class="modal fade full_screen" id="viewClient-modal" tabindex="-1" role="dialog" aria-hidden="true" data-bs-backdrop="static">
+  <div class="modal-dialog modal-xl" role="document">
+    <div class="modal-content border-0 shadow-lg">
+
+      <?= Wo_LoadManagePage('clients/includes/client_header') ?>
+
+      <div class="view-container form-toggle">
+        <section id="client_details" class="no-print mt-4 px-4">
+          
+          <?= Wo_LoadManagePage('clients/includes/summary_cards') ?>
+          
+          <?= Wo_LoadManagePage('clients/includes/purchase_table') ?>
+          
+          <?= Wo_LoadManagePage('clients/includes/client_info') ?>
+
+        </section>
+      </div>
+
+      <?= Wo_LoadManagePage('clients/includes/all_modals') ?>
+
+    </div>
+  </div>
+</div>
+
+<?= Wo_LoadManagePage('clients/includes/styles') ?>
+<?= Wo_LoadManagePage('clients/includes/main_scripts') ?>

@@ -1,0 +1,272 @@
+<?php if (Wo_IsAdmin() || Wo_IsModerator() || check_permission('system-log')) { ?>
+<!--start breadcrumb-->
+<div class="page-breadcrumb d-flex align-items-center mb-3">
+  <div class="breadcrumb-title pe-3">System Log</div>
+  <div class="ms-auto button_flex_middle">
+		<select id="feature" name="feature[]" class="form-select select2 w-auto" style="min-width:250px" multiple>
+            <option value="999">All Features</option>
+            <?php
+            $features = $db->groupBy('feature')->get('activity_logs', null, 'feature');
+
+            foreach ($features as $f): ?>
+                <option value="<?= htmlspecialchars($f->feature) ?>"><?= htmlspecialchars(ucfirst(str_replace('_', ' ', $f->feature))) ?></option>
+            <?php endforeach; ?>
+        </select>
+    </div>
+</div>
+<!--end breadcrumb-->
+<span class="badge bg-warning text-dark fs-18" style=" font-size: 12px; ">
+    🚧 We are still developing this section. Some functions may not be fully available.
+</span>
+
+<div class="mb-3">
+	<div class="row row-cols-auto g-3">
+		<div class="col">
+		</div>
+	</div>
+</div>
+<style>
+tr:hover, tr:focus, tr:active {
+    --bs-table-bg: #f3f3f3;
+}
+.dark-theme tr:hover, .dark-theme tr:focus, .dark-theme tr:active {
+    --bs-table-bg: #ffffff1f;
+}
+.dataTables_wrapper {
+	overflow-x: auto !important;
+}
+</style>
+<!-- Your HTML code starts here -->
+<div class="attandence mb-3">
+	<div class="select-panel d-flex justify-content-between">
+	<?php //if (Wo_IsAdmin() || Wo_IsModerator() || check_permission('system_logs') || check_permission('system_logs')) { ?>
+			<select id="user_id" name="user_id" class="form-select w-auto wm-120" onchange="DataTableReset()">
+				<option value="999">All Users</option>";
+				<?php 
+				$url_user = $_GET['user'];
+				if (isset($url_user) && !empty($url_user)) {
+					$selected_user = $url_user;
+				} else {
+					$selected_user = $_COOKIE['default_u_syslog'];
+				}
+					$get_users = $db->orderBy('serial', 'ASC')->where('active', '1')->get(T_USERS);
+					foreach ($get_users as $userlist) {
+						$user   = Wo_UserData($userlist->user_id);
+						$name = cleanName($user['name']);
+						echo '<option' . ($selected_user == $user['user_id'] ? ' selected' : '') . " value='{$user['user_id']}'>{$name}</option>";
+					}
+				?>
+			</select>
+
+	<?php //} else { ?>
+		<!---input class="d-none" type="hidden" id="user_id" name="user_id" value="<?php //echo $wo['user']['user_id']; ?>"--->
+	<?php //} ?>
+		<!-- Use flatpickr for date selection -->
+		<input class="form-select w-auto wm-120" type="text" id="date_start_end" name="date_start_end" placeholder="Select date range" readonly onchange="DataTableReset()" value="<?php echo urldecode($_COOKIE['start_end_syslog'] ?? '') ?: date('Y-m-01') . ' to ' . date('Y-m-31'); ?>">
+	</div>
+</div>
+
+<!-- Your HTML code starts here -->
+<div class="card radius-10 w-100">
+    <div class="card-body">
+        <div class="table-responsive mt-2" style="zoom: 0.82">
+            <table id="invoiceTable" class="table align-middle mb-0" style="width: 100%;">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width: 40px;">#ID</th>                 <!-- User ID -->
+                        <th style="min-width: 140px;">Tiggered</th>           <!-- Username -->
+                        <th style="min-width: 80px;">Action</th>          <!-- Action type (view, login, etc.) -->
+                        <th style="min-width: 100px;">Feature</th>        <!-- Feature/module name -->
+                        <th style="min-width: 250px;">Details</th>        <!-- Optional notes/details -->
+                        <th style="min-width: 160px;">Time</th>           <!-- Timestamp -->
+                        <th style="min-width: 60px;">Device</th>         <!-- Device info -->
+                        <th style="min-width: 120px;">IP</th>             <!-- IP address -->
+                    </tr>
+                </thead>
+                <tbody style="padding-bottom: 15px">
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+function download_report() {
+	var dateRange = document.getElementById('date_start_end').value;
+	var user_id = document.getElementById('user_id').value;
+	// If date range is not selected, use the single selected date
+	var dates = dateRange.split(' to ');
+	var data_start = dates[0];
+	var data_end = dates.length > 1 ? dates[1] : data_start;
+	
+    $.ajax({
+        type: "POST",
+        url: Wo_Ajax_Requests_File() + '?f=system_logs&s=download_report', // Ensure Wo_Ajax_Requests_File() returns the correct URL
+		data: { data_start: data_start, data_end: data_end, user_id: user_id },
+        success: function (response) {
+			if (response['status'] == 200) {
+				window.location.href = response['result'];
+			} else {
+				pos4_error_noti(response['message']);
+			}
+        }
+    });
+}
+
+$(document).ready(function() {
+    $('#feature').select2({
+      placeholder: 'Select Features'
+    });
+    
+    // handle a new selection
+    $('#feature').on('select2:select', function(e) {
+      const val = e.params.data.id;  // the one they just clicked
+    
+      // if they clicked “All Features” (999), clear everything else
+      if (val === '999') {
+        $(this).val(['999']).trigger('change.select2');
+      } 
+      // otherwise (they clicked some other feature), remove 999 if present
+      else {
+        let values = $(this).val() || [];
+        const idx = values.indexOf('999');
+        if (idx > -1) {
+          values.splice(idx, 1);
+          $(this).val(values).trigger('change.select2');
+        }
+      }
+    
+      DataTableReset();
+    });
+    
+    // handle an unselect (in case they click the little ×)
+    $('#feature').on('select2:unselect', function(e) {
+      // if they removed “All Features”, do nothing (others remain)
+      // if they removed some other, and now nothing is left, maybe re‑select 999?
+      const values = $(this).val() || [];
+      if (values.length === 0) {
+        // auto‑reselect “All Features” when they clear all
+        $(this).val(['999']).trigger('change.select2');
+      }
+      DataTableReset();
+    });
+
+	// Initialize Flatpickr
+	var flatpickrInstance = flatpickr('#date_start_end', {
+		mode: 'range',
+		dateFormat: 'Y-m-d',
+		altFormat: 'F j, Y',
+		altInput: false,
+		allowInput: false,
+		clickOpens: true,
+		onChange: function(selectedDates, dateStr, instance) {
+			// console.log(selectedDates);
+			// // You can add additional logic here if needed
+		},
+		onReady: function(selectedDates, dateStr, instance) {
+			// Add custom date range options to the Flatpickr container
+			var datepickerContainer = instance.calendarContainer;
+
+			var dateRangeOptions = [
+				{ label: 'Today', range: [new Date(), new Date()] },
+				{ label: 'This Month', range: [new Date(new Date().getFullYear(), new Date().getMonth(), 1), new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0)] },
+				{ label: 'Last Month', range: [new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1), new Date(new Date().getFullYear(), new Date().getMonth(), 0)] },
+				{ label: 'This Year', range: [new Date(new Date().getFullYear(), 0, 1), new Date(new Date().getFullYear(), 11, 31)] },
+			];
+
+
+			dateRangeOptions.forEach(function(option) {
+				var button = document.createElement('button');
+				button.textContent = option.label;
+				button.addEventListener('click', function() {
+					flatpickrInstance.setDate(option.range);
+					flatpickrInstance.close(); // Close Flatpickr instance
+					DataTableReset();
+				});
+
+				datepickerContainer.prepend(button);
+			});
+		}
+	});
+    // Initialize DataTables without buttons
+    var table = $('#invoiceTable').DataTable({
+        "processing": true,
+		"serverSide": true,
+        "pageLength": 25,  // Set the default number of entries per page
+        "ajax": {
+            "url": Wo_Ajax_Requests_File() + '?f=system_logs&s=fetch_report',
+            "type": "POST",
+			"data": function (d) {
+				// Include additional parameters for the AJAX request
+				d.user_id = $('#user_id').val();
+				var dateRange = document.getElementById('date_start_end').value;
+				// If date range is not selected, use the single selected date
+				var dates = dateRange.split(' to ');
+				var data_start = dates[0];
+				var data_end = dates.length > 1 ? dates[1] : data_start;
+				
+				d.data_start = data_start;
+				d.data_end = data_end;
+			    
+			    // ✅ Send selected features from Select2 as array
+                d.features = $('#feature').val(); // this will be an array like ['login', 'update']
+
+			},
+            "beforeSend": function(xhr) {
+				$('#length_count').remove();
+				$('#invoiceTable_length label').append('<span id="length_count"><span>');
+                // Set opacity to 0 before the Ajax request
+                $('#invoiceTable').css('opacity', .5);
+            },
+            "complete": function(xhr) {
+                // Set opacity to 1 after the Ajax request is complete
+                $('#invoiceTable').css('opacity', 1);
+            }
+        },
+        "columns": [
+            { "data": "id", "orderable": true },  // ID column is orderable
+            { "data": "name", "orderable": false },
+            { "data": "activity_type", "orderable": false },
+            { "data": "feature", "orderable": false },
+            { "data": "details", "orderable": false },
+            { "data": "created_at", "orderable": false },
+            { "data": "device_info", "orderable": false },
+            { "data": "ip_address", "orderable": false },
+        ],
+        "order": [],
+        "language": {
+            "emptyTable": "No data available in the table",
+            "infoEmpty": "Showing 0 to 0 of 0 entries",
+            "infoFiltered": "(filtered from _MAX_ total entries)",
+            "zeroRecords": "No matching records found"
+        },
+		"rowCallback": function(row, data) {
+			$(row).attr('data-id', data.id);
+		}
+    });
+	
+	<?php if (Wo_IsAdmin() || Wo_IsModerator() || check_permission('system_logs')) { ?>
+	<?php } else { ?>
+		$('#user_id').change(function() {
+			var user_id = $(this).val(); // Get the selected value from #user_id
+		});
+	<?php } ?>
+	
+    // DataTableReset function to reset the DataTable
+    window.DataTableReset = function() {
+        table.ajax.reload();
+    };
+	
+	window.DataTableRefresh = function() {
+		table.ajax.reload(null, false); // Reload the DataTable
+
+		// After reload, restore the state (including pagination)
+		var state = table.state.loaded();
+		if (state) {
+			table.state.restore(state);
+		}
+	};
+});
+</script>
+
+<?php } else { echo Wo_LoadManagePage('permission-required/content'); } ?>

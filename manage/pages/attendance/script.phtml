@@ -1,0 +1,75 @@
+<script>
+	$(document).ready(function() {
+		
+		// Define the time ranges in 24-hour format
+		const minTimeIn = '08:00';
+		const maxTimeIn = '11:59';
+		
+		const minTimeOut = '14:00';
+		const maxTimeOut = '20:00';
+
+		// Select all time input elements for "In" times
+		const timeInputsIn = document.querySelectorAll('.time-input-in');
+		
+		// Set min and max attributes for "In" time inputs
+		timeInputsIn.forEach(input => {
+			input.setAttribute('min', minTimeIn);
+			input.setAttribute('max', maxTimeIn);
+
+			// Optional: Add validation on change
+			input.addEventListener('change', function() {
+				const value = input.value;
+				if (value < minTimeIn || value > maxTimeIn) {
+					alert('Please select an "In Time" between 8:00AM and 11:59AM.');
+					input.value = ''; // Clear invalid value
+				}
+			});
+		});
+
+		// Select all time input elements for "Out" times
+		const timeInputsOut = document.querySelectorAll('.time-input-out');
+
+		// Set min and max attributes for "Out" time inputs
+		timeInputsOut.forEach(input => {
+			input.setAttribute('min', minTimeOut);
+			input.setAttribute('max', maxTimeOut);
+
+			// Optional: Add validation on change
+			input.addEventListener('change', function() {
+				const value = input.value;
+				if (value < minTimeOut || value > maxTimeOut) {
+					alert('Please select an "Out Time" between 2:00PM and 9:00PM.');
+					input.value = ''; // Clear invalid value
+				}
+			});
+		});
+		$('#submit_attendance_form').submit(function(event) {
+			event.preventDefault();
+			
+			// Retrieve the Flatpickr instance and get the selected date range
+			var date = document.getElementById('date_start_end');
+			var date_value = date.value; // Get the value from the input
+			
+			// Create FormData object from the form
+			var formData = new FormData(this);
+
+			// Append the additional data (date_value) to the FormData object
+			formData.append('date_value', date_value);
+			
+			$.ajax({
+				url: Wo_Ajax_Requests_File() + '?f=attandence&s=submit_attendance_form',
+				type: 'POST',
+				data: formData,
+				cache: false,
+				contentType: false,
+				processData: false,
+				success: function(response) {
+					pos5_success_noti('Attendance update successful.');
+				},
+				error: function() {
+					pos4_error_noti('Something went wrong while updating attendance.');
+				}
+			});
+		});
+	});
+</script>

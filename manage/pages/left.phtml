@@ -1,0 +1,318 @@
+ <ul class="metismenu" id="menu">
+	<?php Global $page;
+	$project = $_GET['project'];
+	$site_link = $wo['panel_mode'];
+	if ($page == 'manage_site') { ?>
+	<style>
+	.wrapper.toggled:not(.sidebar-hovered) .no-border {
+		visibility: hidden;
+	}
+	</style>
+		<span style=" display: flex; flex-direction: column; justify-content: space-between; height: calc(100vh - 85px); ">
+			<span>
+			<li class="menu-label no-border">Projects</li>
+			
+			<?php //if (check_permission('manage_site') || Wo_IsAdmin() || Wo_IsModerator()) { ?>
+			<li class="<?php echo ($page == 'manage_site' && $tab == 'land_projects') ? 'mm-active' : ''; ?>">
+				<a href="<?php echo(Wo_LoadManageLinkSettings('manage_site?tab=land_projects&site=' . $site_link)) ?>" data-spa="true">
+					<div class="parent-icon"><i class='fadeIn animated bx bx-map-alt'></i></div>
+					<div class="menu-title">Land Projects</div>
+				</a>
+			</li>
+			<li class="<?php echo ($page == 'manage_site' && $tab == 'apartment_projects') ? 'mm-active' : ''; ?>">
+				<a href="<?php echo(Wo_LoadManageLinkSettings('manage_site?tab=apartment_projects&site=' . $site_link)) ?>" data-spa="true">
+					<div class="parent-icon"><i class='fadeIn animated bx bxs-business' ></i></div>
+					<div class="menu-title">Apartment Projects</div>
+				</a>
+			</li>
+			
+			<li class="menu-label">Portfolio</li>
+			<li class="<?php echo ($page == 'manage_site' && $tab == 'clients_review') ? 'mm-active' : ''; ?>">
+				<a href="<?php echo(Wo_LoadManageLinkSettings('manage_site?tab=clients_review&site=' . $site_link)) ?>" data-spa="true">
+					<div class="parent-icon"><i class='fadeIn animated bx bx-globe' ></i></div>
+					<div class="menu-title">Clients Review</div>
+				</a>
+			</li>
+			<li class="<?php echo ($page == 'manage_site' && $tab == 'home_slider') ? 'mm-active' : ''; ?>">
+				<a href="<?php echo(Wo_LoadManageLinkSettings('manage_site?tab=home_slider&site=' . $site_link)) ?>" data-spa="true">
+					<div class="parent-icon"><i class='fadeIn animated bx bx-slideshow' ></i></div>
+					<div class="menu-title">Home Slider</div>
+				</a>
+			</li>
+			<li class="<?php echo ($page == 'manage_site' && $tab == 'photo_gallery') ? 'mm-active' : ''; ?>">
+				<a href="<?php echo(Wo_LoadManageLinkSettings('manage_site?tab=photo_gallery&site=' . $site_link)) ?>" data-spa="true">
+					<div class="parent-icon"><i class='fadeIn animated bx bx-image' ></i></div>
+					<div class="menu-title">Photo Gallery</div>
+				</a>
+			</li>
+			<li class="<?php echo ($page == 'manage_site' && $tab == 'key_locations') ? 'mm-active' : ''; ?>">
+				<a href="<?php echo(Wo_LoadManageLinkSettings('manage_site?tab=key_locations&site=' . $site_link)) ?>" data-spa="true">
+					<div class="parent-icon"><i class='fadeIn animated bx bx-current-location' ></i></div>
+					<div class="menu-title">Key Locations</div>
+				</a>
+			</li>
+			<li class="<?php echo ($page == 'manage_site' && $tab == 'certifications') ? 'mm-active' : ''; ?>">
+				<a href="<?php echo(Wo_LoadManageLinkSettings('manage_site?tab=certifications&site=' . $site_link)) ?>" data-spa="true">
+					<div class="parent-icon"><i class='fadeIn animated bx bx-money' ></i></div>
+					<div class="menu-title">Certifications</div>
+				</a>
+			</li>
+			<li class="<?php echo ($page == 'manage_site' && $tab == 'awards') ? 'mm-active' : ''; ?>">
+				<a href="<?php echo(Wo_LoadManageLinkSettings('manage_site?tab=awards&site=' . $site_link)) ?>" data-spa="true">
+					<div class="parent-icon"><i class='fadeIn animated bx bx-award' ></i></div>
+					<div class="menu-title">Awards</div>
+				</a>
+			</li>
+			<?php //} ?>
+			</span>
+			
+			<span>
+				<li>
+					<a href="<?php echo(Wo_LoadManageLinkSettings('dashboard')) ?>" data-spa="true" data-fullpage="true" data-panelmode="management">
+						<div class="parent-icon"><i class='fadeIn animated bx bx-undo' ></i></div>
+						<div class="menu-title">Go Back</div>
+					</a>
+				</li>
+			</span>
+		</span>
+	<?php } else { ?>
+	
+		<?php if (Wo_IsAdmin() == false &&  Wo_IsModerator() == false && $wo['user']['management'] == false) { ?>
+		<li class="<?php echo ($page == 'home') ? 'mm-active' : ''; ?>">
+			  <a href="<?php echo(Wo_LoadManageLinkSettings('home')) ?>" data-spa="true">
+				<div class="parent-icon">
+				  <i class='fadeIn animated bx bx-home-smile' ></i>
+				</div>
+				<div class="menu-title">Home</div>
+			  </a>
+		</li>
+		<?php } ?>
+		
+		<?php if (Wo_IsAdmin() ||  Wo_IsModerator() || $wo['user']['management'] == true) { ?>
+		<li>
+			  <a href="<?php echo(Wo_LoadManageLinkSettings('dashboard')) ?>" data-spa="true">
+				<div class="parent-icon">
+				  <i class='fadeIn animated bx bx-layout' ></i>
+				</div>
+				<div class="menu-title">Dashboard</div>
+			  </a>
+		</li>
+		<?php } ?>
+		
+		
+		
+		<li>
+        	<a href="javascript:;" class="has-arrow">
+        		<div class="parent-icon">
+        			<ion-icon name="bag-handle-outline" role="img" class="md hydrated" aria-label="bag handle outline"></ion-icon>
+        		</div>
+        		<div class="menu-title">eCommerce</div>
+        	</a>
+        	<ul class="mm-collapse mm-show">
+        		<li>
+        			<a href="<?php echo(Wo_LoadManageLinkSettings('dashboard')) ?>" data-spa="true">
+        				<ion-icon name="ellipse-outline" role="img" class="md hydrated" aria-label="ellipse outline"></ion-icon>Product Grid
+        			</a>
+        		</li>
+        	</ul>
+        </li>
+		
+		
+		<?php if (check_permission('invoice-management') || Wo_IsAdmin() || Wo_IsModerator()) { ?>
+		<li class="<?php echo ($page == 'invoice') ? 'mm-active' : ''; ?>">
+			  <a href="<?php echo(Wo_LoadManageLinkSettings('invoice')) ?>" data-spa="true">
+				<div class="parent-icon">
+					<i class="fadeIn animated bx bx-receipt"></i>
+				</div>
+				<div class="menu-title">Invoice</div>
+			  </a>
+		</li>
+		<?php } ?>
+		
+		<?php if (check_permission('manage-clients') || check_permission('clients') || Wo_IsAdmin() || Wo_IsModerator()) { ?>
+		<li class="<?php echo ($page == 'clients') ? 'mm-active' : ''; ?>">
+			  <a href="<?php echo(Wo_LoadManageLinkSettings('clients')) ?>" data-spa="true">
+				<div class="parent-icon">
+					<i class="fadeIn animated bx bxs-contact"></i>
+				</div>
+				<div class="menu-title">Clients</div>
+			  </a>
+		</li>
+		<?php } ?>
+		<?php if (check_permission('leads') || Wo_IsAdmin() || Wo_IsModerator()) { ?>
+		<li class="menu-label">Leads Management</li>
+		<li class="<?php echo ($page == 'leads') ? 'mm-active' : ''; ?>">
+			  <a href="<?php echo(Wo_LoadManageLinkSettings('leads')) ?>" data-spa="true">
+				<div class="parent-icon">
+					<i class="fadeIn animated bx bxl-redux"></i>
+				</div>
+				<div class="menu-title">Leads</div>
+			  </a>
+		</li>
+		<li class="<?php echo ($page == 'reminders') ? 'mm-active' : ''; ?>">
+			  <a href="<?php echo(Wo_LoadManageLinkSettings('reminders')) ?>" data-spa="true">
+				<div class="parent-icon">
+					<i class="fadeIn animated bx bx-alarm"></i>
+				</div>
+				<div class="menu-title">Reminders</div>
+			  </a>
+		</li>
+		<?php } ?>
+		<?php if (check_permission('check-lead-report') || Wo_IsAdmin() || Wo_IsModerator() || $wo['user']['is_team_leader'] == true) { ?>
+		<li class="<?php echo ($page == 'lead_report') ? 'mm-active' : ''; ?>">
+			  <a href="<?php echo(Wo_LoadManageLinkSettings('lead_report')) ?>" data-spa="true">
+				<div class="parent-icon">
+					<i class="fadeIn animated bx bxl-jquery"></i>
+				</div>
+				<div class="menu-title">Lead Report</div>
+			  </a>
+		</li>
+		<?php } ?>
+		<?php if (check_permission('check-messages') || check_permission('manage-messages') || Wo_IsAdmin() || Wo_IsModerator()) { ?>
+		<li class="<?php echo ($page == 'messenger') ? 'mm-active' : ''; ?>">
+			  <a href="<?php echo(Wo_LoadManageLinkSettings('messenger')) ?>" data-spa="true">
+				<div class="parent-icon">
+					<i class="fadeIn animated bx bxl-jquery"></i>
+				</div>
+				<div class="menu-title">Messenger</div>
+			  </a>
+		</li>
+		<?php } ?>
+		
+		<?php if (check_permission('manage-inventory') || Wo_IsAdmin() || Wo_IsModerator()) { ?>
+		<li class="menu-label">Inventory</li>
+		<li class="<?php echo ($page == 'inventory' && $project == 'moon-hill') ? 'mm-active' : ''; ?>">
+			<a href="<?php echo(Wo_LoadManageLinkSettings('inventory?project=moon-hill')) ?>" data-spa="true">
+				<div class="parent-icon">
+					<i class="fadeIn animated bx bx-list-plus"></i>
+				</div>
+				<div class="menu-title">Moon Hill</div>
+			</a>
+		</li>
+		<li class="<?php echo ($page == 'inventory' && $project == 'hill-town') ? 'mm-active' : ''; ?>">
+			<a href="<?php echo(Wo_LoadManageLinkSettings('inventory?project=hill-town')) ?>" data-spa="true">
+				<div class="parent-icon">
+					<i class="fadeIn animated bx bx-list-plus"></i>
+				</div>
+				<div class="menu-title">Hill Town</div>
+			</a>
+		</li>
+		<li class="<?php echo ($page == 'stock' || $page == 'stock_report') ? 'mm-active' : ''; ?>">
+			<a href="<?php echo(Wo_LoadManageLinkSettings('stock_report')) ?>" data-spa="true">
+				<div class="parent-icon">
+					<i class="fadeIn animated bx bx-store"></i>
+				</div>
+				<div class="menu-title">Stock Report</div>
+			</a>
+		</li>
+		<?php } ?>
+		<?php if (check_permission('bazar') || check_permission('manage-bazar') || Wo_IsAdmin() || Wo_IsModerator()) { ?>
+		<li class="<?php echo ($page == 'bazar' || $page == 'bazar_manage') ? 'mm-active' : ''; ?>">
+			<a href="<?php echo(Wo_LoadManageLinkSettings('bazar')) ?>" data-spa="true">
+				<div class="parent-icon">
+					<i class="fadeIn animated bx bx-store"></i>
+				</div>
+				<div class="menu-title">Bazar Report</div>
+			</a>
+		</li>
+		<?php } ?>
+		
+		
+		<?php if (check_permission('manage-attandance') || check_permission('leave-application') || check_permission('manage-leads') || Wo_IsAdmin() || Wo_IsModerator() || $wo['user']['is_team_leader'] == true) { ?>
+		<li class="menu-label">Papers Management</li>
+		<?php } ?>
+		
+		<?php if ($wo['user']['management'] == false) { ?>
+		<?php if ($_GET['access'] == 'true') { ?>
+		<li class="<?php echo ($page == 'register_attendance') ? 'mm-active' : ''; ?>">
+			<a href="<?php echo(Wo_LoadManageLinkSettings('attendance?action=register_attendance')) ?>" data-spa="true">
+				<div class="parent-icon">
+					<i class="fadeIn animated bx bx-list-plus"></i>
+				</div>
+				<div class="menu-title">Register Attendance</div>
+			</a>
+		</li>
+		<?php } ?>
+		<li class="<?php echo ($page == 'attendance' && !isset($_GET['action'])) ? 'mm-active' : ''; ?>">
+			  <a href="<?php echo(Wo_LoadManageLinkSettings('attendance')) ?>" data-spa="true">
+				<div class="parent-icon">
+				  <i class="fadeIn animated bx bx-calendar"></i>
+				</div>
+				<div class="menu-title">Attendance</div>
+			  </a>
+		</li>
+		<?php } ?>
+		
+		<li class="<?php echo ($page == 'leave_report') ? 'mm-active' : ''; ?>">
+			  <a href="<?php echo(Wo_LoadManageLinkSettings('leave_report')) ?>" data-spa="true">
+				<div class="parent-icon">
+				  <i class='fadeIn animated bx bx-archive-out' ></i>
+				</div>
+				<div class="menu-title">Leave Report</div>
+			  </a>
+		</li>
+		
+		<?php if (check_permission('manage-salary') || Wo_IsAdmin() || Wo_IsModerator()) { ?>
+		<li class="<?php echo ($page == 'salary_report') ? 'mm-active' : ''; ?>">
+			  <a href="<?php echo(Wo_LoadManageLinkSettings('salary_report')) ?>" data-spa="true">
+				<div class="parent-icon">
+				  <i class="fadeIn animated bx bx-credit-card"></i>
+				</div>
+				<div class="menu-title">Salary Report</div>
+			  </a>
+		</li>
+		<?php } ?>
+		<li class="<?php echo ($page == 'rent_report' && !isset($_GET['action'])) ? 'mm-active' : ''; ?>">
+			<a href="<?php echo(Wo_LoadManageLinkSettings('rent_report')) ?>" data-spa="true">
+				<div class="parent-icon">
+					<i class="fadeIn animated bx bxs-car"></i>
+				</div>
+				<div class="menu-title">Rent Report</div>
+			</a>
+		</li>
+		<?php if (check_permission('manage-sms') || Wo_IsAdmin() || Wo_IsModerator()) { ?>
+		<li class="<?php echo ($page == 'sms_report') ? 'mm-active' : ''; ?>">
+			  <a href="<?php echo(Wo_LoadManageLinkSettings('sms_report')) ?>" data-spa="true">
+				<div class="parent-icon">
+				  <i class='fadeIn animated bx bx-envelope' ></i>
+				</div>
+				<div class="menu-title">SMS Report</div>
+			  </a>
+		</li>
+		<?php } ?>
+	
+		<li class="<?php echo ($page == 'system_logs') ? 'mm-active' : ''; ?>">
+			  <a href="<?php echo(Wo_LoadManageLinkSettings('system_logs')) ?>" data-spa="true">
+				<div class="parent-icon">
+				  <i class='fadeIn animated bx bx-history' ></i>
+				</div>
+				<div class="menu-title">System Logs</div>
+			  </a>
+		</li>
+	
+		<li class="<?php echo ($page == 'backup') ? 'mm-active' : ''; ?>">
+			  <a href="<?php echo(Wo_LoadManageLinkSettings('backup')) ?>" data-spa="true">
+				<div class="parent-icon">
+				  <i class='fadeIn animated bx bx-history' ></i>
+				</div>
+				<div class="menu-title">Backup <span class="badge" style=" background: red; font-size: 9px; top: 4px; position: relative; float: right; padding: 4px; ">New</span></div>
+			  </a>
+		</li>
+		
+		<?php //if (check_permission('manage_site') || Wo_IsAdmin() || Wo_IsModerator()) { ?>
+		<li class="menu-label">Website Management</li>
+		<li>
+			<a href="<?php echo(Wo_LoadManageLinkSettings('manage_site?tab=land_projects')) ?>" data-spa="true" data-fullpage="true" data-panelmode="civic_group">
+				<div class="parent-icon"><i class='fadeIn animated bx bx-shape-circle' ></i></div>
+				<div class="menu-title">Civic Group</div>
+			</a>
+		</li>
+		<li>
+			<a href="<?php echo(Wo_LoadManageLinkSettings('manage_site?tab=land_projects')) ?>" data-spa="true" data-fullpage="true" data-panelmode="real_estate">
+				<div class="parent-icon"><i class='fadeIn animated bx bx-dna'></i></div>
+				<div class="menu-title">Civic Real Estate</div>
+			</a>
+		</li>
+		<?php //} ?>
+	<?php } ?>
+</ul>

@@ -1,0 +1,63 @@
+<?php
+$message_count = Wo_CountMessages(array(
+    'new' => true,
+    'user_id' => $wo['recipient']['user_id'],
+    'page_id' => $wo['page_message']['message']['page_id']
+));
+
+$page_info = Wo_PageData($wo['page_message']['message']['page_id']);
+$avatar = $page_info['avatar'];
+$name = $page_info['page_name'];
+
+$user_id = $wo['page_message']['message']['page_id'].'_'.$wo['page_message']['message']['from_id'];
+if ($page_info['user_id'] == $wo['page_message']['message']['from_id']) {
+    $user_id = $wo['page_message']['message']['page_id'].'_'.$wo['page_message']['message']['to_id'];
+}
+
+$page_from_id = '1932174893479181';
+
+$message = $wo['page_message']['message'];
+if (!empty($message['from_id'])) {
+   if ($message['seen'] == 0 && $wo['recipient']['user_id'] == $message['from_id']) {
+    $unread_class = ' unread';
+   }
+   if ($message['media'] || $message['stickers']) {
+	   if ($message['media']) {
+			$message['text'] = Wo_MessageType($message['media'], 'media');
+	   }
+	   if ($message['stickers']) {
+			$message['text'] = Wo_MessageType($message['stickers'], 'stickers');
+	   }
+   } else {	   
+		$message['text'] = Wo_MessageType($message['text']);
+   }
+}
+$thread_id = $wo['page_message']['message']['thread_id'];
+$assigned_user = $wo['recipient']['message']['assigned'];
+if ($assigned_user && $assigned_user != '999') {
+	$assigned_user = Wo_UserData($assigned_user);
+} else {
+	$assigned_user = false;
+}
+if (check_permission('manage-messages') || Wo_IsAdmin()) {
+} else {
+	$assigned_user = false;
+}
+?>
+
+<div class="messages-recipients-list mobileopenlist <?php echo ((!empty($wo['session_active_page_background']) && $wo['session_active_page_background'] == $user_id) || (!empty($_GET['page']) && $_GET['page'] == $wo['page_message']['message']['page_id'])) ? 'active' : ''; ?>" id="messages-recipient-<?php echo $user_id; ?>" onclick="Wo_GetPageMessages('<?php echo $page_info['page_id']; ?>',<?php echo $page_from_id; ?>,'<?php echo $name; ?>','<?php echo $user_id; ?>','<?php echo $thread_id; ?>');" title="<?php echo $name; ?>">
+	<div class="avatar <?php echo Wo_RightToLeft('pull-left');?>">
+		<img alt="<?php echo $name; ?> Profile Picture" src="<?php echo $avatar;?>">
+		<span class="new-message-alert  <?php echo !($message['onwer'] == 0) ? 'hidden' : ''; ?>"></span>
+		<span class="new-message-alert" style="left:auto;right: 7px;bottom:0px;top:auto;"><img style=" width: 17px; height: 17px; " alt="Campain Source: <?php echo $wo['fb_api_data']['pages'][$page_from_id]['page_name']; ?>" src="<?php echo $wo['fb_api_data']['pages'][$page_from_id]['picture']; ?>"></span>
+		<?php if ($assigned_user) { ?><span class="new-message-alert" style="left:auto;right: -3px;bottom:0px;top:auto;"><img style=" width: 17px; height: 17px; " alt="Assigned to: <?php echo $assigned_user['name']; ?>" src="<?php echo $assigned_user['avatar']; ?>"></span><?php } ?>
+	</div>
+	<div class="msg_rght_prt">
+		<div class="messages-last-sent <?php echo ($message_count == 0) ? '' : 'new_msg_lst_lsent'; ?> <?php echo Wo_RightToLeft('pull-right');?> time ajax-time" title="<?php echo date('c',$message['time']); ?>"><?php echo (!empty($message['time'])) ? Wo_Time_Elapsed_String($message['time']) : '';?></div>
+		<span class="msg_ava_name">
+			<span class="messages-user-name"><?php echo $wo['recipient']['name']; ?></span>
+		</span>
+		<p class="<?php echo ($message_count == 0) ? '' : 'new_msg_active_list'; ?>"> <?php echo !($message['onwer'] == 0) ? '<span class="text-bold">You:</span> ' : '<strong>'; ?> <?php echo !empty($message['text']) ? $message['text'] : ''; ?><?php echo !($message['onwer'] == 0) ? '' : '</strong>'; ?></p>
+	</div>
+	<div class="clear"></div>
+</div>

@@ -1,0 +1,378 @@
+<?php echo Wo_LoadManagePage('view_notif/content');	?>
+	
+<!--start breadcrumb-->
+<div class="page-breadcrumb d-flex align-items-center mb-3">
+  <div class="breadcrumb-title pe-3">Rent Report</div>
+  <?php echo Wo_LoadManagePage('rent_report/print-buttons'); ?>
+</div>
+<!--end breadcrumb-->
+
+<div class="mb-3">
+	<div class="row row-cols-auto g-3">
+		<div class="col">
+		</div>
+	</div>
+</div>
+<style>
+tr:hover, tr:focus, tr:active {
+    --bs-table-bg: #f3f3f3;
+}
+.dark-theme tr:hover, .dark-theme tr:focus, .dark-theme tr:active {
+    --bs-table-bg: #ffffff1f;
+}
+.dataTables_wrapper {
+	overflow-x: auto !important;
+}
+</style>
+
+<!-- Your HTML code starts here -->
+<div class="attandence mb-3">
+	<div class="select-panel d-flex justify-content-between">
+	<?php if (Wo_IsAdmin() || Wo_IsModerator() || check_permission('update-rent') || check_permission('register-rent-report')) { ?>
+			<select id="user_id" name="user_id" class="form-select w-auto wm-120" onchange="DataTableReset()">
+				<option value="999">All User</option>
+				<?php
+				$url_user = $_GET['user'];
+				if (isset($url_user) && !empty($url_user)) {
+					$selected_user = $url_user;
+				} else {
+					$selected_user = $_COOKIE['default_u_leave'];
+				}
+					$get_users = $db->orderBy('serial', 'ASC')->where('active', '1')->where('management', '0')->get(T_USERS);
+					foreach ($get_users as $userlist) {
+						$user   = Wo_UserData($userlist->user_id);
+						$name = cleanName($user['name']);
+						echo '<option' . ($selected_user == $user['user_id'] ? ' selected' : '') . " value='{$user['user_id']}'>{$name}</option>";
+					}
+				?>
+			</select>
+	<?php } else { ?>
+		<select id="user_id" name="user_id" class="form-select w-auto wm-120 d-none" onchange="DataTableReset()">
+			<option value="<?php echo $wo['user']['user_id']; ?>" selected><?php echo $wo['user']['name']; ?></option>
+		</select>
+	<?php } ?>
+		<!-- Use flatpickr for date selection -->
+		<input class="form-select w-auto <?php if (Wo_IsAdmin() || Wo_IsModerator() || check_permission('update-rent') || check_permission('register-rent-report')) { ?>wm-120<?php } ?>" type="text" id="date_start_end" name="date_start_end" placeholder="Select date range" readonly onchange="DataTableReset()" value="<?php echo urldecode($_COOKIE['start_end2'] ?? '') ?: date('Y-01-01') . ' to ' . date('Y-12-31'); ?>">
+	</div>
+</div>
+
+<div class="row row-cols-2 row-cols-lg-4 row-cols-xxl-4">
+	<div class="col">
+		<div class="card radius-10">
+			<div class="card-body">
+				<div class="d-flex align-items-start gap-2">
+					<div>
+						<p class="mb-0 fs-6">Total Rent</p>
+					</div>
+					<div class="ms-auto">
+						<ion-icon name="bar-chart" role="img" class="md hydrated" aria-label="bar-chart"></ion-icon>
+					</div>
+				</div>
+				<div class="d-flex align-items-center mt-3">
+					<div class="w-100">
+						<h4 class="mb-0 d-flex justify-content-between w-100" id="total_leave">0</h4>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+	<div class="col">
+		<div class="card radius-10">
+			<div class="card-body">
+				<div class="d-flex align-items-start gap-2">
+					<div>
+						<p class="mb-0 fs-6">Paid</p>
+					</div>
+					<div class="ms-auto">
+						<ion-icon name="bar-chart" role="img" class="md hydrated" aria-label="bar-chart"></ion-icon>
+					</div>
+				</div>
+				<div class="d-flex align-items-center mt-3">
+					<div class="w-100">
+						<h4 class="mb-0 d-flex justify-content-between w-100" id="total_approved">0</h4>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+	
+	<div class="col">
+		<div class="card radius-10">
+			<div class="card-body">
+				<div class="d-flex align-items-start gap-2">
+					<div>
+						<p class="mb-0 fs-6">Due</p>
+					</div>
+					<div class="ms-auto">
+						<ion-icon name="bar-chart" role="img" class="md hydrated" aria-label="bar-chart"></ion-icon>
+					</div>
+				</div>
+				<div class="d-flex align-items-center mt-3">
+					<div class="w-100">
+						<h4 class="mb-0 d-flex justify-content-between w-100" id="total_pending">0</h4>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+	<div class="col">
+		<div class="card radius-10">
+			<div class="card-body">
+				<div class="d-flex align-items-start gap-2">
+					<div>
+						<p class="mb-0 fs-6">Rejected</p>
+					</div>
+					<div class="ms-auto">
+						<ion-icon name="bar-chart" role="img" class="md hydrated" aria-label="bar-chart"></ion-icon>
+					</div>
+				</div>
+				<div class="d-flex align-items-center mt-3">
+					<div class="w-100">
+						<h4 class="mb-0 d-flex justify-content-between w-100" id="total_rejected">0</h4>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+
+
+<!-- Your HTML code starts here -->
+<div class="card radius-10 w-100">
+    <div class="card-body">
+        <div class="table-responsive mt-2">
+            <table id="invoiceTable" class="table align-middle mb-0" style="width: 100%;">
+                <thead class="table-light">
+                    <tr>
+                        <th style="max-width: 5px;">#ID</th>
+						<?php if (Wo_IsAdmin() || Wo_IsModerator() || check_permission('check-rent-report') || check_permission('register-rent-report') || check_permission('update-rent')) { ?>
+                        <th style="width: 50px;">Ref. Name</th>
+						<?php } ?>
+                        <th style="max-width: 50px;">Visit Date</th>
+                        <th style="max-width: 50px;">Vehicle</th>
+                        <th style="width: 50px;">Vendor</th>
+                        <th>Destination</th>
+                        <th style="max-width: 50px;" class="text-center">P.</th>
+                        <th style="width: 50px;">Bill Date</th>
+                        <th style="width: 50px;">Payment</th>
+                        <th style="width: 50px;">Status</th>
+						<?php if (Wo_IsAdmin() || Wo_IsModerator() || check_permission('check-rent-report') || check_permission('register-rent-report') || check_permission('update-rent')) { ?>
+                        <th style="max-width: 50px;">Actions</th>
+						<?php } ?>
+                    </tr>
+                </thead>
+                <tbody style="padding-bottom: 15px">
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+function download_report() {
+	var dateRange = document.getElementById('date_start_end').value;
+	var user_id = document.getElementById('user_id').value;
+	// If date range is not selected, use the single selected date
+	var dates = dateRange.split(' to ');
+	var data_start = dates[0];
+	var data_end = dates.length > 1 ? dates[1] : data_start;
+	
+    $.ajax({
+        type: "POST",
+        url: Wo_Ajax_Requests_File() + '?f=manage_rent&s=download_report', // Ensure Wo_Ajax_Requests_File() returns the correct URL
+		data: { data_start: data_start, data_end: data_end, user_id: user_id },
+        success: function (response) {
+			if (response['status'] == 200) {
+				window.location.href = response['result'];
+			} else {
+				pos4_error_noti(response['message']);
+			}
+        }
+    });
+}
+function delete_rent(rent_id) {
+    // Show confirmation dialog
+    var confirmed = confirm("Are you sure you want to delete vehicle rent record?");
+    if (!confirmed) {
+        return false; // Cancel the operation if user clicks Cancel
+    }
+	
+	if (rent_id == null) {
+        return false;
+    }
+	
+    $.ajax({
+        type: "POST",
+        url: Wo_Ajax_Requests_File() + '?f=manage_rent&s=delete_rent', // Ensure Wo_Ajax_Requests_File() returns the correct URL
+		data: { rent_id: rent_id },
+        success: function (response) {
+            if (response['status'] == 200) {
+				pos5_success_noti(response['message']);
+            } else {
+				pos4_error_noti(response['message']);
+			}
+			DataTableReset();
+        }
+    });
+}
+function update_rent(rent_id) {
+	if (rent_id == null) {
+        return false;
+    }
+    $.ajax({
+        type: "POST",
+        url: Wo_Ajax_Requests_File() + '?f=manage_rent&s=update_rent_Modal', // Ensure Wo_Ajax_Requests_File() returns the correct URL
+		data: { rent_id: rent_id },
+        success: function (response) {
+            if (response['status'] == 200) {
+				$("#contnet").append(response['result']);
+				$("#updateLeave-modal").modal('show');
+            }
+        }
+    });
+}
+function register_rent() {
+	$("#register_rent-modal").modal('show');
+}
+$(document).ready(function() {
+	// Initialize Flatpickr
+	var flatpickrInstance = flatpickr('#date_start_end', {
+		mode: 'range',
+		dateFormat: 'Y-m-d',
+		altFormat: 'F j, Y',
+		altInput: false,
+		allowInput: false,
+		clickOpens: true,
+		onChange: function(selectedDates, dateStr, instance) {
+			// console.log(selectedDates);
+			// // You can add additional logic here if needed
+		},
+		onReady: function(selectedDates, dateStr, instance) {
+			// Add custom date range options to the Flatpickr container
+			var datepickerContainer = instance.calendarContainer;
+
+			var dateRangeOptions = [
+				{ label: 'Today', range: [new Date(), new Date()] },
+				{ label: 'Yesterday', range: [new Date(new Date().setDate(new Date().getDate() - 1)), new Date(new Date().setDate(new Date().getDate() - 1))] },
+				{ label: 'This Month', range: [new Date(new Date().getFullYear(), new Date().getMonth(), 1), new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0)] },
+				{ label: 'Last Month', range: [new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1), new Date(new Date().getFullYear(), new Date().getMonth(), 0)] },
+			];
+
+			dateRangeOptions.forEach(function(option) {
+				var button = document.createElement('button');
+				button.textContent = option.label;
+				button.addEventListener('click', function() {
+					flatpickrInstance.setDate(option.range);
+					flatpickrInstance.close(); // Close Flatpickr instance
+					DataTableReset();
+				});
+
+				datepickerContainer.prepend(button);
+			});
+		}
+	});
+    // Initialize DataTables without buttons
+    var table = $('#invoiceTable').DataTable({
+        "processing": true,
+		"serverSide": true,
+        "pageLength": 25,  // Set the default number of entries per page
+        "ajax": {
+            "url": Wo_Ajax_Requests_File() + '?f=manage_rent&s=fetch_report',
+            "type": "POST",
+			"data": function (d) {
+				// Include additional parameters for the AJAX request
+				d.user_id = $('#user_id').val();
+				var dateRange = document.getElementById('date_start_end').value;
+				// If date range is not selected, use the single selected date
+				var dates = dateRange.split(' to ');
+				var data_start = dates[0];
+				var data_end = dates.length > 1 ? dates[1] : data_start;
+				
+				d.data_start = data_start;
+				d.data_end = data_end;
+			},
+            "beforeSend": function(xhr) {
+				$('#length_count').remove();
+				$('#invoiceTable_length label').append('<span id="length_count"><span>');
+                // Set opacity to 0 before the Ajax request
+                $('#invoiceTable').css('opacity', .5);
+            },
+            "complete": function(xhr) {
+				// Parse the JSON response
+				var responseData = JSON.parse(xhr.responseText);
+				// Access the recordsTotal value
+				var recordsTotal = responseData.recordsTotal;
+				var totalLeave = responseData.totalLeave;
+				var totalApproved = responseData.totalApproved;
+				var totalPending = responseData.totalPending;
+				var totalRejected = responseData.totalRejected;
+					
+                // Set opacity to 1 after the Ajax request is complete
+                $('#invoiceTable').css('opacity', 1);
+                $('#length_count').html('of <b>' + recordsTotal + '</b>');
+                $('#total_leave').html(totalLeave);
+                $('#total_approved').html(totalApproved);
+                $('#total_pending').html(totalPending);
+                $('#total_rejected').html(totalRejected);
+            }
+        },
+        "columns": [
+            { "data": "id", "orderable": true },  // ID column is orderable
+			<?php if (Wo_IsAdmin() || Wo_IsModerator() || check_permission('check-rent-report') || check_permission('register-rent-report') || check_permission('update-rent')) { ?>
+            { "data": "name", "orderable": false },
+			<?php } ?>
+            { "data": "visit_date", "orderable": false },
+            { "data": "vehcal_type", "orderable": false },
+            { "data": "vendor", "orderable": false },
+            { "data": "destination", "orderable": false },
+            { "data": "person", "orderable": false },
+            { "data": "bill_date", "orderable": false },
+            { "data": "payment", "orderable": false },
+            { "data": "status", "orderable": false },
+			<?php if (Wo_IsAdmin() || Wo_IsModerator() || check_permission('check-rent-report') || check_permission('register-rent-report') || check_permission('update-rent')) { ?>
+            { "data": "actions", "orderable": false }
+			<?php } ?>
+        ],
+        "order": [],
+        "language": {
+            "emptyTable": "No data available in the table",
+            "infoEmpty": "Showing 0 to 0 of 0 entries",
+            "infoFiltered": "(filtered from _MAX_ total entries)",
+            "zeroRecords": "No matching records found"
+        },
+		"rowCallback": function(row, data) {
+			$(row).attr('data-id', data.id);
+		}
+    });
+	
+	<?php if (Wo_IsAdmin() || Wo_IsModerator()) { ?>
+	<?php } else { ?>
+		$('#user_id').change(function() {
+			var user_id = $(this).val(); // Get the selected value from #user_id
+
+			// Compare selected user_id with PHP variable $wo['user']['user_id']
+			if (user_id == <?php echo $wo['user']['user_id']; ?>) {
+				table.column(':last').visible(true); // Show the last column of DataTable
+			} else {
+				table.column(':last').visible(false); // Hide the last column of DataTable
+			}
+		});
+	<?php } ?>
+	
+    // DataTableReset function to reset the DataTable
+    window.DataTableReset = function() {
+        table.ajax.reload();
+    };
+	
+	window.DataTableRefresh = function() {
+		table.ajax.reload(null, false); // Reload the DataTable
+
+		// After reload, restore the state (including pagination)
+		var state = table.state.loaded();
+		if (state) {
+			table.state.restore(state);
+		}
+	};
+});
+</script>
+<?php echo Wo_LoadManagePage('rent_report/register_rent_modal'); ?>

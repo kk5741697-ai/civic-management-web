@@ -1,0 +1,945 @@
+<?php Global $lead;?>
+<div class="modal fade full_screen" id="viewLead-modal" role="dialog" data-id="<?php echo $lead->lead_id; ?>">
+	<div class="modal-dialog modal-lg wow_mat_mdl invoice_print">
+		<div class="modal-content p-3">
+			<style>
+				#viewLead-modal .card-body {
+					padding: 10px;
+				}
+				#viewLead-modal p.mb-0 {
+					font-size: 12px;
+				}
+				#viewLead-modal h4.mb-0 {
+					font-size: 18px;
+					line-break: anywhere;
+				}
+				tr[data-id="<?php echo $lead->lead_id; ?>"] {
+					--bs-table-bg: #dddddd;
+				}
+				.system_remark .remarks-item {
+				    color: #000000ab;
+                    font-size: 11px;
+				}
+				.system_remark .time-badge {
+                    font-size: 9px;
+				}
+				<?php if ($lead->assigned == $wo['user']['user_id'] || $lead->member == $wo['user']['user_id']) { ?>
+                    .system_remark:not(.type2) {
+                        display: none !important;
+                    }
+				<?php } ?>
+			</style>
+			<div class="d-flex justify-content-between fixed_top">
+				<h3 class="mb-2 d-flex align-items-center fs-6 mr-auto" style="justify-content: space-between;width: 100%;margin-right: 6px;" title="<?php echo Wo_Time_Elapsed_String_word($lead->created); ?>"><?php echo date('d M Y - h:ia', $lead->created); ?>
+				<span class="badge" style="font-size: 12px;<?= ($lead->source == 'Hotline' || $lead->source == 'Website') ? 'background: #FFD700;color: #ff0000;' : 'background: #2260ff;'; ?>"><?php echo $lead->source; ?></span>
+				</h3>
+				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+			</div>
+			<div class="row row-cols-1 row-cols-lg-2 row-cols-xl-2">
+			<?php if (!empty($lead->warning_html)) {
+                echo $lead->warning_html;
+            } ?>
+			<?= ($lead->source == 'Website') ? '<span class="w-100" style="font-weight: 700; color: red;">Note: Offered price 14,50,000/- per katha — this lead came from the website.</span>' : ''; ?>
+
+			<?php if ($lead->given_date == $lead->created) { ?>
+				<div class="col w-100 given_date d-none">
+					<div class="card radius-10 mb-2">
+						<div class="card-body">
+							<div class="d-flex align-items-center" style=" gap: 15px; ">
+								<div class="w-100">
+									<p class="mb-0">Lead Distribute Date</p>
+									<fieldset class="checkbox-group">
+										<?php
+										// Assuming $lead->created is a timestamp or DateTime object
+										$created_time = new DateTime(date('Y-m-d', $lead->created));
+										$dates = [];
+
+										// Include the current date as the first date
+										$dates[] = $created_time->format('Y-m-d');
+
+										// Loop to find 3 more valid dates excluding Fridays
+										for ($i = 1; count($dates) < 3; $i++) {
+											// Clone the created_time and modify by adding days to avoid Friday
+											$suggested_date = clone $created_time;
+											$suggested_date->modify("+$i days");
+
+											// Check if the day is not Friday (day 5 in PHP DateTime)
+											if ($suggested_date->format('N') != 5) {
+												// Add the valid date to the array
+												$dates[] = $suggested_date->format('Y-m-d');
+											}
+										}
+
+										// Output the suggested dates
+										foreach ($dates as $date) {
+											$formated = date("d M Y", strtotime($date));
+											echo '<div class="checkbox">
+													<label class="checkbox-wrapper">
+														<input type="checkbox" class="checkbox-input created_time" value="' . $date . '" name="given_date" />
+														<span class="checkbox-tile">
+															<span class="checkbox-icon"></span>
+															<span class="checkbox-label">' . $formated . '</span>
+														</span>
+													</label>
+												</div>';
+										}
+										?>
+									</fieldset>
+
+
+								</div>
+								<div class="ms-auto fs-2">
+                                    <i class='fadeIn animated bx bx-user' ></i>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+				<?php } ?>
+				<?php if (Wo_IsAdmin() || Wo_IsModerator() || check_permission('manage-leads') || $wo['user']['is_team_leader'] == true) { ?>
+				<div class="col w-100">
+					<div class="card radius-10 mb-2">
+						<div class="card-body">
+							<div class="d-flex align-items-center" style=" gap: 15px; ">
+								<div class="w-100">
+									<p class="mb-0"><?php echo ($wo['user']['is_team_leader'] == true) ? 'Select Team Member' : 'Select Team Leader or Member'; ?></p>
+									<select class="form-select mb-0 pr-2" aria-label="Select Name" id="change_assigned">
+										<option value="">Please Select</option>
+										<?php
+										if (Wo_IsAdmin() || Wo_IsModerator() || check_permission('manage-leads')) {
+											// Query to get users who are team leaders or have a leader_id greater than 0
+											$get_users = $db->orderBy('position', 'ASC')
+															->where('is_team_leader', '1')
+															->orWhere('leader_id', '0', '>')
+															->where('active', '1')
+															->where('banned', '0')
+															->where('admin', '0')
+															->get(T_USERS);
+										} elseif ($wo['user']['is_team_leader'] == true) {
+											// Query to get users who are team leaders or have a leader_id greater than 0
+											$get_users = $db->orderBy('position', 'ASC')
+															->where('user_id', $wo['user']['user_id'])
+															->orWhere('leader_id', $wo['user']['user_id'])
+															->where('active', '1')
+															->where('banned', '0')
+															->where('admin', '0')
+															->get(T_USERS);
+										} else {
+											$get_users = array();
+										}
+
+										// Determine the selected user ID
+										if ($lead->member == 0) {
+											$selected_id = $lead->assigned;
+										} else {
+											$selected_id = $lead->member;
+										}
+
+										// Loop through each user
+										foreach ($get_users as $value): ?>
+											<option value="<?php echo $value->user_id; ?>" 
+													<?php echo ($value->user_id == $selected_id) ? 'selected' : ''; ?>
+													style="<?php echo ($value->is_team_leader == 99) ? 'background-color: #ffe9e9;' : ''; ?>">
+												<?php echo htmlspecialchars($value->first_name . ' ' . $value->last_name . ' - ' . short_name($value->designation), ENT_QUOTES, 'UTF-8'); ?>
+											</option>
+										<?php endforeach; ?>
+									</select>
+
+								</div>
+								<div class="ms-auto fs-2">
+                                    <i class='fadeIn animated bx bx-user' ></i>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+				<?php } ?>
+				
+				<?php
+                $viewed_min = $lead->viewed - $lead->created;
+                
+				if ($viewed_min > 0 || Wo_IsAdmin() || Wo_IsModerator() || check_permission('manage-leads') || $wo['user']['is_team_leader'] == true) { ?>
+				<div class="col w-100">
+					<div class="card radius-10 mb-2">
+						<div class="card-body">
+							<div class="d-flex align-items-center">
+								<div class="lead_statics w-100">
+                                    <p class="mb-2 fw-semibold text-muted">Lead Statistics</p>
+                                
+                                    <div class="d-flex gap-3">
+                                        <!-- Viewed -->
+                                        <div class="d-flex justify-content-between align-items-center border rounded p-2 bg-light flex-grow-1">
+                                            <div>
+                                                <div class="fw-bold text-dark">
+                                                    <?php
+                                                
+                                                    if ($viewed_min > 0) {
+                                                        $units = ['d' => 86400, 'h' => 3600, 'm' => 60, 's' => 1];
+                                                        $parts = [];
+                                                        foreach ($units as $label => $seconds) {
+                                                            if (count($parts) >= 2) break;
+                                                            $value = floor($viewed_min / $seconds);
+                                                            if ($value > 0) {
+                                                                $parts[] = $value . $label;
+                                                                $viewed_min %= $seconds;
+                                                            }
+                                                        }
+                                                        echo implode(' ', $parts);
+                                                    } else {
+                                                        echo '<span class="text-muted">Not viewed yet</span>';
+                                                    }
+                                                    ?>
+                                                </div>
+                                                <small class="text-muted">First Viewed</small>
+                                            </div>
+                                            <i class="bx bx-show fs-4 text-primary"></i>
+                                        </div>
+                                
+                                        <!-- Response -->
+                                        <div class="d-flex justify-content-between align-items-center border rounded p-2 bg-light flex-grow-1">
+                                            <div>
+                                                <div class="fw-bold text-dark">
+                                                    <?php
+                                                    $response_min = $lead->response - $lead->created;
+                                
+                                                    if ($response_min > 0) {
+                                                        $units = ['d' => 86400, 'h' => 3600, 'm' => 60, 's' => 1];
+                                                        $parts = [];
+                                                        foreach ($units as $label => $seconds) {
+                                                            if (count($parts) >= 2) break;
+                                                            $value = floor($response_min / $seconds);
+                                                            if ($value > 0) {
+                                                                $parts[] = $value . $label;
+                                                                $response_min %= $seconds;
+                                                            }
+                                                        }
+                                                        echo implode(' ', $parts);
+                                                    } else {
+                                                        echo '<span class="text-muted">Not responded yet</span>';
+                                                    }
+                                                    ?>
+                                                </div>
+                                                <small class="text-muted">First Response</small>
+                                            </div>
+                                            <i class="bx bx-message-detail fs-4 text-success"></i>
+                                        </div>
+                                    </div>
+                                </div>
+
+							</div>
+						</div>
+					</div>
+				</div>
+				<?php } ?>
+				
+				<div class="col">
+					<div class="card radius-10 mb-2">
+						<div class="card-body">
+							<div class="d-flex align-items-center">
+								<div class="">
+									<p class="mb-0">Name</p>
+									<h4 class="mb-0"><?php echo $lead->name; ?></h4>
+								</div>
+								<div class="ms-auto fs-2">
+                                    <i class='fadeIn animated bx bx-user' ></i>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="col">
+					<div class="card radius-10 mb-2">
+						<div class="card-body">
+							<div class="d-flex align-items-center">
+								<div class="">
+									<p class="mb-0">Profession</p>
+									<h4 class="mb-0"><?php echo (!empty($lead->profession)) ? $lead->profession : '-'; ?><?php echo (!empty($lead->company)) ? '<br /> ' . $lead->company : ''; ?></h4>
+								</div>
+								<div class="ms-auto fs-2">
+									<ion-icon name="desktop-outline"></ion-icon>
+                                    <i class='fadeIn animated bx bxl-redux bx-tada bx-rotate-90 fs-1' ></i>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="col">
+				    <?php
+    				    if ($lead->member == 0) {
+    						$selected_id = $lead->assigned;
+    					} else {
+    						$selected_id = $lead->member;
+    					}
+				    ?>
+					
+                    <div class="card radius-10 mb-2">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center">
+                                <div class="">
+                                    <p class="mb-0">Phone</p>
+                                    <h4 class="mb-0">
+                                        <?php
+                                        $phone_number = '+' . correctNumber($lead->phone);
+                                        if ($wo['user']['user_id'] == $selected_id) {
+                                            echo $phone_number;
+                                        } else {
+                                            echo maskPhoneNumber($phone_number);
+                                        }
+                                        ?>
+                                    </h4>
+                                </div>
+                                <div class="ms-auto fs-2 d-flex gap-2">
+                                    <!-- Call Button -->
+                                    <a href="tel:<?php echo $phone_number; ?>" class="text-primary">
+                                        <i class="lni lni-phone bx-tada bx-rotate-90"></i>
+                                    </a>
+                                    <!-- WhatsApp Button -->
+                                    <?php if (Wo_IsMobile()) { ?>
+                                        <a href="whatsapp://send?phone=<?php echo str_replace('+', '', $phone_number); ?>" class="text-success">
+                                            <i class="lni lni-whatsapp bx-tada bx-rotate-90"></i>
+                                        </a>
+                                    <?php } else { ?>
+                                        <a href="https://wa.me/<?php echo str_replace('+', '', $phone_number); ?>" target="_blank" class="text-success">
+                                            <i class="lni lni-whatsapp bx-tada bx-rotate-90"></i>
+                                        </a>
+                                    <?php } ?>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+				</div>
+				<?php
+				// Decode the JSON data stored in 'additional' field
+				$additionalData = json_decode($lead->additional, true); // Use 'true' to get an associative array
+				
+				$additionalData['page_id'] = isset($additionalData['page_id']) ? $additionalData['page_id'] : '';
+				if (!empty($lead->projects)) {
+                    $project_name = $lead->projects;
+				} else if ($lead->project == 'hill_town') {
+                    $project_name = 'Hill Town';
+                } else if ($lead->project == 'moon_hill') {
+                    $project_name = 'Moon Hill';
+                } else if ($lead->project == 'abedin') {
+                    $project_name = 'Civic Abedin';
+                } else if ($lead->project == 'ashridge') {
+                    $project_name = 'Civic Ashridge';
+                } else if ($additionalData['page_id'] == '259547413906965') {
+                    $project_name = 'Hill Town';
+                } else if ($additionalData['page_id'] == '1932174893479181') {
+                    $project_name = 'Moon Hill';
+                } else {
+                    $project_name = 'N/A';
+                }
+                
+                if ($project_name) {
+				?>
+				
+				<div class="col">
+					<div class="card radius-10 mb-2">
+						<div class="card-body">
+							<div class="d-flex align-items-center">
+								<div class="">
+									<p class="mb-0">Project</p>
+									<h4 class="mb-0"><?php echo $project_name; ?></h4>
+								</div>
+								<div class="ms-auto fs-2">
+									<ion-icon name="ribbon-outline"></ion-icon>
+                                    <i class='fadeIn animated bx bxl-product-hunt' ></i>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+				<?php } ?>
+				
+				<?php if (!empty($lead->plot_size)) { ?>
+                <div class="col w-100">
+                    <div class="card radius-10 mb-2">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center">
+                                <div>
+                                    <p class="mb-0">কত কাঠা</p>
+                                    <h4 class="mb-0"><?php echo $lead->plot_size; ?></h4>
+                                </div>
+                                <div class="ms-auto fs-2">
+                                    <i class='fadeIn animated bx bx-area'></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <?php } ?>
+
+				
+				<?php
+				$which_floor = "N/A";
+                if (isset($additionalData['floor']) && !empty($additionalData['floor'])) {
+                    $which_floor = $additionalData['floor'];
+				?>
+				
+				<div class="col w-100">
+					<div class="card radius-10 mb-2">
+						<div class="card-body">
+							<div class="d-flex align-items-center">
+								<div class="">
+									<p class="mb-0">Which Floor</p>
+									<h4 class="mb-0"><?php echo $which_floor; ?></h4>
+								</div>
+								<div class="ms-auto fs-2">
+                                    <i class='fadeIn animated bx bx-area' ></i>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+				<?php } ?>
+				
+				<?php if (!empty($lead->email) && $lead->email != 'N/A') { ?>
+				<div class="col w-100">
+					<div class="card radius-10 mb-2">
+						<div class="card-body">
+							<div class="d-flex align-items-center">
+								<div class="">
+									<p class="mb-0">Email</p>
+									<h4 class="mb-0"><?php echo $lead->email; ?></h4>
+								</div>
+								<div class="ms-auto fs-2">
+                                    <i class='fadeIn animated bx bx-envelope' ></i>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+				<?php } ?>
+				
+				<div class="col w-100">
+					<div class="card radius-10 mb-2">
+						<div class="card-body" id="all_remarks">
+							<div class="d-flex align-items-center">
+								<div class="w-100">
+									<p class="mb-2">Remarks</p>
+                                    <?php
+                                    $remarks = $db->where('lead_id', $lead->lead_id)->get(T_REMARKS);
+                                    $count = count($remarks);
+                                    for ($i = 0; $i < $count; $i++) {
+                                        $remark = $remarks[$i];
+                                        ?>
+                                        <div class="<?php echo ($remark->is_system == '1') ? 'system_remark' : (($remark->is_system == '2') ? 'system_remark type2' : 'mb-2'); ?>" style="display: flex; justify-content: space-between; align-items: center;">
+                                            <span class="remarks-item">
+                                                <?php 
+                                                // Choose an icon based on the type of remark
+                                                echo ($remark->is_system) 
+                                                    ? '<i class="fadeIn animated bx bx-cog" ></i>' 
+                                                    : '<i class="fadeIn animated bx bx-git-repo-forked" ></i>'; 
+                                                ?> 
+                                                <?php echo (!empty($remark->remarks)) ? $remark->remarks : '-'; ?>
+                                            </span>
+                                            <span class="time-badge" title="<?php echo date('d M Y - h:ia', $remark->time); ?>">
+                                                <?php //echo Wo_Time_Elapsed_String_word($remark->time); ?>
+                                                <?php echo date('d M Y - h:ia', $remark->time); ?>
+                                            </span>
+                                        </div>
+                                        <?php
+                                        // If this is a nonтАСsystem remark and it isn't the last remark, insert an <hr>
+                                        if (!$remark->is_system && $i < $count - 1) {
+                                             echo '<hr class="style-one"/>';
+                                        }
+                                    }
+                                    ?>
+									<script>
+										// Handle Enter key press in the input field
+										$('.custom-remarks-input').keypress(function(event) {
+											if (event.keyCode === 13) { // Check if Enter key is pressed (keyCode 13)
+												event.preventDefault(); // Prevent default form submission
+												$('.submit-custom-remark').click(); // Trigger click event on submit button
+											}
+										});
+										// AJAX function to submit the custom remark value
+										$('.submit-custom-remark').click(function() {
+											var customRemark = $('.custom-remarks-input').val().trim();
+											var leadId = $('#viewLead-modal').data('id');
+											// Call the submitRemarks function with customRemark as the parameter
+											submitCustomRemarks(leadId, customRemark);
+										});
+										
+										// Function to submit remarks via AJAX
+										function submitCustomRemarks(leadId, quick_remarksValue) {
+											if (quick_remarksValue.length == 0) {
+												alert('Remarks cannot be empty. Please enter remarks.');
+												return;
+											}
+                            			    var is_system = <?php echo (Wo_IsAdmin() || Wo_IsModerator() || check_permission('manage-leads')) ? '2' : '0'; ?>;
+											// AJAX POST request
+											$.ajax({
+												url: Wo_Ajax_Requests_File() + '?f=manage_leads&s=update_remarks',
+												type: 'POST',
+												data: { remarks: quick_remarksValue, lead_id: leadId, type: 'custom', is_system: is_system },
+												success: function(response) {
+													DataTableRefresh();
+													$('#all_remarks').html(response.result);
+													
+													// console.log('Remarks submitted successfully:', response);
+													// Handle success response here if needed
+												},
+												error: function(xhr, status, error) {
+													console.error('Error submitting remarks:', error);
+													// Handle error here if needed
+												}
+											});
+										}
+									</script>
+								</div>
+							</div>
+                            
+                            <style>
+                            .dropup .dropdown-menu {
+                                top: auto;
+                                bottom: 100%;
+                                right: -62px;
+                            }
+                            .message-option-btns2 {
+                                top: auto;
+                                bottom: 5px;
+                                right: 64px;
+                                position: absolute;
+                                display: table;
+                            }
+                            .rmnd_container {
+                                width: 100%;
+                                display: flex;
+                                padding: 14px;
+                                align-items: center;
+                                gap: 5px;
+                                border-top: 1px solid #dbdbdb;
+                                z-index: 99999;
+                                flex-direction: column;
+                                zoom: 0.9;
+                            }
+                            @media (max-width: 576px){
+                                .rmnd_container {
+                                    position: absolute;
+                                    bottom: 0;
+                                    left: 0;
+                                }
+                                /*.message-option-btns2 {*/
+                                /*    z-index: 999999999;*/
+                                /*}*/
+                                .message-option-btns2 .dropdown-menu.show {
+                                    left: 0;
+                                    right: 0;
+                                    width: 100% !important;
+                                    min-height: 100vh;
+                                    position: fixed;
+                                    top: 0;
+                                    bottom: 0;
+                                }
+                            }
+                            </style>
+                            <span class="message-option-btns2">
+                                <div class="dropup">
+                                    <a class="dropdown-toggle">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="ionicon s-ion-icon" width="22" height="22" viewBox="0 0 512 512">
+                                            <title>Chatbox Ellipses</title>
+                                            <path d="M408 64H104a56.16 56.16 0 00-56 56v192a56.16 56.16 0 0056 56h40v80l93.72-78.14a8 8 0 015.13-1.86H408a56.16 56.16 0 0056-56V120a56.16 56.16 0 00-56-56z" stroke-linejoin="round" stroke="currentColor" style="stroke-width: 40px; fill: transparent;"></path>
+                                            <circle fill="currentColor" cx="160" cy="216" r="32"></circle>
+                                            <circle fill="currentColor" cx="256" cy="216" r="32"></circle>
+                                            <circle fill="currentColor" cx="352" cy="216" r="32"></circle>
+                                        </svg>
+                                    </a>
+                                    <ul class="dropdown-menu" aria-labelledby="dropdownMenuButton" style="width: 460px; overflow: hidden; max-height: 360px; overflow-y: auto;">
+                                        <span style="width: 100%; display: flex; margin-top: -8px; padding: 14px; align-items: center; gap: 10px; padding-bottom: 10px; border-bottom: 1px solid #dbdbdb;">
+                                            <span style="padding: 4px; cursor: pointer; background: #f7f7f7; border-radius: 8px;">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                    <polyline points="15 18 9 12 15 6"></polyline>
+                                                </svg>
+                                            </span>
+                                            <span style="font-weight: 600;">Instant Remarks</span>
+                                        </span>
+                            
+                                        <?php
+                                        // Define Instant Remarks with custom messages.
+                                        // The 'time' value represents a future Unix timestamp.
+                                        $instant_remarks = [
+                                            ['text' => 'Number off', 'note' => '', 'type' => false],
+                                            ['text' => 'kal visit korbe', 'note' => 'You need to set reminder time', 'type' => 'custom'],
+                                            ['text' => 'Call after 1 hour', 'time' => time() + 3600, 'type' => 'reminder'],
+                                        ];
+                            
+                                        /**
+                                         * Format a future reminder timestamp based on the remaining time.
+                                         * - If the time is less than 1 hour, format as "X min Y sec".
+                                         * - If between 1 hour and 24 hours, format as "X hours Y min".
+                                         * - If 24 hours or more, format as "X days Y hours Z min".
+                                         *
+                                         * @param int $timestamp Future Unix timestamp.
+                                         * @return string Formatted time string.
+                                         */
+                                        function formatReminderTime($timestamp) {
+                                            $now  = time();
+                                            $diff = $timestamp - $now;
+                                            if ($diff <= 0) {
+                                                return "Due";
+                                            }
+                                            if ($diff < 3600) {
+                                                $minutes = floor($diff / 60);
+                                                $seconds = $diff % 60;
+                                                return sprintf("%d min %d sec", $minutes, $seconds);
+                                            } elseif ($diff < 86400) {
+                                                $hours   = floor($diff / 3600);
+                                                $minutes = floor(($diff % 3600) / 60);
+                                                $result  = ($hours > 0 ? sprintf("%d hours", $hours) : "");
+                                                if ($minutes > 0) {
+                                                    $result .= ($result ? " " : "") . sprintf("%d min", $minutes);
+                                                }
+                                                return $result;
+                                            } else {
+                                                $days    = floor($diff / 86400);
+                                                $hours   = floor(($diff % 86400) / 3600);
+                                                $minutes = floor((($diff % 86400) % 3600) / 60);
+                                                $result  = ($days > 0 ? sprintf("%d days", $days) : "");
+                                                if ($hours > 0) {
+                                                    $result .= ($result ? " " : "") . sprintf("%d hours", $hours);
+                                                }
+                                                if ($minutes > 0) {
+                                                    $result .= ($result ? " " : "") . sprintf("%d min", $minutes);
+                                                }
+                                                return $result;
+                                            }
+                                        }
+                                        $defaultDate = date('Y-m-d');     // e.g., 2025-04-09
+                                        $defaultTime = date('H:i');       // e.g., 14:35 (24-hour format)
+                                        ?>
+                            
+                                        <?php if (!empty($instant_remarks)) : ?>
+                                        <?php foreach ($instant_remarks as $rmk) :
+                                            $leadId = $lead->lead_id ?? 'null';
+                                            $type = isset($rmk['type']) ? $rmk['type'] : 'null';
+                                            $time = isset($rmk['time']) ? ', ' . $rmk['time'] : '';
+                                        ?>
+                                            <li>
+                                                <a class="dropdown-item d-flex align-items-start"
+                                                   <?php echo 'onclick="setReminderValueinform(' . $leadId . ', \'' . $rmk['text'] . '\''. ', \'' . $type . '\'' . ($time !== '' ? ', ' . $rmk['time'] : '') . ')"'; ?>
+                                                   style="padding: 10px 18px; cursor: pointer;">
+                                                    <span class="d-flex flex-column">
+                                                        <strong style="font-size: 15px;"><?php echo nl2br(htmlspecialchars($rmk['text'])); ?></strong>
+                                                        <?php if (isset($rmk['time'])): ?>
+                                                            <small>This will set a reminder after <?php echo formatReminderTime($rmk['time']); ?></small>
+                                                        <?php elseif (!empty($rmk['note'])): ?>
+                                                            <small><?php echo nl2br(htmlspecialchars($rmk['note'])); ?></small>
+                                                        <?php endif; ?>
+                                                    </span>
+                                                </a>
+                                            </li>
+                                        <?php endforeach; ?>
+                                        
+                                        <?php else : ?>
+                                        <li class="dropdown-item text-center text-muted">No remarks found.</li>
+                                        <?php endif; ?>
+                                        
+                                        <span class="rmnd_container">
+                                        	<div class="d-flex gap-2 w-100">
+                                                <input type="date" id="rmnd_date_<?php echo $lead->lead_id; ?>" value="<?php echo $defaultDate; ?>" class="form-control">
+                                                <input type="time" id="rmnd_time_<?php echo $lead->lead_id; ?>" value="<?php echo $defaultTime; ?>" class="form-control">
+                                        	</div>
+                                        	<div class="d-flex gap-2 w-100 mt-2">
+                                        		<button type="button" id="rmnd_save_<?php echo $lead->lead_id; ?>" class="btn btn-primary w-50">Save</button>
+                                        		<button type="button" id="rmnd_cancel_<?php echo $lead->lead_id; ?>" class="btn btn-outline-secondary w-50">Cancel</button>
+                                        	</div>
+                                        </span>
+                                    </ul>
+                                    
+                                </div>
+                            </span>
+
+								
+								
+							<div class="custom-remarks" style="display: flex;margin: 10px -5px -10px -10px;width: calc(100% + 20px);">
+								<input type="text" class="custom-remarks-input" placeholder="Enter remark">
+								<button type="button" class="submit-custom-remark"><i class="fadeIn animated bx bxl-telegram" style="font-size: 19px;margin-top: 3px;"></i></button>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="fixed_bottom_space"></div>
+				<div class="col w-100 fixed_bottom">
+				<fieldset class="checkbox-group">
+					<legend class="checkbox-group-legend">Select Remarks</legend>
+					<div class="checkbox">
+						<label class="checkbox-wrapper">
+							<input type="checkbox" class="checkbox-input remarks" value="positive" name="quick_remarks" <?php echo ($lead->quick_remarks === 'positive') ? 'checked disabled' : ''; ?> />
+							<span class="checkbox-tile">
+								<span class="checkbox-icon"></span>
+								<span class="checkbox-label">Positive</span>
+							</span>
+						</label>
+					</div>
+					<div class="checkbox">
+						<label class="checkbox-wrapper">
+							<input type="checkbox" class="checkbox-input remarks" value="not interest" name="quick_remarks" <?php echo ($lead->quick_remarks === 'not interest') ? 'checked disabled' : ''; ?> />
+							<span class="checkbox-tile">
+								<span class="checkbox-icon"></span>
+								<span class="checkbox-label">Not Interest</span>
+							</span>
+						</label>
+					</div>
+					<div class="checkbox">
+						<label class="checkbox-wrapper">
+							<input type="checkbox" class="checkbox-input remarks" value="visit done" name="quick_remarks" <?php echo ($lead->quick_remarks === 'visit done') ? 'checked disabled' : ''; ?> />
+							<span class="checkbox-tile">
+								<span class="checkbox-icon"></span>
+								<span class="checkbox-label">Visit Done</span>
+							</span>
+						</label>
+					</div>
+					<div class="checkbox">
+						<label class="checkbox-wrapper">
+							<input type="checkbox" class="checkbox-input remarks" value="sale done" name="quick_remarks" <?php echo ($lead->quick_remarks === 'sale done') ? 'checked disabled' : ''; ?> />
+							<span class="checkbox-tile">
+								<span class="checkbox-icon"></span>
+								<span class="checkbox-label">Sale Done</span>
+							</span>
+						</label>
+					</div>
+				</fieldset>
+                <script>
+                    function setReminderValueinform(lead_id, text, type = false, timestamp = false) {
+                        
+                         var date = $('#rmnd_date_' + lead_id).val();
+                         var time = $('#rmnd_time_' + lead_id).val();
+                         var btn_save = $('#rmnd_save_' + lead_id);
+                         var btn_cancel = $('#rmnd_cancel_' + lead_id);
+                        
+                        alert("Lead ID: " + lead_id + "\nDate: " + date + "\nTime: " + time + "\nText: " + text + "\nType: " + type + "\nTimestamp: " + timestamp);
+                    }
+
+                    // -- AJAX functions remain unchanged --
+                    function submitRemarks(leadId, quick_remarksValue) {
+                        $.ajax({
+                            url: Wo_Ajax_Requests_File() + '?f=manage_leads&s=update_remarks',
+                            type: 'POST',
+                            data: { quick_remarks: quick_remarksValue, lead_id: leadId, type: 'quick' },
+                            success: function(response) { },
+                            error: function(xhr, status, error) {
+                                console.error('Error submitting remarks:', error);
+                            }
+                        });
+                        $.ajax({
+                            url: Wo_Ajax_Requests_File() + '?f=manage_leads&s=update_remarks',
+                            type: 'POST',
+                            data: { remarks: quick_remarksValue, lead_id: leadId, type: 'custom', is_admin: 'true' },
+                            success: function(response) {
+                                DataTableRefresh();
+                                $('#all_remarks').html(response.result);
+                            },
+                            error: function(xhr, status, error) {
+                                console.error('Error submitting remarks:', error);
+                            }
+                        });
+                    }
+                
+                    function submitLeadStatus(leadId, status = '') {
+                        $.ajax({
+                            url: Wo_Ajax_Requests_File() + '?f=manage_leads&s=update_lead_status',
+                            type: 'POST',
+                            data: { status: status, lead_id: leadId },
+                            success: function(response) {
+                                DataTableRefresh();
+                            },
+                            error: function(xhr, status, error) {
+                                console.error('Error submitting lead status:', error);
+                            }
+                        });
+                    }
+                
+                    function checkInitialCheckbox() {
+                        var quick_remarks = "<?php echo $lead->quick_remarks; ?>";
+                        $('.checkbox-input.remarks').prop('checked', false);
+                        if (quick_remarks === 'visit done' || quick_remarks === 'semi-ready plot' || quick_remarks === 'positive' ||
+                            quick_remarks === 'negitive' || quick_remarks === 'ready plot' || quick_remarks === 'not interest' ||
+                            quick_remarks === 'sale done' || quick_remarks === 'not capable to buy' || quick_remarks === 'location not match' ||
+                            quick_remarks === 'closed' || quick_remarks === 'low budget') {
+                            $('input[value="' + quick_remarks + '"]').prop('checked', true);
+                        }
+                    }
+                
+                    $(document).ready(function() {
+                        checkInitialCheckbox();
+                
+                        $('#change_assigned').off('change').on('change', function() {
+                            var selectedUserId = $(this).val();
+                            var leadId = $('#viewLead-modal').data('id');
+                            if (selectedUserId) {
+                                $.ajax({
+                                    url: Wo_Ajax_Requests_File() + '?f=manage_leads&s=change_assigned',
+                                    type: 'POST',
+                                    data: { user_id: selectedUserId, lead_id: leadId },
+                                    success: function(response) {
+                                        DataTableRefresh();
+                                        console.log('Assigned successfully:', response);
+                                    },
+                                    error: function(xhr, status, error) {
+                                        console.error('Error assigning lead:', error);
+                                    }
+                                });
+                                $.ajax({
+                                    url: Wo_Ajax_Requests_File() + '?f=manage_leads&s=update_remarks',
+                                    type: 'POST',
+                                    data: { remarks: 'change_assigned', lead_id: leadId, type: 'custom', is_admin: 'true' },
+                                    success: function(response) {
+                                        DataTableRefresh();
+                                        $('#all_remarks').html(response.result);
+                                    },
+                                    error: function(xhr, status, error) {
+                                        console.error('Error submitting remarks:', error);
+                                    }
+                                });
+                            } else {
+                                console.error('No user selected!');
+                            }
+                        });
+                
+                        $('.checkbox-input.created_time').off('change').on('change', function() {
+                            var value = $(this).val();
+                            var leadId = $('#viewLead-modal').data('id');
+                            $('.checkbox-input.created_time').not(this).prop('checked', false);
+                            $.ajax({
+                                url: Wo_Ajax_Requests_File() + '?f=manage_leads&s=given_date',
+                                type: 'POST',
+                                data: { lead_id: leadId, value: value },
+                                success: function(response) {
+                                    DataTableRefresh();
+                                    $('.given_date').remove();
+                                },
+                                error: function(xhr, status, error) {
+                                    console.error('Error submitting given date:', error);
+                                }
+                            });
+                        });
+                
+                        $('.checkbox-input.remarks').off('change').on('change', function() {
+                            var quick_remarks = $(this).val();
+                            var leadId = $('#viewLead-modal').data('id');
+                            $('.checkbox-input.remarks').not(this).prop('checked', false);
+                            var allUnchecked = true;
+                            $('.checkbox-input.remarks').not('[value="Custom"]').each(function() {
+                                if ($(this).is(':checked')) {
+                                    allUnchecked = false;
+                                    $(this).prop('disabled', true);
+                                } else {
+                                    $(this).prop('disabled', false);
+                                }
+                            });
+                            if (allUnchecked) {
+                                $('.checkbox-input.remarks').not('[value="Custom"]').prop('disabled', false);
+                            }
+                            submitRemarks(leadId, quick_remarks);
+                        });
+                
+                        $('#viewClient-modal [data-dismiss="modal"]').off('click').on('click', function() {
+                            $('#viewLead-modal').fadeOut(200, function() { $(this).remove(); });
+                        });
+                        
+                        $('#viewLead-modal').off('hidden.bs.modal').on('hidden.bs.modal', function() {
+                            var leadId = $(this).data('id');
+                            submitLeadStatus(leadId);
+                            
+                            // Reset the URL to remove query parameters and the hash
+                            var cleanURL = location.origin + location.pathname;
+                            history.replaceState(null, '', cleanURL);
+                            
+                            $(this).fadeOut(200, function() {
+                                $(this).remove();
+                            });
+                        });
+
+                
+                        // Back/ESC handling: if any dropup is open, close it; otherwise, close the modal.
+                        $(document).off('keydown').on('keydown', function(e) {
+                            if (e.key === "Escape" || e.which === 27) {
+                                if ($('.dropup .dropdown-menu.show').length) {
+                                    history.back();
+                                } else {
+                                    $('#viewLead-modal').modal('hide');
+                                    history.back();
+                                }
+                            }
+                        });
+                        
+                        window.onpopstate = function(event) {
+                            if ($('.dropup .dropdown-menu.show').length) {
+                                $('.dropup .dropdown-menu.show').removeClass('show');
+                            } else {
+                                $('#viewLead-modal').modal('hide');
+                            }
+                        };
+                    });
+                    
+                    // Global dropup handler with history management.
+                    if (window.myDropupHandler) {
+                        document.removeEventListener('click', window.myDropupHandler);
+                    }
+                    window.myDropupHandler = function (e) {
+                        const toggleButton = e.target.closest('.dropup .dropdown-toggle');
+                        if (toggleButton) {
+                            const dropup = toggleButton.closest('.dropup');
+                            const dropdownMenu = dropup.querySelector('.dropdown-menu');
+                            const isOpening = !dropdownMenu.classList.contains('show');
+                            dropdownMenu.classList.add('show');
+                            if (isOpening) {
+                                history.pushState(null, '', location.href + '#dropup');
+                            } else {
+                                if (location.hash === '#dropup') {
+                                    history.back();
+                                    menu.classList.remove('show');
+                                }
+                            }
+                            // Close other open dropup menus.
+                            document.querySelectorAll('.dropup .dropdown-menu.show').forEach(menu => {
+                                if (menu !== dropdownMenu) {
+                                    menu.classList.remove('show');
+                                    if (location.hash === '#dropup') {
+                                        dropdownMenu.classList.removeClass('show');
+                                        history.back();
+                                    }
+                                }
+                            });
+                            e.stopPropagation();
+                        }
+                    };
+                    document.addEventListener('click', window.myDropupHandler);
+                    
+                    document.addEventListener('click', function(e) {
+                        // If the click is outside any element with .dropup and .modal...
+                        if (!e.target.closest('.dropup') && !e.target.closest('.modal')) {
+                            if (location.hash === '#dropup') {
+                                // Close any open dropup menus.
+                                document.querySelectorAll('.dropup .dropdown-menu.show').forEach(menu => {
+                                    menu.classList.remove('show');
+                                });
+                                // Remove the "#dropup" hash from the URL without affecting history.
+                                history.replaceState(null, '', location.href.replace('#dropup', ''));
+                            }
+                        }
+                        
+                        // If the click is outside any element with .dropup and .modal...
+                        if (!e.target.closest('.dropup')) {
+                            if (location.hash === '#dropup') {
+                                // Close any open dropup menus.
+                                document.querySelectorAll('.dropup .dropdown-menu.show').forEach(menu => {
+                                    menu.classList.remove('show');
+                                });
+                                // Remove the "#dropup" hash from the URL without affecting history.
+                                history.replaceState(null, '', location.href.replace('#dropup', ''));
+                            }
+                        }
+                    }, true);
+
+
+                </script>
+
+				</div>
+			</div>
+			<!--end row-->
+		</div>
+	</div>
+</div>

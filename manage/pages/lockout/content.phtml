@@ -1,0 +1,530 @@
+<div class="modal fade" id="lockout_modal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+	<div class="modal-dialog">
+		<div class="modal-content">
+			<div class="modal-body">
+				<form id="app" class="custom-modal" data-state="idle" autocomplete="off" action="">
+				  <div class="custom-icon">
+					<div class="custom-lock"></div>
+				  </div>
+				  <div class="custom-title">Session Timeout!</div>
+				  <div class="custom-subtitle">
+					<span data-show="idle">
+					  Please enter the password to view this link.
+					</span>
+					<span data-show="validating">
+					  Validating...
+					</span>
+					<span data-show="error" class="custom-error">
+					  Invalid password
+					</span>
+					<span data-show="success">
+					  Success!
+					</span>
+				  </div>
+				  <div class="custom-password">
+					<input type="password" class="custom-password-input" placeholder="Enter the password" autocomplete="new-password" />
+				  </div>
+				  <button class="custom-submit">Submit</button>
+				  <button class="custom-reset d-none" type="button" title="Reset"></button>
+				</form>
+				<a href="<?php echo $wo['site_url']; ?>/logout/" style=" width: 100%; display: block; text-align: center; padding: 10px; padding-bottom: 0; color: black; font-weight: 500; user-select: none;">Logout</a>
+			</div>
+		</div>
+	</div>
+</div>
+<style>
+aside.sidebar-wrapper, header.top-header, footer.footer {filter: blur(2px);}
+.modal-backdrop.show {
+    opacity: 0.75;
+}
+</style>
+<script>
+// Function to initialize the password form
+function initializePasswordForm() {
+  const elApp = document.querySelector("#app");
+  const elButton = document.querySelector(".custom-submit");
+  const elPassword = document.querySelector(".custom-password-input");
+  const elReset = document.querySelector(".custom-reset");
+
+  const context = {
+    password: ""
+  };
+
+  const actions = {
+    assignPassword: XState.assign({
+      password: (_, event) => event.value
+    }),
+    validatePassword: ctx => {
+      $.ajax({
+        url: Wo_Ajax_Requests_File() + '?f=manage_settings&s=lockout_register',
+        type: 'POST',
+        data: {
+          password: ctx.password
+        },
+        success: function(response) {
+          if (response.status === 200) {
+            send("VALID");
+            SMColibri.spa_reload();
+          } else {
+            send("INVALID");
+          }
+        },
+        error: function() {
+          send("INVALID");
+        }
+      });
+    },
+
+    clearPassword: XState.assign({
+      password: () => {
+        elPassword.value = '';
+        return '';
+      }
+    })
+  };
+
+  const passwordMachine = XState.Machine(
+    {
+      initial: "idle",
+      context,
+      states: {
+        idle: {
+          entry: "clearPassword",
+          on: {
+            SUBMIT: { target: "validating", cond: "passwordEntered" },
+            CHANGE: {
+              target: "idle",
+              actions: "assignPassword",
+              internal: true // this prevents onEntry from running again
+            }
+          },
+          initial: 'normal',
+          states: {
+            normal: {},
+            error: {
+              after: {
+                2000: "normal"
+              }
+            }
+          }
+        },
+        validating: {
+          onEntry: "validatePassword",
+          on: {
+            VALID: "success",
+            INVALID: "idle.error"
+          }
+        },
+        success: {}
+      },
+      on: {
+        RESET: ".idle"
+      }
+    },
+    {
+      actions,
+      guards: {
+        passwordEntered: ctx => {
+          return ctx.password && ctx.password.length;
+        }
+      }
+    }
+  );
+
+  let state = passwordMachine.initialState;
+
+  function activate(state) {
+    elApp.dataset.state = state.toStrings().join(' ');
+
+    document.querySelectorAll("[data-active]").forEach(el => {
+      el.removeAttribute("data-active");
+    });
+
+    document.querySelectorAll(`[data-show~="${state.value}"]`).forEach(el => {
+      el.setAttribute("data-active", true);
+    });
+  }
+
+  const interpreter = XState
+    .interpret(passwordMachine)
+    .onTransition(activate)
+    .start();
+
+  activate(state);
+
+  const { send } = interpreter;
+
+  elButton.addEventListener("click", () => send("SUBMIT"));
+  elPassword.addEventListener("input", e =>
+    send({ type: "CHANGE", value: e.target.value })
+  );
+  elApp.addEventListener("submit", e => {
+    e.preventDefault();
+    send("SUBMIT");
+  });
+  elReset.addEventListener("click", () => send("RESET"));
+
+  function focusPasswordInput() {
+    elPassword.focus();
+  }
+
+  $(document).ready(function() {
+    $("#lockout_modal").modal({
+      backdrop: 'static',
+      keyboard: false // This prevents closing the modal with the keyboard Esc key
+    });
+    $("#lockout_modal").modal('show');
+    $('#lockout_modal').on('shown.bs.modal', focusPasswordInput);
+  });
+}
+
+// Function to reset or destroy the password form elements
+function resetPasswordForm() {
+  // Add any additional cleanup steps if needed
+  elApp = null;
+  elButton = null;
+  elPassword = null;
+  elReset = null;
+}
+
+// Call the initialization function
+initializePasswordForm();
+</script>
+
+<style>
+	@charset "UTF-8";
+	*:before,
+	*:after {
+	  transition: all 0.5s cubic-bezier(0.5, 0, 0.5, 1);
+	  transition-property: transform, opacity, background-color, border-color;
+	  transition-delay: 0s;
+	}
+	[data-show] {
+	  opacity: 0;
+	}
+	[data-show][data-active] {
+	  opacity: 1;
+	}
+
+	[data-state~=idle] {
+	  -webkit-animation: reset 1s cubic-bezier(0.5, 0, 0.5, 1) both;
+	  animation: reset 1s cubic-bezier(0.5, 0, 0.5, 1) both;
+	}
+	[data-state~=idle] .custom-icon {
+	  --bg: #e3e6f9;
+	  --color: var(--color-primary);
+	}
+	[data-state~=idle] .custom-password:before {
+	  background-color: var(--color-primary);
+	  transform: translateX(-100%);
+	}
+	[data-state~=idle] .custom-password:focus-within:before {
+	  transform: none;
+	}
+
+	[data-state~=validating] .custom-icon {
+	  --bg: #e3e6f9;
+	  --color: var(--color-primary);
+	}
+	[data-state~=validating] .custom-password:before {
+	  transform-origin: left center;
+	  background-color: var(--color-primary);
+	  -webkit-animation: password-validating 1s infinite;
+	  animation: password-validating 1s infinite;
+	}
+	[data-state~=validating] .custom-submit {
+	  opacity: 0.5;
+	  pointer-events: none;
+	}
+
+	[data-state~="idle.error"] .custom-icon {
+	  background-color: #fad0d8;
+	  --color: var(--color-error);
+	  -webkit-animation: icon-error 1s cubic-bezier(0.5, 0, 0.5, 1) both;
+	  animation: icon-error 1s cubic-bezier(0.5, 0, 0.5, 1) both;
+	}
+	[data-state~="idle.error"] .custom-password:before {
+	  -webkit-animation: slide-right 0.5s cubic-bezier(0.5, 0, 0.5, 1) both;
+	  animation: slide-right 0.5s cubic-bezier(0.5, 0, 0.5, 1) both;
+	  background-color: #e2294e;
+	}
+
+	[data-state~=success] .custom-icon {
+	  --bg: var(--color-success);
+	  --color: var(--color-success);
+	}
+	[data-state~=success] .custom-icon:before {
+	  -webkit-animation: icon-bg-success 0.5s ease-out both;
+	  animation: icon-bg-success 0.5s ease-out both;
+	}
+	[data-state~=success] .custom-password:before {
+	  -webkit-animation: slide-right 0.5s cubic-bezier(0.5, 0, 0.5, 1) both;
+	  animation: slide-right 0.5s cubic-bezier(0.5, 0, 0.5, 1) both;
+	  background-color: var(--color-success);
+	}
+
+	[data-state]:not([data-state~=idle]) .custom-password-input {
+	  pointer-events: none;
+	  cursor: not-allowed;
+	  opacity: 0.5;
+	}
+	[data-state]:not([data-state~=idle]) .custom-submit {
+	  opacity: 0.5;
+	}
+
+	@-webkit-keyframes password-validating {
+	  from {
+		transform: translateX(-100%) scaleX(0.5);
+	  }
+	  to {
+		transform: translateX(100%) scaleX(0.5);
+	  }
+	}
+
+	@keyframes password-validating {
+	  from {
+		transform: translateX(-100%) scaleX(0.5);
+	  }
+	  to {
+		transform: translateX(100%) scaleX(0.5);
+	  }
+	}
+	@-webkit-keyframes slide-right {
+	  from {
+		transform: translateX(-100%);
+	  }
+	  to {
+		transform: none;
+	  }
+	}
+	@keyframes slide-right {
+	  from {
+		transform: translateX(-100%);
+	  }
+	  to {
+		transform: none;
+	  }
+	}
+	@-webkit-keyframes icon-error {
+	  from, 85%, to {
+		transform: none;
+	  }
+	  20%, 50% {
+		transform-origin: right center;
+		transform: translateX(-30%) scaleX(1.1);
+	  }
+	  35%, 65% {
+		transform-origin: left center;
+		transform: translateX(30%) scaleX(1.1);
+	  }
+	}
+	@keyframes icon-error {
+	  from, 85%, to {
+		transform: none;
+	  }
+	  20%, 50% {
+		transform-origin: right center;
+		transform: translateX(-30%) scaleX(1.1);
+	  }
+	  35%, 65% {
+		transform-origin: left center;
+		transform: translateX(30%) scaleX(1.1);
+	  }
+	}
+	@-webkit-keyframes icon-bg-success {
+	  from {
+		transform: scale(1);
+		opacity: 0.5;
+	  }
+	  to {
+		transform: scale(4);
+		opacity: 0;
+	  }
+	}
+	@keyframes icon-bg-success {
+	  from {
+		transform: scale(1);
+		opacity: 0.5;
+	  }
+	  to {
+		transform: scale(4);
+		opacity: 0;
+	  }
+	}
+	.custom-modal {
+	  --color-primary: #5a52ff;
+	  --color-error: #e0294c;
+	  --color-success: #0dbe65;
+	  background-color: #fff;
+	  padding: 2rem 4rem;
+	  border-radius: 0.5rem;
+	  display: flex;
+	  flex-direction: column;
+	  justify-content: flex-start;
+	  align-items: center;
+	  box-shadow: 0 1rem 2rem rgba(0, 0, 0, 0.1);
+	}
+
+	.custom-icon {
+	  height: 3rem;
+	  width: 3rem;
+	  border-radius: 50%;
+	  margin-bottom: 1rem;
+	}
+	.custom-icon:before {
+	  content: "";
+	  position: absolute;
+	  display: block;
+	  top: 0;
+	  left: 0;
+	  width: 100%;
+	  height: 100%;
+	  border-radius: inherit;
+	  background: var(--bg);
+	  will-change: transform;
+	}
+	.custom-icon > .custom-lock {
+	  height: 100%;
+	  width: 100%;
+	  position: absolute;
+	  top: 0;
+	  left: 0;
+	  width: 100%;
+	  height: 100%;
+	  display: flex;
+	  justify-content: center;
+	  align-items: center;
+	}
+	.custom-icon > .custom-lock:before, .custom-icon > .custom-lock:after {
+	  content: "";
+	  position: absolute;
+	}
+	.custom-icon > .custom-lock:after {
+	  background-color: var(--color);
+	  height: 25%;
+	  width: 45%;
+	  transform: translateY(50%);
+	  border-radius: 2px;
+	}
+	.custom-icon > .custom-lock:before {
+	  width: 30%;
+	  height: 50%;
+	  border-radius: 1rem;
+	  border: 4px solid var(--color);
+	}
+
+	.custom-title {
+	  font-size: 1rem;
+	  line-height: 2rem;
+	}
+
+	.custom-subtitle {
+	  font-size: 0.75rem;
+	  height: 1rem;
+	  margin-bottom: 1rem;
+	  display: flex;
+	  justify-content: center;
+	  align-items: center;
+	  color: #9a9ca2;
+	}
+	.custom-subtitle > span {
+	  line-height: 1rem;
+	  position: absolute;
+	  white-space: nowrap;
+	}
+	.custom-subtitle > span.custom-error {
+	  font-weight: bold;
+	  color: var(--color-error);
+	}
+
+	.custom-password {
+	  -webkit-appearance: none;
+	  -moz-appearance: none;
+	  appearance: none;
+	  background: none;
+	  border: none;
+	  padding-bottom: 2px;
+	  margin-bottom: 2rem;
+	  overflow: hidden;
+	}
+	.custom-password:before, .custom-password:after {
+	  content: "";
+	  position: absolute;
+	  height: 2px;
+	  width: 100%;
+	  bottom: 0;
+	  left: 0;
+	  z-index: 1;
+	}
+	.custom-password:after {
+	  background-color: #e8e9f0;
+	  z-index: 0;
+	}
+
+	.custom-password-input {
+	  -webkit-appearance: none;
+	  -moz-appearance: none;
+	  appearance: none;
+	  background: none;
+	  border: none;
+	  height: 2rem;
+	  width: 15rem;
+	}
+	.custom-password-input:focus {
+	  outline: none;
+	}
+
+	.custom-submit {
+	  -webkit-appearance: none;
+	  -moz-appearance: none;
+	  appearance: none;
+	  padding: 0 1.5rem;
+	  height: 2rem;
+	  border-radius: 0.5rem;
+	  font-size: 0.75rem;
+	  color: white;
+	  background-color: var(--color-primary);
+	  border: none;
+	}
+	.custom-submit:active, .custom-submit:hover {
+	  transform: scale(1.05);
+	  transition-duration: 0.2s;
+	  background-color: #382ffb;
+	}
+	.custom-submit:focus {
+	  outline: none;
+	}
+
+	.custom-link {
+	  color: var(--color-primary);
+	  text-decoration: none;
+	}
+
+	.custom-reset {
+	  -webkit-appearance: none;
+	  -moz-appearance: none;
+	  appearance: none;
+	  background: none;
+	  border: none;
+	  position: absolute;
+	  top: 0;
+	  right: 0;
+	  padding: 1rem;
+	}
+	.custom-reset:before {
+	  content: "ｘ";
+	  color: #aaafbd;
+	  font-weight: bold;
+	  font-size: 1.5rem;
+	}
+	.custom-reset:focus {
+	  outline: none;
+	}
+
+	*,
+	*:before,
+	*:after {
+	  box-sizing: border-box;
+	  position: relative;
+	}
+</style>

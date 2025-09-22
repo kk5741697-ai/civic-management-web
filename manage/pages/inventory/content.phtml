@@ -1,0 +1,18 @@
+<?php
+if (check_permission('manage-inventory') || Wo_IsAdmin() || Wo_IsModerator()) {
+    $project = isset($_GET['project']) ? $_GET['project'] : '';
+
+    // Define the list of allowed projects
+    $allowed_projects = ['hill-town', 'moon-hill'];
+
+    // Check if the project is in the allowed projects array
+    if (in_array($project, $allowed_projects)) {
+        echo Wo_LoadManagePage('inventory/project');
+    } else {
+        echo '<div>Invalid project selected. Please choose a valid project.</div>';
+    }
+} else {
+    echo Wo_LoadManagePage('permission-required/content');
+}
+
+?>

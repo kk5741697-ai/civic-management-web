@@ -1,0 +1,40 @@
+<!-- Purchase Table -->
+<div class="card border-0 shadow-sm">
+  <div class="card-header bg-light border-0 py-3">
+    <h6 class="mb-0 fw-semibold text-dark">Purchase Details</h6>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive" style="position: relative; overflow: visible;">
+      <table class="table table-hover mb-0" id="purchaseTable">
+        <thead class="table-light">
+          <tr>
+            <th class="fw-semibold">Project</th>
+            <th class="fw-semibold">Block</th>
+            <th class="fw-semibold">Katha</th>
+            <th class="fw-semibold">Plot</th>
+            <th class="fw-semibold">Road</th>
+            <th class="fw-semibold">File</th>
+            <th class="fw-semibold">Date</th>
+            <th class="fw-semibold">Status</th>
+            <th class="fw-semibold text-center" style="width: 120px;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <?php foreach ($wo['booking_helper'] as $index => $p): ?>
+            <?= Wo_LoadManagePage('clients/includes/purchase_row', ['purchase' => $p, 'index' => $index]) ?>
+          <?php endforeach; ?>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Add Purchase Button -->
+    <div class="p-3 border-top bg-light">
+      <button class="btn btn-success btn-sm" id="addPurchaseBtn">
+        <i class="lni lni-plus me-1"></i> Add Purchase
+      </button>
+    </div>
+
+    <?= Wo_LoadManagePage('clients/includes/add_purchase_form') ?>
+
+  </div>
+</div>

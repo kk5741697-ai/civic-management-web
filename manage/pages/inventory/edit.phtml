@@ -1,0 +1,521 @@
+<?php
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
+Global $inventory, $project_mapping;
+
+if (!function_exists('getv')) {
+    function getv($src, $key, $default = null) {
+        if (is_array($src)) return array_key_exists($key, $src) ? $src[$key] : $default;
+        if (is_object($src)) return isset($src->$key) ? $src->$key : $default;
+        return $default;
+    }
+}
+
+$project = $_POST['project'] ?? '';
+$project_id = isset($project_mapping[$project]) ? $project_mapping[$project] : 0;
+
+// --- Build unique katha/road lists for the project ---
+$get_katha = $db->where('project', $project)->get(T_BOOKING, null, ['katha', 'road', 'file_num']);
+$katha_vals = [];
+$road_vals  = [];
+if ($get_katha && is_array($get_katha)) {
+    foreach ($get_katha as $row) {
+        if (is_array($row)) $row = (object)$row;
+        $k = $row->katha ?? '';
+        $r = $row->road ?? '';
+        if ($k !== '' && $k !== null) $katha_vals[] = $k;
+        if ($r !== '' && $r !== null) $road_vals[]  = $r;
+    }
+}
+$unique_katha = array_values(array_unique($katha_vals));
+$unique_road  = array_values(array_unique($road_vals));
+$katha_array = [];
+foreach ($unique_katha as $value) { if ($value === null || $value === '') continue; $katha_array[$value] = (string)$value . ' Katha'; }
+$road_array = [];
+foreach ($unique_road as $value) { if ($value === null || $value === '') continue; $road_array[$value] = (string)$value; }
+
+// --- Fetch helper rows for this booking ---
+$helper_raw = $db->where('booking_id', $inventory->id)->orderBy('id', 'ASC')->get(T_BOOKING_HELPER);
+$helper = [];
+if ($helper_raw && is_array($helper_raw)) {
+    foreach ($helper_raw as $h) $helper[] = is_array($h) ? (object)$h : $h;
+}
+
+// parse nominee ids (robust)
+if (!function_exists('parse_nominee_ids')) {
+    function parse_nominee_ids($raw) {
+        if (empty($raw) && $raw !== '0') return [];
+        if (is_array($raw)) return array_values(array_map('intval', $raw));
+        if (is_numeric($raw)) return [(int)$raw];
+        if (!is_string($raw)) return [];
+        $s = trim($raw);
+        if ($s === '') return [];
+        $json = json_decode($s, true);
+        if (json_last_error() === JSON_ERROR_NONE && is_array($json)) return array_values(array_map('intval', $json));
+        $clean = preg_replace('/[^0-9,]/', '', $s);
+        if ($clean === '') return [];
+        $parts = array_filter(array_map('trim', explode(',', $clean)), function($v){return $v !== '';});
+        return array_values(array_map('intval', $parts));
+    }
+}
+
+// --- Prefetch all nominees used by helper rows (single query) ---
+$all_nominee_ids = [];
+foreach ($helper as $h) {
+    $ids = parse_nominee_ids(getv($h, 'nominee_ids', ''));
+    foreach ($ids as $id) $all_nominee_ids[] = (int)$id;
+}
+$all_nominee_ids = array_values(array_unique($all_nominee_ids));
+$nominee_map = [];
+if (!empty($all_nominee_ids)) {
+    $rows = $db->where('id', $all_nominee_ids, 'IN')->get(T_CRM_NOMINEES);
+    if ($rows && is_array($rows)) {
+        foreach ($rows as $r) { $r = is_array($r) ? (object)$r : $r; $nominee_map[(int)$r->id] = $r; }
+    }
+}
+?>
+<!-- MODAL: Modern Inventory Editor (Cancel Inventory focused) -->
+<style>
+  /* Ensure forms are excluded from print/download */
+  @media print {
+    .no-print { display: none !important; }
+    .modal { position: static !important; }
+    body * { visibility: visible; }
+  }
+  /* small helper to make printed cards cleaner */
+  .print-card { border: 1px solid #eee; padding: 12px; margin-bottom: 8px; border-radius: 8px; }
+</style>
+
+<div class="modal fade" id="editInventory-modal" tabindex="-1" aria-hidden="true" data-id="<?php echo htmlspecialchars($inventory->id); ?>">
+  <div class="modal-dialog modal-xl modal-dialog-centered modal-fullscreen-lg-down">
+    <div class="modal-content" style="border-radius:12px;overflow:hidden;">
+
+      <!-- Header (no-print) -->
+      <div class="modal-header bg-white border-0 py-3 px-4 d-flex align-items-center justify-content-between no-print">
+        <div class="d-flex align-items-center gap-3">
+          <div style="width:56px;height:56px;background:#f6f8fb;border-radius:10px;display:flex;align-items:center;justify-content:center;">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 12c2.761 0 5-2.239 5-5s-2.239-5-5-5-5 2.239-5 5 2.239 5 5 5zM4 20c0-3.314 2.686-6 6-6h4c3.314 0 6 2.686 6 6v1H4v-1z" fill="#6c757d"/></svg>
+          </div>
+          <div>
+            <div class="small text-muted">Inventory</div>
+            <div class="fw-semibold" style="font-size:16px;line-height:1;">Plot: <?php echo htmlspecialchars($inventory->plot); ?> &nbsp;•&nbsp; Katha: <?php echo htmlspecialchars($inventory->katha); ?></div>
+            <div class="small text-muted">Road: <?php echo htmlspecialchars($inventory->road); ?> &nbsp;•&nbsp; Facing: <?php echo htmlspecialchars($inventory->facing); ?></div>
+          </div>
+        </div>
+
+        <div class="d-flex align-items-center gap-2">
+          <button type="button" class="btn btn-outline-secondary btn-sm" id="printInventoryBtn">Print</button>
+          <button type="button" class="btn btn-outline-secondary btn-sm" id="downloadInventoryBtn">Download</button>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+      </div>
+
+      <!-- Body: printable area includes left column (helpers) only -->
+      <div class="modal-body p-4" style="background:#fbfdff;" id="inventoryPrintableArea">
+        <div class="row gx-4 gy-3">
+          <div class="col-12 col-lg-7">
+            <!-- helpers list (printed) -->
+            <div class="mb-3">
+              <div class="d-flex align-items-center justify-content-between mb-2">
+                <div>
+                  <h6 class="mb-0">Client History</h6>
+                  <div class="small text-muted">Recent bookings and payment details</div>
+                </div>
+                <div class="no-print">
+                  <button class="btn btn-sm btn-outline-primary" id="refreshHelpersBtn">Refresh</button>
+                </div>
+              </div>
+
+              <div id="helpersList" class="d-grid gap-2">
+                <?php if (!empty($helper)) {
+                  foreach ($helper as $value) {
+                    $client_id = is_object($value) && property_exists($value, 'client_id') ? (int)$value->client_id : (is_array($value) && array_key_exists('client_id',$value) ? (int)$value['client_id'] : 0);
+                    $client = $client_id ? GetCustomerById($client_id) : [];
+                    $client_name = getv($client,'name','-');
+                    $additional = $client_id ? GetAddiData_cId($client_id) : [];
+                    $ref_id = getv($additional,'reference',null);
+                    $refUser = Wo_UserData($ref_id);
+                    $ref_name = isset($refUser['name']) ? $refUser['name'] : '-';
+                    $status_raw = getv($value,'status','');
+                    $status = match ((string)$status_raw) {
+                      '1' => '<span class="badge bg-info text-dark"> Available </span>',
+                      '2' => '<span class="badge bg-success"> Sold </span>',
+                      '3' => '<span class="badge bg-primary"> Complete </span>',
+                      '4' => '<span class="badge bg-danger"> Canceled </span>',
+                      default => '<span class="badge bg-secondary text-dark"> Unknown </span>',
+                    };
+                    $helper_time = getv($value,'time',null);
+
+                    // numbers
+                    $per_katha = getv($value,'per_katha', getv($value,'perkatha',''));
+                    $down_payment = getv($value,'down_payment', getv($value,'downpayment',''));
+                    $cancel_date = getv($value,'cancel_date', getv($value,'cancel_date',''));
+                    $installment = getv($value,'installment','');
+                    $fmt_per_katha = ($per_katha === '' || $per_katha === null) ? '' : number_format((float)$per_katha,2);
+                    $fmt_down = ($down_payment === '' || $down_payment === null) ? '' : number_format((float)$down_payment,2);
+
+                    // nominees for this helper (use pre-fetched map)
+                    $raw_nom = getv($value,'nominee_ids','');
+                    $nom_ids = parse_nominee_ids($raw_nom);
+                    $nominee_names_local = [];
+                    foreach ($nom_ids as $nid) {
+                      if (isset($nominee_map[(int)$nid])) {
+                        $nr = $nominee_map[(int)$nid];
+                        $rname = isset($nr->relation) && $nr->relation !== '' ? ' (' . $nr->relation . ')' : '';
+                        $nominee_names_local[] = htmlspecialchars($nr->name) . $rname;
+                      } else {
+                        $nn = GetCustomerById($nid);
+                        if (!empty($nn) && isset($nn['name'])) $nominee_names_local[] = htmlspecialchars($nn['name']);
+                        else $nominee_names_local[] = 'ID ' . (int)$nid;
+                      }
+                    }
+
+
+                    ?>
+                    <div class="card border-0 shadow-sm print-card" data-helper-id="<?php echo (int)$value->id; ?>" data-client-id="<?php echo (int)$client_id; ?>" data-status="<?php echo (int)$status_raw; ?>">
+                      <div class="card-body py-2 px-3 d-flex gap-3 align-items-start" style="padding:12px;">
+                        <div style="width:56px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:#f6f8fb;border-radius:10px;">
+                          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 12c2.761 0 5-2.239 5-5s-2.239-5-5-5-5 2.239-5 5 2.239 5 5 5zM4 20c0-3.314 2.686-6 6-6h4c3.314 0 6 2.686 6 6v1H4v-1z" fill="#6c757d"/></svg>
+                        </div>
+
+                        <div style="width:100%;">
+                          <div class="d-flex justify-content-between">
+                            <div>
+                              <div class="small text-muted">Client</div>
+                              <div class="fw-medium"><?php echo htmlspecialchars($client_name); ?></div>
+                              <div class="small text-muted">Ref: <?php echo htmlspecialchars($ref_name); ?></div>
+                            </div>
+                            <div class="text-end">
+                              <?php echo $status; ?>
+                              <div class="small text-muted mt-1"><?php echo $helper_time ? htmlspecialchars(date('d.m.Y', (int)$helper_time)) : '-'; ?></div>
+                              <?php if ((string)$status_raw === '4'): ?>
+                                <div class="small text-danger mt-1">Canceled on: <?php echo $cancel_date ? htmlspecialchars(date('d.m.Y' , $cancel_date)) : '-'; ?></div>
+                              <?php endif; ?>
+                            </div>
+                          </div>
+
+                          <div class="row gx-2 mt-2 align-items-center">
+                            <div class="col-6 col-md-4 small text-muted">Per Katha</div>
+                            <div class="col-6 col-md-4 fw-medium"><?php echo $fmt_per_katha !== '' ? '৳ ' . $fmt_per_katha : '-'; ?></div>
+                            <div class="col-6 col-md-4 small text-muted">Down Payment</div>
+                            <div class="col-6 col-md-4 fw-medium"><?php echo $fmt_down !== '' ? '৳ ' . $fmt_down : '-'; ?></div>
+                          </div>
+
+                          <div class="mt-2 d-flex flex-wrap gap-2 align-items-center">
+                            <?php if (!empty($nominee_names_local)) {
+                              foreach ($nominee_names_local as $nitem) {
+                                echo '<button type="button" class="btn btn-sm btn-light border nominee-btn" data-nominee="' . htmlspecialchars($nitem) . '">' . $nitem . '</button>';
+                              }
+                            } else {
+                              echo '<div class="small text-muted">No nominees</div>';
+                            } ?>
+                          </div>
+
+                        </div>
+                      </div>
+                    </div>
+                    <?php
+                  }
+                } else {
+                  echo '<div class="text-muted small">No client history for this inventory.</div>';
+                } ?>
+              </div>
+            </div>
+          </div> <!-- end left column -->
+
+          <!-- Right column: controls (excluded from print via .no-print) -->
+          <div class="col-12 col-lg-5 no-print">
+            <div class="d-flex gap-2 mb-3">
+              <button id="panelCancelBtn" class="btn btn-sm btn-outline-danger">Cancel Inventory</button>
+              <button id="panelEditBtn" class="btn btn-sm btn-outline-secondary">Edit Inventory</button>
+            </div>
+
+            <div class="card shadow-sm border-0">
+              <div class="card-body p-3">
+
+                <!-- CANCEL PANEL: only date + CTA -->
+                <div id="panelCancel" style="display:none;">
+                  <h6 class="mb-2 text-danger">Cancel Inventory</h6>
+                  <div class="small text-muted mb-3">Select cancellation date and confirm.</div>
+
+                  <div class="mb-2">
+                    <label class="form-label small">Date</label>
+                    <input type="text" id="cancel_date_field" class="form-control" readonly value="<?php echo date('Y-m-d'); ?>">
+                  </div>
+
+                  <div class="mb-3 d-grid gap-2">
+                    <button class="btn btn-danger" id="saveCancelBtn">Cancel</button>
+                  </div>
+                </div>
+
+                <!-- EDIT PANEL: keep same edit form -->
+                <div id="panelEdit" style="display:none;">
+                  <h6 class="mb-2">Edit Inventory</h6>
+                  <div class="small text-muted mb-3">Change block, road, katha or plot number</div>
+
+                  <div class="row gx-2">
+                    <div class="col-12 mb-2">
+                      <label class="form-label small">Block</label>
+                      <select id="block_select" class="form-select">
+                        <option disabled>Select Block</option>
+                        <option value="a" <?php echo ($inventory->block == 'a') ? 'selected' : ''; ?>>Block A</option>
+                        <option value="b" <?php echo ($inventory->block == 'b') ? 'selected' : ''; ?>>Block B</option>
+                        <option value="c" <?php echo ($inventory->block == 'c') ? 'selected' : ''; ?>>Block C</option>
+                      </select>
+                    </div>
+
+                    <div class="col-6 mb-2">
+                      <label class="form-label small">Road</label>
+                      <select id="road_select" class="form-select">
+                        <option disabled>Select Road...</option>
+                        <?php foreach ($road_array as $key => $value) : ?>
+                          <option value="<?php echo htmlspecialchars($key); ?>" <?php echo ($inventory->road == $key) ? 'selected' : ''; ?>><?php echo htmlspecialchars($value); ?></option>
+                        <?php endforeach; ?>
+                      </select>
+                    </div>
+
+                    <div class="col-6 mb-2">
+                      <label class="form-label small">Katha</label>
+                      <select id="katha_select" class="form-select">
+                        <option disabled>Select Katha...</option>
+                        <?php foreach ($katha_array as $key => $value) : ?>
+                          <option value="<?php echo htmlspecialchars($key); ?>" <?php echo ($inventory->katha == $key) ? 'selected' : ''; ?>><?php echo htmlspecialchars($value); ?></option>
+                        <?php endforeach; ?>
+                      </select>
+                    </div>
+
+                    <div class="col-12 mb-2">
+                      <label class="form-label small">Facing</label>
+                      <select id="facing_select" class="form-select">
+                        <option disabled>Select Facing</option>
+                        <option value="north" <?php echo ($inventory->facing == 'north') ? 'selected' : ''; ?>>North</option>
+                        <option value="south" <?php echo ($inventory->facing == 'south') ? 'selected' : ''; ?>>South</option>
+                        <option value="east" <?php echo ($inventory->facing == 'east') ? 'selected' : ''; ?>>East</option>
+                        <option value="west" <?php echo ($inventory->facing == 'west') ? 'selected' : ''; ?>>West</option>
+                        <option value="north-east" <?php echo ($inventory->facing == 'north-east') ? 'selected' : ''; ?>>North-East</option>
+                        <option value="south-east" <?php echo ($inventory->facing == 'south-east') ? 'selected' : ''; ?>>South-East</option>
+                        <option value="south-west" <?php echo ($inventory->facing == 'south-west') ? 'selected' : ''; ?>>South-West</option>
+                        <option value="north-west" <?php echo ($inventory->facing == 'north-west') ? 'selected' : ''; ?>>North-West</option>
+                      </select>
+                    </div>
+
+                    <div class="col-12 mb-2">
+                      <label class="form-label small">Plot Number</label>
+                      <input type="text" id="plot_input" class="form-control" value="<?php echo htmlspecialchars($inventory->plot); ?>">
+                    </div>
+
+                    <div class="col-12 d-grid gap-2 mt-2">
+                      <button class="btn btn-success" id="saveEditBtn">Save Changes</button>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+          </div> <!-- end right column -->
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Hidden data for scripts -->
+<input type="hidden" id="inventoryIdHidden" value='<?php echo (int)$inventory->id; ?>' />
+
+<script>
+(function($){
+  $(function(){
+    const invId = $('#inventoryIdHidden').val();
+    const PANEL_KEY = 'inventory_modal_last_panel_' + invId;
+
+    // try initializing select2 for selects (safe-guarded)
+    try { $('#road_select,#katha_select,#facing_select,#block_select').select2({ dropdownParent: $('#editInventory-modal'), width: '100%' }); } catch(e){}
+
+    // flatpickr for cancel date and generic date fields
+    if (typeof flatpickr !== 'undefined') {
+      flatpickr('#cancel_date_field', { dateFormat: 'Y-m-d' });
+      flatpickr('#date_field', { dateFormat: 'Y-m-d' }); // in case other date exists
+    }
+
+    // PANEL SWITCHING (remember last visible via localStorage)
+    function showPanel(name) {
+      if (name === 'cancel') {
+        $('#panelCancel').show(); $('#panelEdit').hide();
+        $('#panelCancelBtn').removeClass('btn-outline-danger').addClass('btn-danger');
+        $('#panelEditBtn').removeClass('btn-primary').addClass('btn-outline-secondary');
+        localStorage.setItem(PANEL_KEY, 'cancel');
+      } else {
+        $('#panelCancel').hide(); $('#panelEdit').show();
+        $('#panelEditBtn').removeClass('btn-outline-secondary').addClass('btn-primary');
+        $('#panelCancelBtn').removeClass('btn-danger').addClass('btn-outline-danger');
+        localStorage.setItem(PANEL_KEY, 'edit');
+      }
+    }
+    $('#panelCancelBtn').on('click', function(){ showPanel('cancel'); });
+    $('#panelEditBtn').on('click', function(){ showPanel('edit'); });
+
+    // restore last panel or default to cancel
+    const last = localStorage.getItem(PANEL_KEY) || 'cancel';
+    showPanel(last);
+
+    // determine client id to send: prefer last sold helper (status=2), else last helper
+    function pickClientIdFromHelpers() {
+      let clientId = '';
+      try {
+        const $sold = $('#helpersList .card[data-status="2"]').last();
+        if ($sold && $sold.length) clientId = $sold.data('client-id') || '';
+        if (!clientId) {
+          const $last = $('#helpersList .card').last();
+          if ($last && $last.length) clientId = $last.data('client-id') || '';
+        }
+      } catch (e) { clientId = ''; }
+      return clientId ? String(clientId) : '';
+    }
+
+    // CANCEL action (single date + CTA), calls cancel_all_inventory
+    $('#saveCancelBtn').on('click', function(){
+      const clientId = pickClientIdFromHelpers();
+      const date = $('#cancel_date_field').val() || $('#date_field').val() || '';
+      // confirmation
+      if (!confirm('Are you sure you want to cancel this inventory? This will cancel associated bookings.')) return;
+
+      $.post(Wo_Ajax_Requests_File() + '?f=manage_inventory&s=cancel_all_inventory', {
+        id: invId,
+        project: $('#project').val(),
+        file_id: clientId,
+        file_id2: clientId,
+        date: date
+      }, function(res){
+        if (res && res.status==200) {
+          pos5_success_noti(res.message || 'Cancelled');
+          DataTableRefresh();
+          $('#editInventory-modal').modal('hide');
+        } else {
+          pos4_error_noti(res && res.message ? res.message : 'Cancel failed');
+        }
+      }, 'json').fail(function(){ pos4_error_noti('Request failed'); });
+    });
+
+    // EDIT action (unchanged)
+    $('#saveEditBtn').on('click', function(){
+      $.post(Wo_Ajax_Requests_File() + '?f=manage_inventory&s=edit_inventory', {
+        id: invId,
+        project: $('#project').val(),
+        block: $('#block_select').val(),
+        facing: $('#facing_select').val(),
+        katha: $('#katha_select').val(),
+        road: $('#road_select').val(),
+        plot_num: $('#plot_input').val()
+      }, function(res){
+        if (res && res.status==200) { pos5_success_noti(res.message || 'Saved'); DataTableRefresh(); $('#editInventory-modal').modal('hide'); }
+        else pos4_error_noti(res && res.message ? res.message : 'Save failed');
+      }, 'json').fail(function(){ pos4_error_noti('Request failed'); });
+    });
+
+    // nominee quick viewer (keeps original behaviour)
+    $(document).on('click', '.nominee-btn', function(){
+      const text = $(this).data('nominee') || $(this).text();
+      const w = window.open('', '_blank', 'width=420,height=300');
+      w.document.write('<title>Nominee</title><div style="font-family:Arial,Helvetica,sans-serif;padding:20px;">'+ $('<div>').text(text).html() +'</div>');
+    });
+
+    // PRINT modal-only area: clone printable area, strip .no-print, open new window, print
+    function printElement(el) {
+      if (!el) return window.print();
+      const clone = el.cloneNode(true);
+      clone.querySelectorAll('.no-print').forEach(n => n.remove());
+      clone.querySelectorAll('script').forEach(s => s.remove());
+
+      const win = window.open('', '_blank', 'width=900,height=700');
+      if (!win) { window.print(); return; }
+
+      let headHtml = '';
+      document.querySelectorAll('link[rel="stylesheet"]').forEach(link => { headHtml += link.outerHTML; });
+      document.querySelectorAll('style').forEach(style => { headHtml += style.outerHTML; });
+      headHtml += '<style>body{margin:20px;font-family:Inter,Arial,Helvetica,sans-serif;color:#222;} .no-print{display:none !important;} .card{box-shadow:none !important;border:none !important;}</style>';
+
+      win.document.open();
+      win.document.write('<!doctype html><html><head>' + headHtml + '</head><body></body></html>');
+      win.document.close();
+
+      win.document.body.appendChild(clone);
+
+      setTimeout(() => {
+        try {
+          win.focus();
+          win.print();
+          setTimeout(() => { try { win.close(); } catch (e) {} }, 500);
+        } catch (e) {
+          console.error('Print failed', e);
+          try { win.close(); } catch (_) {}
+        }
+      }, 300);
+    }
+
+    $('#printInventoryBtn').on('click', function(){
+      const el = document.getElementById('inventoryPrintableArea');
+      printElement(el);
+    });
+
+    // DOWNLOAD PDF: clone modal printable area, strip .no-print, use html2canvas + jsPDF
+    function loadScript(src) {
+      return new Promise((resolve, reject) => {
+        const s = document.createElement('script'); s.src = src; s.onload = resolve; s.onerror = reject; document.head.appendChild(s);
+      });
+    }
+    async function generatePdfFromElement(el, filename) {
+      if (!el) return;
+      const clone = el.cloneNode(true);
+      clone.querySelectorAll('.no-print').forEach(n => n.remove());
+      clone.querySelectorAll('script').forEach(s => s.remove());
+
+      clone.style.position = 'fixed'; clone.style.left = '-9999px'; clone.style.top = '0'; clone.style.width = '800px'; clone.style.background = '#fff';
+      document.body.appendChild(clone);
+
+      try {
+        if (!window.html2canvas) await loadScript('https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js');
+        if (!window.jspdf) await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+
+        const canvas = await html2canvas(clone, { scale: 2, useCORS: true });
+        const imgData = canvas.toDataURL('image/jpeg', 0.95);
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF('p', 'pt', 'a4');
+
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = pdf.internal.pageSize.getHeight();
+        const ratio = Math.min(pdfWidth / canvas.width, pdfHeight / canvas.height);
+        const imgWidth = canvas.width * ratio;
+        const imgHeight = canvas.height * ratio;
+
+        pdf.addImage(imgData, 'JPEG', (pdfWidth - imgWidth) / 2, 20, imgWidth, imgHeight);
+        pdf.save(filename);
+      } catch (err) {
+        console.error(err);
+        // fallback: print modal-only area
+        printElement(el);
+      } finally {
+        clone.remove();
+      }
+    }
+
+    $('#downloadInventoryBtn').on('click', function(){
+      const el = document.getElementById('inventoryPrintableArea');
+      if (!el) { try { pos4_error_noti('Nothing to download'); } catch(e){}; return; }
+      const filename = 'inventory-' + invId + '.pdf';
+      generatePdfFromElement(el, filename);
+    });
+
+    // refresh helpers (placeholder)
+    $('#refreshHelpersBtn').on('click', function(){ try { pos5_success_noti('Refreshed'); } catch(e){} /* implement AJAX refresh if needed */ });
+
+    // cleanup on modal close
+    $('#editInventory-modal').on('hidden.bs.modal', function(){ $(this).remove(); });
+
+  });
+})(jQuery);
+</script>

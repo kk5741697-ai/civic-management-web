@@ -1,0 +1,307 @@
+<?php
+	$show_suggestions = false;
+	$disable_message = false;
+	$tags_mode = false;
+	$contact_data = [];
+	
+	function isValidPhoneNumber($phone) {
+		// Regular expression for valid Bangladeshi phone numbers
+		$pattern = '/^(?:\+?8801[3-9]\d{8}|(?:88)?01[3-9]\d{8}|(?:\+?88)?(0)?(1[3-9]\d{8})|(?:\+?960\d{7}|960\d{7}|198\d{7}))$/';
+		return preg_match($pattern, $phone);
+	}
+	if ($wo['sms_form']['sms_type'] == 'custom') {
+		$tags_mode = true;
+		$show_suggestions = true;
+		$contact_title = 'Contacts & Database';
+		
+		$contact_data['bankers'] = [
+			'text' => 'Bankers',
+			'disabled' => 'disabled',
+		];
+		
+		$limit = 500;
+		
+		if (isset($_COOKIE['custom_message']) && !empty($_COOKIE['custom_message'])) {
+			$message = $_COOKIE['custom_message'];
+		} else {
+			$message = '';
+		}
+	} else {
+		ini_set('display_errors', 1);
+		ini_set('display_startup_errors', 0);
+		error_reporting(1);
+
+		$user_id = $wo['sms_form']['user_id'];
+		if ($user_id == 999) {
+		} else {
+			$clients = $db->where('reference', $user_id)->get(T_CUSTOMERS, null, ['name', 'id', 'file_id', 'phone']);
+		}
+		
+		foreach ($clients as $client) {
+			// Validate phone number
+			$isDisabled = !isValidPhoneNumber($client->phone);
+
+			// Adding to the contact_data array
+			$contact_data[$client->id] = [
+				'text' => $client->name . ' #' . $client->file_id . ($isDisabled ? ' (Phone Number Problem)' : ''),
+				'disabled' => $isDisabled,
+			];
+		}
+
+
+		if ($wo['sms_form']['sms_type'] == 'installment_wish') {
+			$disable_message = true;
+			$tags_mode = false;
+			
+$message = 'আসসালামু আলাইকুম স্যার
+আপনার এই মাসের কিস্তির টাকা পরিশোধ করার জন্য ধন্যবাদ।
+আপনার প্লট নাম্বার: #[plot_number]';
+
+		} elseif ($wo['sms_form']['sms_type'] == 'want_installment') {
+			$disable_message = true;
+			$tags_mode = false;
+			
+$message = 'আসসালামু আলাইকুম স্যার
+আপনার এই মাসের কিস্তির টাকা পরিশোধ করা হয়নি।
+আপনার প্লট নাম্বার: #[plot_number]
+দয়া করে আপনার কিস্তির টাকা পরিশোধ করুন।';
+
+		} else {
+			$message = '';
+		}
+
+		$contact_title = 'Select Client';
+		$limit = 20;
+	}
+	
+	// Convert the contact_data array for JavaScript
+	$contactsDataJson = json_encode($contact_data);
+ ?>
+	<div class="row">
+			<?php
+				$sms_vendor = isset($_COOKIE['sms_vendor']) ? $_COOKIE['sms_vendor'] : 'elitbuzz'; // Default to 'elitbuzz'
+				$sender_id = isset($_COOKIE['sender_id']) ? $_COOKIE['sender_id'] : ''; // Default empty
+			?>
+
+			<div class="wow_form_fields col-md-6">
+				<label class="form-label">SMS Vendor</label>
+				<select class="form-select" style="width: 100%; margin-bottom: 16px;" name="sms_vendor" id="sms_vendor" required>
+					<option value="elitbuzz" 
+						<?php echo ($wo['config']['elitbuzz_balance'] <= 1) ? 'disabled' : ($sms_vendor === 'elitbuzz' ? 'selected' : ''); ?>>
+						Elitbuzz
+					</option>
+					<option value="iglWeb" 
+						<?php echo ($wo['config']['iglweb_balance'] <= 1) ? 'disabled' : ($sms_vendor === 'iglWeb' ? 'selected' : ''); ?>>
+						IGL Web
+					</option>
+				</select>
+			</div>
+			<div class="wow_form_fields col-md-6">
+				<label class="form-label">Sender ID</label>
+				<select class="form-select" style="width: 100%; margin-bottom: 16px;" name="senderid" id="sender_id">
+					<!-- Options will be populated here -->
+				</select>
+			</div>
+	
+			<div class="wow_form_fields col-md-12">
+				<label class="form-label"><?php echo $contact_title; ?></label>
+				<select class="form-select" style="width: 100%; margin-bottom: 16px;" id="contacts" required multiple></select>
+				<small>Limit is <?php echo $limit;?> contacts at a time.</small>
+			</div>
+			
+			<style>
+				#contacts_suggestions .suggestion-item {
+					padding: 5px 8px;
+					border: 1px solid #dee2e6;
+					border-radius: 6px;
+					cursor: pointer;
+				}
+			</style>
+			
+		<div class="wow_form_fields reason_details mt-3">
+			<label class="form-label">Message Body</label>
+			<textarea dir="auto" rows="4" name="msg" placeholder="Write sms..." class="form-control" <?php echo $disable_message ? 'readonly' : ''; ?>><?php echo htmlspecialchars($message ?? ''); ?></textarea>
+		</div>
+	</div>
+	<input type="hidden" id="hidden_contacts" name="contacts">
+	
+<div class="modal-footer" style="border: none">
+	<div class="ball-pulse"><div></div><div></div><div></div></div>
+</div>
+<button type="submit" class="btn btn-primary reason_btn">Send SMS</button>
+
+<script>
+$(document).ready(function() {
+    const contactsData = <?php echo $contactsDataJson; ?>;
+
+    // Transforming contactsData to the desired format for a library (if needed)
+    const formattedContactsData = Object.keys(contactsData).map(key => ({
+        id: key,
+        text: contactsData[key].text,
+        disabled: contactsData[key].disabled,
+    }));
+
+    const maxTags = <?php echo $limit; ?>;
+
+    // Function to initialize Select2
+    function initializeSelect2() {
+        $("#contacts").select2({
+            data: formattedContactsData,
+            placeholder: 'Search...',
+            theme: 'bootstrap-5',
+            <?php if ($tags_mode) { ?>
+            tags: true, // Allow adding new contacts
+            tokenSeparators: ['/', ',', ';', " "]
+            <?php } ?>
+        });
+
+        // Event listener to limit the maximum number of tags
+        $("#contacts").on('select2:select', function(e) {
+            const selectedTags = $(this).val();
+            if (selectedTags.length > maxTags) {
+                $(this).val(selectedTags.slice(0, maxTags)).trigger('change');
+                alert('You can only select a maximum of ' + maxTags + ' tags.');
+            }
+        });
+    }
+
+    initializeSelect2();
+
+    // Update contacts before form submission
+    $('#send-sms-form').on('submit', function() {
+        const selectedContacts = $("#contacts").val();
+        $('#hidden_contacts').val(selectedContacts.join(','));
+    });
+
+    const senderIds = {
+        elitbuzz: [
+            { value: "38714", text: "8809601011151" },
+            { value: "38756", text: "CIVIC PLOTS" },
+        ],
+        iglWeb: [
+            { value: "01847431162", text: "01847431162" },
+            { value: "CIVIC LAND", text: "CIVIC LAND" },
+        ]
+    };
+
+    function updateSenderIdOptions(vendor) {
+        const senderIdSelect = $('#sender_id');
+        senderIdSelect.empty(); // Clear existing options
+
+        if (senderIds[vendor]) {
+            senderIds[vendor].forEach(function(sender) {
+                senderIdSelect.append(new Option(sender.text, sender.value));
+            });
+        }
+
+        const senderIdCookie = getCookie('sender_id');
+        if (senderIdCookie) {
+            senderIdSelect.val(senderIdCookie);
+        }
+    }
+
+    // Function to get a cookie value
+    function getCookie(name) {
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; ${name}=`);
+        if (parts.length === 2) return parts.pop().split(';').shift();
+    }
+
+    const initialVendor = $('#sms_vendor').val();
+    updateSenderIdOptions(initialVendor);
+
+    $('#sms_vendor').change(function() {
+        const selectedVendor = $(this).val();
+        updateSenderIdOptions(selectedVendor);
+        document.cookie = `sms_vendor=${selectedVendor}; path=/;`;
+    });
+
+    $('#sender_id').change(function() {
+        const selectedSenderId = $(this).val();
+        document.cookie = `sender_id=${selectedSenderId}; path=/;`;
+    });
+
+    if (senderIds[initialVendor]) {
+        const initialSenderId = getCookie('sender_id') || senderIds[initialVendor][0].value;
+        $('#sender_id').val(initialSenderId);
+    }
+
+	$(document).ready(function() {
+		$('#send-sms-form').ajaxForm({
+			url: Wo_Ajax_Requests_File() + '?f=bulk_sms&s=send_sms',
+			type: "POST",
+			beforeSend: function() {
+				$("#loader").fadeIn(0);
+				$("#sms_form").fadeOut(0);
+				$(".reason_btn").prop("disabled", true);
+			},
+			beforeSubmit: function(arr, $form) {
+				// Get the user ID
+				var user_id2 = $('#user_id').val();
+				// Add user_id to the form data
+				arr.push({ name: 'user_id', value: user_id2 });
+			},
+			success: function(data) {
+				$("#loader").fadeOut(0);
+				$('#sms_form').fadeIn(0);
+				if (data['status'] == 200) {
+					$("#create-ads-alert").html('<div class="alert alert-success">' + data['message'] + '</div>');
+					$('#sendSMS-modal').modal('hide');
+				} else if (data['message']) {
+					$("#create-ads-alert").html('<div class="alert alert-danger">' + data['message'] + '</div>');
+				}
+				$(".reason_btn").prop("disabled", false);
+				DataTableRefresh();
+				$("#sendSMS-modal .ball-pulse").fadeOut();
+			}
+		});
+	});
+	
+	// Get the sms_type value (ensure this is set correctly)
+	const sms_type = "<?php echo isset($wo['sms_form']['sms_type']) ? $wo['sms_form']['sms_type'] : 'installment_wish'; ?>";
+	let debounceTimeout;
+	
+	function setCustomMessageCookie() {
+		const messageBody = $('textarea[name="msg"]').val();
+		
+		const url = Wo_Ajax_Requests_File() + '?f=bulk_sms&s=custom_message';
+
+		const xhr = new XMLHttpRequest();
+		xhr.open('POST', url, true);
+		xhr.setRequestHeader('Content-Type', 'application/json');
+
+		xhr.onreadystatechange = function() {
+			if (xhr.readyState === 4) { // Request is complete
+				if (xhr.status === 200) {
+					console.log('Success:', JSON.parse(xhr.responseText));
+				} else {
+					console.error('Error:', xhr.statusText);
+				}
+			}
+		};
+
+		xhr.send(JSON.stringify({ custom_message: messageBody }));
+	}
+
+	// Attach event listeners to the textarea
+	$('textarea[name="msg"]').on('keydown keyup focusout', function() {
+		clearTimeout(debounceTimeout);
+		debounceTimeout = setTimeout(setCustomMessageCookie, 400); // Adjust debounce timing as needed
+	});
+
+	// Attach a click event listener to the document
+	$('#sendSMS-modal').on('click', function(event) {
+		// Check if the click is outside the textarea
+		if (!$(event.target).closest('textarea[name="msg"]').length) {
+			clearTimeout(debounceTimeout);
+			debounceTimeout = setTimeout(setCustomMessageCookie, 300);
+		}
+	});
+
+	// Clear the custom message cookie on form submission
+	$('#send-sms-form').on('submit', function() {
+		document.cookie = `custom_message=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+	});
+
+});
+</script>

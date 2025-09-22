@@ -1,0 +1,33 @@
+<!-- Purchase History Modal -->
+<div class="modal fade" id="purchaseHistoryModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+  <div class="modal-dialog modal-xl modal-dialog-centered">
+    <div class="modal-content border-0 shadow-lg">
+      <div class="modal-header bg-gradient-info text-white border-0">
+        <h5 class="modal-title mb-0">
+          <i class="lni lni-calendar me-2"></i>Purchase History
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+
+      <div class="modal-body">
+        <input type="hidden" id="history_purchase_id" value="">
+        
+        <div id="history_content">
+          <div class="text-center py-4">
+            <div class="spinner-border text-primary" role="status">
+              <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2">Loading purchase history...</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer border-0 bg-light">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        <button id="export_history" class="btn btn-info text-white">
+          <i class="lni lni-download me-1"></i>Export History
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

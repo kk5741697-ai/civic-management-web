@@ -1,0 +1,83 @@
+<div class="d-flex align-items-center">
+	<div class="w-100">
+		<p class="mb-2">Remarks</p>
+		
+            <?php
+            Global $lead_id;
+            $remarks = $db->where('lead_id', $lead_id)->get(T_REMARKS);
+            $count = count($remarks);
+            for ($i = 0; $i < $count; $i++) {
+                $remark = $remarks[$i];
+                ?>
+                <div class="<?php echo ($remark->is_system == '1') ? 'system_remark' : (($remark->is_system == '2') ? 'system_remark type2' : 'mb-2'); ?>" style="display: flex; justify-content: space-between; align-items: center;">
+                    <span class="remarks-item">
+                        <?php 
+                        // Choose an icon based on the type of remark
+                        echo ($remark->is_system) 
+                            ? '<i class="fadeIn animated bx bx-cog" ></i>' 
+                            : '<i class="fadeIn animated bx bx-git-repo-forked" ></i>'; 
+                        ?> 
+                        <?php echo (!empty($remark->remarks)) ? $remark->remarks : '-'; ?>
+                    </span>
+                    <span class="time-badge" title="<?php echo date('d M Y - h:ia', $remark->time); ?>">
+                        <?php //echo Wo_Time_Elapsed_String_word($remark->time); ?>
+                        <?php echo date('d M Y - h:ia', $remark->time); ?>
+                    </span>
+                </div>
+                <?php
+                // If this is a non‑system remark and it isn't the last remark, insert an <hr>
+                if (!$remark->is_system && $i < $count - 1) {
+                     echo '<hr class="style-one"/>';
+                }
+            }
+            ?>
+		<script>
+			$('.custom-remarks-input').focus();
+			// Handle Enter key press in the input field
+			$('.custom-remarks-input').keypress(function(event) {
+				if (event.keyCode === 13) { // Check if Enter key is pressed (keyCode 13)
+					event.preventDefault(); // Prevent default form submission
+					$('.submit-custom-remark').click(); // Trigger click event on submit button
+				}
+			});
+			// AJAX function to submit the custom remark value
+			$('.submit-custom-remark').click(function() {
+				var customRemark = $('.custom-remarks-input').val().trim();
+				var leadId = $('#viewLead-modal').data('id');
+				// Call the submitRemarks function with customRemark as the parameter
+				submitCustomRemarks(leadId, customRemark);
+			});
+			
+			// Function to submit remarks via AJAX
+			function submitCustomRemarks(leadId, quick_remarksValue) {
+				if (quick_remarksValue.length == 0) {
+					alert('Remarks cannot be empty. Please enter remarks.');
+					return;
+				}
+			    var is_system = <?php echo (Wo_IsAdmin() || Wo_IsModerator() || check_permission('manage-leads')) ? '2' : '0'; ?>;
+
+				// AJAX POST request
+				$.ajax({
+					url: Wo_Ajax_Requests_File() + '?f=manage_leads&s=update_remarks',
+					type: 'POST',
+					data: { remarks: quick_remarksValue, lead_id: leadId, type: 'custom', is_system: is_system },
+					success: function(response) {
+						DataTableRefresh();
+						$('#all_remarks').html(response.result);
+						
+						// console.log('Remarks submitted successfully:', response);
+						// Handle success response here if needed
+					},
+					error: function(xhr, status, error) {
+						console.error('Error submitting remarks:', error);
+						// Handle error here if needed
+					}
+				});
+			}
+		</script>
+	</div>
+</div>
+<div class="custom-remarks" style="display: flex;margin: 10px -5px -10px -10px;width: calc(100% + 20px);">
+	<input type="text" class="custom-remarks-input" placeholder="Enter remark">
+	<button type="button" class="submit-custom-remark"><ion-icon name="send-outline" style="font-size: 18px;width: 22px;"></ion-icon></button>
+</div>

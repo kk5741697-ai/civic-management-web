@@ -1,0 +1,442 @@
+<?php
+// Define projects list
+$get_project = [
+    'moon_hill'     => 'Moon Hill',
+    'hill_town'     => 'Hill Town',
+    'abedin'        => 'Civic Abedin',
+    'ashridge'      => 'Civic Ashridge',
+];
+
+// Fetch data
+$quotas = $db->get('crm_assignment_rules', null, ['project','user_id','raw_weight']);
+$users = $db->where('leader_id', '0', '>')->where('active', '1')->where('banned', '0')->orderby('position', 'ASC')->get(T_USERS, null, ['user_id','first_name', 'last_name']);
+$reassignments = $db->orderBy('date', 'DESC')->get('crm_lead_reassignments', null, ['lead_id', 'project', 'from_user', 'to_user', 'mode', 'date']);
+$punished = $db->get('crm_punished_users', null, ['user_id']);
+
+// Build user map for name lookup
+$userMap = [];
+foreach ($users as $u) {
+    $userMap[$u->user_id] = $u->first_name . ' ' . $u->last_name;
+}
+
+// Fetch and organize users
+$users_raw = $db->where('is_team_leader', '1')->orWhere('leader_id', '0', '>')->where('active', '1')->where('banned', '0')->orderby('position', 'ASC')->get(T_USERS, null, ['user_id','first_name', 'last_name', 'leader_id']);
+
+$leaders = [];
+$grouped_users = [];
+foreach ($users_raw as $u) {
+    if ($u->leader_id == 0) {
+        $leaders[$u->user_id] = $u;
+    } else {
+        $grouped_users[$u->leader_id][] = $u;
+    }
+}
+
+// Build weight matrix
+$matrix = [];
+foreach ($users_raw as $u) {
+    foreach ($get_project as $pid => $_) {
+        $matrix[$u->user_id][$pid] = 100;
+    }
+}
+foreach ($quotas as $q) {
+    $matrix[$q->user_id][$q->project] = $q->raw_weight;
+}
+
+// Simple color array in PHP
+$projectColors = ['moon_hill'=>'#007bff','hill_town'=>'#28a745','abedin'=>'#ffc107','ashridge'=>'#dc3545'];
+
+$projectKeys = array_keys($get_project);
+?>
+    <style>
+      .quota-row { margin-bottom:12px; }
+      .quota-bar { height:36px; border:1px solid #ddd; display:flex; overflow:hidden; position:relative; }
+      .quota-segment { position:relative; min-width:0; }
+      .segment-label { position:absolute; left:8px; top:6px; font-size:12px; color:#fff; pointer-events:none; white-space:nowrap; text-shadow:0 1px 2px rgba(0,0,0,.6);}
+      .controls { display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
+      .control { display:flex; align-items:center; gap:6px; min-width:180px; }
+      .control input[type="number"] { width:70px; }
+      .proj-total { font-weight:600; margin-left:6px; }
+    </style>
+
+    <div class="mb-3">
+      <strong>Project totals (sum across users):</strong>
+      <div id="project-totals" style="display:flex;gap:12px;margin-top:6px;">
+        <?php foreach ($projectKeys as $k): ?>
+          <div style="padding:6px 10px;border:1px solid #eee;border-radius:6px;background:#fafafa;">
+            <div style="font-size:13px;"><?=htmlspecialchars($get_project[$k])?></div>
+            <div class="proj-total" data-project="<?=htmlspecialchars($k)?>">
+              <!-- JS will fill: raw sum and normalized share -->
+              <span class="raw">0%</span>
+              <span class="share" style="color:#777;font-size:12px;margin-left:6px;">(0%)</span>
+            </div>
+          </div>
+        <?php endforeach; ?>
+      </div>
+    </div>
+
+
+    <form id="quota-form" method="post">
+      <input type="hidden" name="action" value="update_all_quotas">
+    
+      <?php foreach ($leaders as $lid => $leader): ?>
+        <h5 class="mt-3">Leader: <?=htmlspecialchars($leader->first_name . ' ' . $leader->last_name)?></h5>
+    
+        <?php foreach ($grouped_users[$lid] ?? [] as $u):
+          $userWeights = $matrix[$u->user_id] ?? array_fill_keys($projectKeys, 0);
+        ?>
+        <div class="quota-row user-quota" data-user="<?=$u->user_id?>">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <strong><?=htmlspecialchars($u->first_name . ' ' . $u->last_name)?></strong>
+            <div style="font-size:13px;color:#666">Total: <span class="user-total">0%</span></div>
+          </div>
+    
+          <!-- stacked bar -->
+          <div class="quota-bar" data-user="<?=$u->user_id?>" style="margin-top:8px;">
+            <?php foreach ($projectKeys as $pid):
+              $val = (int)($userWeights[$pid] ?? 0);
+              $color = $projectColors[$pid] ?? '#6c757d';
+            ?>
+              <div class="quota-segment" data-project="<?=htmlspecialchars($pid)?>" style="width:<?=$val?>%;background:<?=htmlspecialchars($color)?>">
+                <span class="segment-label"><?=$val?>%</span>
+              </div>
+            <?php endforeach; ?>
+          </div>
+    
+          <!-- controls: one slider + number per project (named as weights[user][project]) -->
+          <div class="controls" style="margin-top:8px;">
+            <?php foreach ($projectKeys as $pid):
+              $val = (int)($userWeights[$pid] ?? 0);
+            ?>
+            <div class="control" data-project="<?=htmlspecialchars($pid)?>">
+              <label style="min-width:86px;font-size:13px;"><?=htmlspecialchars($get_project[$pid])?></label>
+              <input type="range" class="proj-slider" min="0" max="100" step="1" value="<?=$val?>" data-project="<?=htmlspecialchars($pid)?>">
+              <input type="number" class="proj-number" name="weights[<?=$u->user_id?>][<?=$pid?>]" min="0" max="100" step="1" value="<?=$val?>">
+            </div>
+            <?php endforeach; ?>
+          </div>
+        </div>
+        <?php endforeach; ?>
+    
+      <?php endforeach; ?>
+    
+      <button type="submit" class="btn btn-primary mt-3">Save All Quotas</button>
+    </form>
+
+
+
+
+    <h1 class="mb-4">Reassignment Management</h1>
+    <div class="table-responsive mb-5">
+        <table class="table table-bordered table-hover align-middle">
+            <thead class="table-light">
+            <tr><th>Lead ID</th><th>Page</th><th>From</th><th>To</th><th>Mode</th><th>Date</th><th>Actions</th></tr>
+            </thead>
+            <tbody>
+            <?php foreach ($reassignments as $r): ?>
+            <tr>
+                <form method="post">
+                    <td><?=$r->lead_id?><input type="hidden" name="lead_id" value="<?=$r->lead_id?>"></td>
+                    <td><?=$r->project?><input type="hidden" name="project" value="<?=$r->project?>"></td>
+                    <td><?=$userMap[$r->from_user] ?? $r->from_user?><input type="hidden" name="from_user" value="<?=$r->from_user?>"></td>
+                    <td><?=$userMap[$r->to_user] ?? $r->to_user?><input type="hidden" name="to_user" value="<?=$r->to_user?>"></td>
+                    <td><?=$r->mode?><input type="hidden" name="mode" value="<?=$r->mode?>"></td>
+                    <td><?=$r->date?><input type="hidden" name="date" value="<?=$r->date?>"></td>
+                    <td>
+                        <input type="hidden" name="action" value="delete_reassignment">
+                        <button type="submit" class="btn btn-sm btn-danger">Remove</button>
+                    </td>
+                </form>
+            </tr>
+            <?php endforeach; ?>
+            <tr>
+                <form method="post">
+                    <td><input name="lead_id" placeholder="Lead ID" class="form-control"></td>
+                    <td><input name="project" placeholder="Project" class="form-control"></td>
+                    <td>
+                        <select name="from_user" class="form-select">
+                            <?php foreach ($userMap as $uid => $name): ?>
+                                <option value="<?=$uid?>"><?=htmlspecialchars($name)?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </td>
+                    <td>
+                        <select name="to_user" class="form-select">
+                            <?php foreach ($userMap as $uid => $name): ?>
+                                <option value="<?=$uid?>"><?=htmlspecialchars($name)?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </td>
+                    <td>
+                        <select name="mode" class="form-select">
+                            <option value="punishment">Punishment</option>
+                            <option value="normal">Normal</option>
+                        </select>
+                    </td>
+                    <td><input type="date" name="date" class="form-control" value="<?=date('Y-m-d')?>"></td>
+                    <td>
+                        <input type="hidden" name="action" value="add_reassignment">
+                        <button type="submit" class="btn btn-sm btn-success">Add</button>
+                    </td>
+                </form>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <h1 class="mb-4">Punished Users</h1>
+    <div class="table-responsive">
+        <table class="table table-bordered table-hover align-middle">
+            <thead class="table-light">
+            <tr><th>User</th><th>Actions</th></tr>
+            </thead>
+            <tbody>
+            <?php 
+            $punished_ids = array_column($punished, 'user_id');
+            foreach ($punished as $p): ?>
+            <tr>
+                <form method="post">
+                    <td><?=$userMap[$p->user_id] ?? $p->user_id?><input type="hidden" name="user_id" value="<?=$p->user_id?>"></td>
+                    <td><input type="hidden" name="action" value="remove_punished"><button type="submit" class="btn btn-sm btn-danger">Remove</button></td>
+                </form>
+            </tr>
+            <?php endforeach; ?>
+            <tr>
+                <form method="post">
+                    <td>
+                        <select name="user_id" class="form-select">
+                            <?php foreach ($userMap as $uid => $name): if (in_array($uid, $punished_ids)) continue; ?>
+                                <option value="<?=$uid?>"><?=htmlspecialchars($name)?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </td>
+                    <td>
+                        <input type="hidden" name="action" value="add_punished">
+                        <button type="submit" class="btn btn-sm btn-success">Add Punished</button>
+                    </td>
+                </form>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+
+
+<script>
+(function(){
+  const clamp = (v,a,b) => Math.min(b,Math.max(a,v));
+
+  // Round float array to integer array that sums to 100 (unless all zeros)
+  function roundArrayTo100(floatArr){
+    const sum = floatArr.reduce((a,b)=>a+b,0);
+    if (sum === 0) return floatArr.map(()=>0);
+    const scaled = floatArr.map(v => v / sum * 100);
+    const floored = scaled.map(v => Math.floor(v));
+    let diff = 100 - floored.reduce((a,b)=>a+b,0);
+    if (diff === 0) return floored;
+    const fracs = scaled.map((v,i)=>({i,frac: v - Math.floor(v)})).sort((a,b)=>b.frac - a.frac);
+    for (let i=0;i<diff;i++){
+      floored[fracs[i % fracs.length].i] += 1;
+    }
+    return floored;
+  }
+
+  // Apply integer values for a single userDiv (map: projectKey => integer percent)
+  function applyUserValues(userDiv, valuesMap) {
+    const segments = Array.from(userDiv.querySelectorAll('.quota-segment'));
+    const projectKeys = segments.map(s => s.getAttribute('data-project'));
+    const values = projectKeys.map(k => clamp(Math.round(valuesMap[k] || 0), 0, 100));
+    // if sum>0 and not 100, make them sum to 100 (rounding distribution)
+    const sum = values.reduce((a,b)=>a+b,0);
+    let final = values;
+    if (sum > 0 && sum !== 100) final = roundArrayTo100(values);
+    // apply to bar segments, sliders and input numbers
+    segments.forEach((seg, idx) => {
+      const v = final[idx];
+      seg.style.width = v + '%';
+      const lbl = seg.querySelector('.segment-label');
+      if (lbl) lbl.textContent = v + '%';
+      const pid = projectKeys[idx];
+      const control = userDiv.querySelector('.control[data-project="'+pid+'"]');
+      if (control) {
+        const slider = control.querySelector('.proj-slider');
+        const num = control.querySelector('.proj-number');
+        if (slider) slider.value = v;
+        if (num) num.value = v;
+      }
+    });
+    const totalEl = userDiv.querySelector('.user-total');
+    if (totalEl) totalEl.textContent = final.reduce((a,b)=>a+b,0) + '%';
+  }
+
+  // Compute per-project totals (raw sum across all users) and normalized share; update UI
+  function computeProjectTotalsAndUpdateUI(){
+    const totals = {};
+    // use numeric input values (names weights[user][project]) as authoritative
+    document.querySelectorAll('.user-quota').forEach(userDiv=>{
+      userDiv.querySelectorAll('.control').forEach(ctrl=>{
+        const pid = ctrl.getAttribute('data-project');
+        const num = ctrl.querySelector('.proj-number');
+        const val = parseInt(num.value,10) || 0;
+        totals[pid] = (totals[pid] || 0) + val;
+      });
+    });
+    // compute overall sum
+    let overall = 0;
+    for (const k in totals) overall += totals[k] || 0;
+    document.querySelectorAll('.proj-total').forEach(el=>{
+      const k = el.getAttribute('data-project');
+      const raw = totals[k] || 0;
+      // show raw and normalized share
+      const share = overall > 0 ? Math.round((raw / overall) * 100) : 0;
+      el.innerHTML = '<span class="raw">'+raw+'%</span> <span class="share" style="color:#777;font-size:12px;margin-left:6px">('+share+'%)</span>';
+      el.style.opacity = raw === 0 ? 0.6 : 1.0;
+    });
+  }
+
+  // Main: init each user quota block, wire controls
+  document.querySelectorAll('.user-quota').forEach(userDiv=>{
+    // collect initial numbers from controls
+    const controls = Array.from(userDiv.querySelectorAll('.control'));
+    const valuesMap = {};
+    controls.forEach(c=>{
+      const pid = c.getAttribute('data-project');
+      const num = c.querySelector('.proj-number');
+      const v = clamp(parseInt(num.value,10) || 0, 0, 100);
+      valuesMap[pid] = v;
+    });
+    // initialize visuals
+    applyUserValues(userDiv, valuesMap);
+
+    // handler when a control value changed (pid = changed project key)
+    function controlChanged(pidChanged, newVal) {
+      newVal = clamp(Math.round(Number(newVal) || 0), 0, 100);
+      // gather current values from numeric inputs (authoritative)
+      const pids = controls.map(c => c.getAttribute('data-project'));
+      const vals = pids.map(pid => {
+        if (pid === pidChanged) return newVal;
+        const num = userDiv.querySelector('.control[data-project="'+pid+'"] .proj-number');
+        return clamp(parseInt(num.value,10) || 0, 0, 100);
+      });
+
+      let total = vals.reduce((a,b)=>a+b,0);
+      if (total <= 100) {
+        // just apply the new values
+        const map = {};
+        pids.forEach((pid,i)=> map[pid] = vals[i]);
+        applyUserValues(userDiv, map);
+        computeProjectTotalsAndUpdateUI();
+        return;
+      }
+
+      // total > 100: we must reduce other non-zero projects (not touching pidChanged)
+      const idxChanged = pids.indexOf(pidChanged);
+      const otherIdx = pids.map((_,i)=>i).filter(i=>i !== idxChanged);
+      // identify reducible indexes: those others with value > 0
+      const reducible = otherIdx.filter(i => vals[i] > 0);
+      let reducibleSum = reducible.reduce((acc,i)=>acc + vals[i], 0);
+
+      if (reducibleSum > 0) {
+        const excess = total - 100;
+        // reduce others proportionally to their current values
+        reducible.forEach(i => {
+          const curr = vals[i];
+          const reduction = Math.floor((curr / reducibleSum) * excess);
+          vals[i] = clamp(curr - reduction, 0, 100);
+        });
+        // Fix rounding diff (make sum == 100)
+        let s = vals.reduce((a,b)=>a+b,0);
+        if (s !== 100) {
+          const diff = 100 - s;
+          // prefer distributing diff onto the largest remaining reducible index (if any), else the changed index
+          let targetIdx = reducible.length ? reducible.reduce((best,i)=> vals[i] > vals[best] ? i : best, reducible[0]) : idxChanged;
+          vals[targetIdx] = clamp(vals[targetIdx] + diff, 0, 100);
+        }
+      } else {
+        // nothing to reduce (all others zero) => clamp changed to 100
+        vals[idxChanged] = Math.min(newVal, 100);
+      }
+
+      // apply
+      const map = {};
+      pids.forEach((pid,i)=> map[pid] = vals[i]);
+      applyUserValues(userDiv, map);
+      computeProjectTotalsAndUpdateUI();
+    }
+
+    // wire events for sliders and numbers
+    controls.forEach(ctrl=>{
+      const pid = ctrl.getAttribute('data-project');
+      const slider = ctrl.querySelector('.proj-slider');
+      const num = ctrl.querySelector('.proj-number');
+      // slider input
+      if (slider) slider.addEventListener('input', function(){
+        // reflect immediately in number and call redistribute
+        const v = clamp(Math.round(Number(this.value)||0),0,100);
+        const n = ctrl.querySelector('.proj-number');
+        if (n) n.value = v;
+        controlChanged(pid, v);
+      });
+      // numeric input
+      if (num) {
+        num.addEventListener('input', function(){
+          const v = clamp(Math.round(Number(this.value)||0),0,100);
+          const s = ctrl.querySelector('.proj-slider');
+          if (s) s.value = v;
+        });
+        // on change finalize adjustment (when user finishes typing)
+        num.addEventListener('change', function(){
+          const v = clamp(Math.round(Number(this.value)||0),0,100);
+          controlChanged(pid, v);
+        });
+      }
+    });
+  }); // end user-quota init
+
+  // initial totals
+  computeProjectTotalsAndUpdateUI();
+
+  // AJAX submit the form (keeps your backend)
+  $(document).on('submit', '#quota-form', function(e){
+    e.preventDefault();
+    const form = this;
+    const formData = new FormData(form);
+    const action = formData.get('action') || 'update_all_quotas';
+    $.ajax({
+      type: 'POST',
+      url: Wo_Ajax_Requests_File() + '?f=manage_leads&s=' + encodeURIComponent(action),
+      data: formData,
+      processData: false,
+      contentType: false,
+      dataType: 'json',
+      success: function(resp){
+        if (!resp) return alert('Empty response from server');
+        if (resp.success) {
+          // update project totals if provided
+          if (resp.project_totals) {
+            for (const k in resp.project_totals) {
+              const el = document.querySelector('.proj-total[data-project="'+k+'"]');
+              if (el) {
+                const raw = parseInt(resp.project_totals[k],10) || 0;
+                // compute normalized share (based on server totals)
+                // build overall sum:
+              }
+            }
+            computeProjectTotalsAndUpdateUI();
+            alert('Quotas saved');
+          } else {
+            // fallback: reload so server state is authoritative
+            location.reload();
+          }
+        } else {
+          alert('Error: ' + (resp.message || 'Unknown'));
+        }
+      },
+      error: function(xhr,status,err){
+        alert('AJAX error: ' + err);
+      }
+    });
+  });
+
+})();
+</script>
+

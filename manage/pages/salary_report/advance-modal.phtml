@@ -1,0 +1,73 @@
+	<div class="modal fade" id="manage-advance-modal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+		<div class="modal-dialog">
+			<div class="modal-content">
+				<div class="modal-body">
+					<div>
+					<h5 class="mb-1 text-center create_invoice_title">Manage Advance</h5>
+					<hr>
+					  <form id="manage_advance" class="row g-3">
+							<div class="col-6">
+								  <label class="form-label">Advance</label>
+								  <div class="with_sign"><sign>৳</sign><input type="number" name="advance" class="form-control" value="<?php echo $wo['advance']['amount']; ?>" required></div>
+							</div>
+							<input type="hidden" name="user_id" value="<?php echo $wo['advance']['user_id']; ?>" />
+							<input type="hidden" name="date" value="<?php echo $wo['advance']['date']; ?>" />
+							<div class="d-flex col-12">
+								<div class="ms-auto">
+									<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+									<button type="submit" class="btn btn-primary create_btn">Update</button>
+								</div>
+							</div>
+					  </form>
+					  <style>
+						  .with_sign {display: flex; align-items: center;}
+							.with_sign sign {
+								padding: 6.5px 8px;
+								background: #dee2e6;
+								margin-right: -28px;
+								border: 1px solid #dee2e6;
+								z-index: 9;
+								border-radius: 5px;
+							}
+						  .with_sign input.form-control {padding-left: 35px;}
+					  </style>
+						<script>
+							function clear_forms3() {
+								$('input[name="advance"]').val('');
+								$('#manage-advance-modal').modal('hide');
+							}
+							$(document).ready(function () {
+								$('#manage_advance').ajaxForm({
+									url: Wo_Ajax_Requests_File() + '?f=manage_settings&s=manage_advance',
+									type: 'POST',
+									beforeSend: function () {},
+									success: function (data) {
+										if (data['status'] == 200) {
+											DataTableRefresh();
+											pos5_success_noti(data['message']);
+											clear_forms3();
+										} else if (data['message']) {
+											pos4_error_noti(data['message']);
+										}
+									}
+								});
+							});
+							
+							$('#manage-advance-modal [data-dismiss="modal"]').on('click', function() {
+								setTimeout(function() {
+									$('#manage-advance-modal').remove();
+								}, 500);
+							});
+							// Attach a listener for the modal hidden event
+							$('#manage-advance-modal').on('hidden.bs.modal', function () {
+								// Your logic to remove the modal or other actions
+								setTimeout(function() {
+									$('#manage-advance-modal').remove();
+								}, 500);
+							});
+						</script>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>

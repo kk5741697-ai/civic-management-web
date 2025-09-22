@@ -1,0 +1,17 @@
+<?php
+	$action = Wo_Secure($_GET['action']);
+	if ($action == 'register_lead_report') {
+		if (check_permission('manage-lead-report') || Wo_IsAdmin() || Wo_IsModerator()) {
+			// echo Wo_LoadManagePage('lead_report/register_lead_report');
+		} else {
+			echo Wo_LoadManagePage('permission-required/content');
+		}
+	} else {
+		if (check_permission('check-lead-report') || Wo_IsAdmin() || Wo_IsModerator() || $wo['user']['is_team_leader'] == true) {
+			echo Wo_LoadManagePage('lead_report/lead_report');
+		} else {
+			echo Wo_LoadManagePage('permission-required/content');
+		}
+	}
+	
+?>

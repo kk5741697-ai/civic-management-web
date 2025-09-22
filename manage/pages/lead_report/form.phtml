@@ -1,0 +1,81 @@
+<form class="row g-3" id="submit_attendance_form">
+	<?php
+		Global $get_date;
+	
+		$get_users = $db->orderBy('position', 'ASC')->where('active', '1')->where('is_team_leader', '1')->get(T_USERS);
+		$total = count($get_users);
+		$i = 0;
+		foreach ($get_users as $user) {
+			$report = lead_report($user->user_id, $get_date);
+			
+			?>
+		<h1 class="fs-5"><?= htmlspecialchars(ucfirst($user->first_name) . (!empty($user->last_name) ? ' ' . ucfirst($user->last_name) : '')); ?></h1>
+		<div class="col-12 col-sm-6 col-md-6 col-xl-3 col-xxl-3 mt-0 intime_margin"> 
+			<label class="form-label">Positive</label> 
+			<input type="number" name="lead_report[<?php echo $user->user_id; ?>][positive]" value="<?php echo $report->positive ?? 0; ?>" placeholder="0" required class="form-control time-input-in">
+		</div>
+
+		<div class="col-12 col-sm-6 col-md-6 col-xl-3 col-xxl-3 mt-0"> 
+			<label class="form-label">Negative</label> 
+			<input type="number" name="lead_report[<?php echo $user->user_id; ?>][negative]" value="<?php echo $report->negative ?? 0; ?>" placeholder="0" required class="form-control time-input-out">
+		</div>
+
+		<div class="col-12 col-sm-6 col-md-6 col-xl-3 col-xxl-3 mt-0"> 
+			<label class="form-label">Visit Done</label> 
+			<input type="number" name="lead_report[<?php echo $user->user_id; ?>][visit]" value="<?php echo $report->visit ?? 0; ?>" placeholder="0" required class="form-control time-input-out">
+		</div>
+
+		<div class="col-12 col-sm-6 col-md-6 col-xl-3 col-xxl-3 mt-0"> 
+			<label class="form-label">Sale Done</label> 
+			<input type="number" name="lead_report[<?php echo $user->user_id; ?>][sale]" value="<?php echo $report->sale ?? 0; ?>" placeholder="0" required class="form-control time-input-out">
+		</div>
+		<input type="hidden" name="lead_report[<?php echo $user->user_id; ?>][user_id]" value="<?php echo $user->user_id; ?>" placeholder="0" required class="d-none">
+		<?php
+		$i++;
+		
+		if ($i < $total) { 
+		?>
+		<hr>
+	<?php
+		}
+	} ?>
+	<div class="col-12 col-lg-12 mt-3" style=" position: sticky; bottom: 15px; ">
+		<div class="d-grid">
+			<button type="submit" class="btn btn-primary">Save</button>
+		</div>
+	</div>
+</form>
+<script>
+
+	$(document).ready(function() {
+		
+		$('#submit_attendance_form').submit(function(event) {
+			event.preventDefault();
+			
+			// Retrieve the Flatpickr instance and get the selected date range
+			var date = document.getElementById('date_start_end');
+			var date_value = date.value; // Get the value from the input
+			
+			// Create FormData object from the form
+			var formData = new FormData(this);
+
+			// Append the additional data (date_value) to the FormData object
+			formData.append('date_value', date_value);
+			
+			$.ajax({
+				url: Wo_Ajax_Requests_File() + '?f=lead_report&s=submit_form',
+				type: 'POST',
+				data: formData,
+				cache: false,
+				contentType: false,
+				processData: false,
+				success: function(response) {
+					pos5_success_noti('Attendance update successful.');
+				},
+				error: function() {
+					pos4_error_noti('Something went wrong while updating attendance.');
+				}
+			});
+		});
+	});
+</script>

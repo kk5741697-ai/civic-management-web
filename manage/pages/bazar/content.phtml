@@ -1,0 +1,716 @@
+<?php if (Wo_IsAdmin() || Wo_IsModerator() || check_permission('manage-bazar') || check_permission('bazar')) { ?>
+<style>
+  /* Select2 single selection sizing */
+  .select2-container .select2-selection--single {
+    min-height: 36px;
+    height: 36px;
+    padding: 4px 36px 4px 8px;
+    box-sizing: border-box;
+  }
+  .select2-container--default .select2-selection--single .select2-selection__rendered {
+    line-height: 28px;
+  }
+  .select2-container--default .select2-selection--single .select2-selection__arrow {
+    height: 36px;
+    right: 6px;
+  }
+
+  #bazarUsageTable thead th {
+    position: sticky;
+    top: 0;
+    background: #fff;
+    z-index: 2;
+  }
+  .wm-150 { min-width: 150px; }
+  /* small spacing for icons in selects */
+  .select2-results__option i,
+  .select2-selection__rendered i { margin-right: 6px; vertical-align: text-bottom; }
+</style>
+
+<!-- Breadcrumb -->
+<div class="page-breadcrumb d-flex align-items-center mb-3 justify-content-between">
+  <div class="breadcrumb-title pe-3">Bazar Report</div>
+    <input class="form-select w-auto wm-150" type="text" id="date_start_end" name="date_start_end" placeholder="Select date range" readonly style="user-select:none;" value="<?php echo urldecode($_COOKIE['bazar_date'] ?? '') ?: date('Y-m').' to '.date('Y-m'); ?>">
+
+</div>
+
+<div class="mb-3">
+  <div class="row row-cols-auto g-3">
+    <div class="col">
+        
+        
+    </div>
+  </div>
+</div>
+
+<div class="attandence mb-3">
+  <div class="select-panel d-flex justify-content-between align-items-center gap-2 flex-wrap">
+    <select id="user_id" name="user_id" class="form-select w-auto wm-150" onchange="DataTableRefresh()">
+      <option value="">All User</option>
+      <?php 
+        $get_users = $db->where('active', '1')->where('is_bazar', '1')->orderBy('serial', 'ASC')->get(T_USERS);
+        foreach ($get_users as $userlist) {
+          $first_name = htmlspecialchars(cleanName($userlist->first_name));
+          $last_name  = htmlspecialchars(cleanName($userlist->last_name));
+          $uid        = (int)$userlist->user_id;
+          $sel        = (isset($_COOKIE['bazar_usr']) && $_COOKIE['bazar_usr'] == $uid) ? ' selected' : '';
+          echo "<option value=\"{$uid}\"{$sel}>{$first_name} {$last_name}</option>";
+        }
+      ?>
+    </select>
+    
+
+    <div style="display:flex; gap:10px; align-items:center;">
+      <button class="btn btn-primary" type="button" onclick="openBazarModal()">Add/Use</button>
+      <button class="btn btn-secondary" type="button" onclick="openHistoryModal()"><i class="fadeIn animated bx bx-history"></i></button>
+      <a class="btn btn-secondary" href="<?php echo(Wo_LoadManageLinkSettings('bazar_manage')) ?>" data-spa="true"><i class="fadeIn animated bx bx-cog"></i></a>
+    </div>
+  </div>
+</div>
+
+<div class="card radius-10 w-100">
+  <div class="card-body">
+    <div class="table-responsive">
+      <table class="table align-middle mb-0 atten_container" id="bazarUsageTable" style="width:100%;">
+        <thead class="table-light">
+          <tr>
+            <th>Date</th>
+            <th>Type</th>
+            <th>Item</th>
+            <th>Qty</th>
+            <th>R.</th>
+            <th>By</th>
+          </tr>
+        </thead>
+        <tbody id="result"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<?php
+  // fetch all bazar items once and reuse across selects
+  $all = $db->get(T_BAZAR, null, ['id','name', 'unit', 'icon']);
+?>
+
+<!-- History Modal -->
+<div class="modal fade full_screen" id="historyModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content p-3">
+      <div class="modal-header fixed_top">
+        <h5 class="modal-title">Bazar History</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label for="history_bazar_id" class="form-label">Select bazar Item</label>
+          <select id="history_bazar_id" class="form-select w-auto">
+            <option value="">-- choose item --</option>
+            <?php
+                foreach ($all as $i) {
+                  $id = (int)$i->id;
+                  $nm = htmlspecialchars($i->name);
+                  $icon = htmlspecialchars($i->icon);
+                  // store icon class in data-icon; text remains plain for accessibility
+                  echo "<option value=\"{$id}\" data-icon=\"{$icon}\">{$nm}</option>";
+                }
+            ?>
+          </select>
+        </div>
+        <div><canvas id="priceChart" height="200"></canvas></div>
+        <hr>
+        <div><canvas id="quantityChart" height="200"></canvas></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Combined Add/Use Bazar Modal -->
+<div class="modal fade full_screen" id="bazarModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg wow_mat_mdl invoice_print">
+    <div class="modal-content">
+
+      <div class="modal-header fixed_top">
+        <h5 class="modal-title" id="bazarModalTitle">Bazar Items</h5>
+        <div class="d-flex align-items-center gap-2">
+          <input type="text" id="bazar_entry_date" class="form-control form-control-sm" placeholder="Select date" readonly style="width:150px; user-select:none;">
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+      </div>
+
+      <div class="modal-body p-3">
+        <!-- Add Bazar Form -->
+        <form id="addBazarForm">
+          <div id="addBazarContainer">
+            <div id="addBulkContainer">
+              <div class="bulk-row d-flex gap-2 mb-2">
+                <select name="bazar_id[]" class="form-select flex-fill add_bazar_id" required>
+                  <option value="">Select Item</option>
+                  <?php foreach($all as $i){ $id   = (int)$i->id; $nm   = htmlspecialchars($i->name); $unit = htmlspecialchars(ucwords($i->unit)); $icon = htmlspecialchars($i->icon); echo "<option value='{$id}' data-unit='{$unit}' data-icon='{$icon}'>{$nm}</option>"; } ?>
+                </select>
+                <input type="number" name="quantity[]" class="form-control w-25" min="0" placeholder="Quantity" required>
+                <input type="number" name="price[]" class="form-control w-25" min="0" step="0.1" placeholder="Price" required>
+                <button type="button" class="btn btn-outline-danger remove-row">&times;</button>
+              </div>
+            </div>
+            <button type="button" id="addBazarRowBtn" class="btn btn-sm btn-secondary mb-3">+ Add another item</button>
+          </div>
+        </form>
+
+        <!-- Use Bazar Form -->
+        <form id="useBazarForm">
+          <div id="useBazarContainer">
+            <div id="bulkContainer">
+              <div class="bulk-row d-flex gap-2 mb-2">
+                <select name="bazar_id[]" class="form-select flex-fill use_bazar_id" required>
+                  <option value="">Select Item</option>
+                  <?php foreach($all as $i){ $id   = (int)$i->id; $nm   = htmlspecialchars($i->name); $unit = htmlspecialchars(ucwords($i->unit)); $icon = htmlspecialchars($i->icon); echo "<option value='{$id}' data-unit='{$unit}' data-icon='{$icon}'>{$nm}</option>"; } ?>
+                </select>
+                <input type="number" name="quantity[]" class="form-control w-25" min="1" step="0.1" placeholder="Quantity" required>
+                <button type="button" class="btn btn-outline-danger remove-row">&times;</button>
+              </div>
+            </div>
+            <button type="button" id="addRowBtn" class="btn btn-sm btn-secondary mb-3">+ Add another item</button>
+          </div>
+        </form>
+
+        <div id="bazar_feedback" class="text-danger"></div>
+      </div>
+
+      <div class="fixed_bottom_space"></div>
+
+      <div class="d-flex justify-content-between gap-3 fixed_bottom p-3">
+        <div>
+          <button type="button" class="btn btn-sm btn-outline-primary" id="showAddBazarBtn">Add Bazar</button>
+          <button type="button" class="btn btn-sm btn-outline-primary" id="showUseBazarBtn">Use Bazar</button>
+        </div>
+        <button type="button" class="btn btn-success" id="bazarSubmitBtn">Save</button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+(function($){
+  let table = null;
+  let flatpickrInstance = null;
+  let priceChart = null, qtyChart = null;
+  let priceDataCache = null, qtyDataCache = null;
+
+  // Snapshots of original option HTML (innerHTML of first select in each container)
+  let optionHtmlAdd = '';
+  let optionHtmlUse = '';
+
+  // guard to avoid recursion while rebuilding/select2 re-inits
+  let isRefreshing = false;
+
+  const getCookie = name => {
+    const m = document.cookie.match(new RegExp('(?:^|; )'+name+'=([^;]*)'));
+    return m ? decodeURIComponent(m[1]) : '';
+  };
+  const setCookie = (name,val,days=3650) => {
+    const exp = new Date(Date.now() + days*864e5).toUTCString();
+    document.cookie = `${name}=${encodeURIComponent(val)}; expires=${exp}; path=/`;
+  };
+  const getBazarToggle = () => localStorage.getItem('bazar_toggle') || 'add';
+  const setBazarToggle = mode => localStorage.setItem('bazar_toggle', mode);
+  window.DataTableRefresh = function(){ if(table) table.ajax.reload(null,false); };
+
+  function safeDestroyChart(c){
+    if(!c) return null;
+    try { if(typeof c.destroy === 'function') c.destroy(); } catch(e){ /* ignore */ }
+    return null;
+  }
+
+  // Ensure canvas has a fixed CSS height and remove width/height attributes
+  function setCanvasCssHeight(id, px){
+    const el = document.getElementById(id);
+    if(!el) return;
+    el.removeAttribute('width');
+    el.removeAttribute('height');
+    el.style.height = (px || 200) + 'px';
+    el.style.width = '100%';
+  }
+
+  function resetChartsAndCss(){
+    priceChart = safeDestroyChart(priceChart);
+    qtyChart   = safeDestroyChart(qtyChart);
+    setCanvasCssHeight('priceChart', 200);
+    setCanvasCssHeight('quantityChart', 200);
+    priceDataCache = null; qtyDataCache = null;
+  }
+
+  /**
+   * Select2 rendering helpers to show icons from data-icon attribute.
+   */
+  function formatOption(opt){
+    if(!opt || !opt.id) return opt.text || '';
+    // opt.element is the original <option> DOM node
+    const $el = $(opt.element);
+    const icon = $el.data('icon') || '';
+    // Build a DOM node for select2 (returning a jQuery object is OK)
+    const $span = $('<span/>');
+    if(icon){
+      $span.append('<i class="'+icon+'" aria-hidden="true"></i> ');
+    }
+    // Use text node to avoid double-escaping issues
+    $span.append(document.createTextNode(opt.text));
+    return $span;
+  }
+
+  function select2Options(dropdownParent){
+    return {
+      width: '100%',
+      placeholder: 'Select bazar Item',
+      dropdownParent: dropdownParent || $('#bazarModal'),
+      templateResult: formatOption,
+      templateSelection: formatOption,
+      escapeMarkup: function(m){ return m; } // we return DOM/jQuery from formatOption so this is safe
+    };
+  }
+
+  /**
+   * Rebuild options for every select inside containerSelector (selectClass identifies selects).
+   * This function destroys/re-inits select2 for each select safely so Select2's dropdown
+   * reflects the updated option list (selected items are removed from other selects).
+   */
+  function refreshUniqueOptions(containerSelector, selectClass){
+    const $container = $(containerSelector);
+    if(!$container.length) return;
+    if(isRefreshing) return;
+    isRefreshing = true;
+
+    const snapshotHtml = (selectClass === 'add_bazar_id') ? optionHtmlAdd : optionHtmlUse;
+
+    // collect currently selected values in this container
+    const selectedVals = $container.find('.' + selectClass).map(function(){
+      return $(this).val();
+    }).get().filter(Boolean);
+
+    $container.find('.' + selectClass).each(function(){
+      const $sel = $(this);
+      const myVal = $sel.val();
+
+      // Build a temporary select from snapshot
+      const $temp = $('<select>' + snapshotHtml + '</select>');
+
+      // Remove options that are selected in other selects
+      selectedVals.forEach(v => {
+        if(v && v !== myVal){
+          // remove option from temporary select
+          $temp.find('option[value="'+v+'"]').remove();
+        }
+      });
+
+      // Destroy select2 if initialized (safe try/catch)
+      try {
+        if($sel.hasClass('select2-hidden-accessible')){
+          $sel.select2('destroy');
+        }
+      } catch(e){
+        // ignore destroy errors
+      }
+
+      // Replace options with the filtered set
+      const $newOptions = $temp.find('option').clone();
+      $sel.empty().append($newOptions);
+
+      // Restore value if still present; otherwise clear
+      if(myVal && $sel.find('option[value="'+myVal+'"]').length){
+        $sel.val(myVal);
+      } else {
+        $sel.val('');
+      }
+
+      // Re-init select2 for this select
+      const parentModal = $sel.closest('.modal').length ? $sel.closest('.modal') : $('#bazarModal');
+      $sel.select2(select2Options(parentModal));
+    });
+
+    isRefreshing = false;
+  }
+
+  // Exposed modal handlers
+  window.openBazarModal = function(type){
+    type = type || getBazarToggle();
+    if(type === 'add'){
+      $('#addBazarForm').show(); $('#useBazarForm').hide();
+      $('#bazarModalTitle').text('Add Bazar Items'); $('#bazarSubmitBtn').text('Add Bazar');
+      $('#showAddBazarBtn').hide(); $('#showUseBazarBtn').show();
+    } else {
+      $('#addBazarForm').hide(); $('#useBazarForm').show();
+      $('#bazarModalTitle').text('Use Bazar Items'); $('#bazarSubmitBtn').text('Use Bazar');
+      $('#showAddBazarBtn').show(); $('#showUseBazarBtn').hide();
+    }
+    setBazarToggle(type);
+
+    const savedDate = getCookie('bazar_entry_date');
+    if(savedDate && window.bazarDatePicker){
+      window.bazarDatePicker.setDate(savedDate, true);
+    }
+
+    // ensure all selects are initialized with icon templates
+    $('.add_bazar_id').each(function(){
+      if(!$(this).hasClass('select2-hidden-accessible')){
+        $(this).select2(select2Options($('#bazarModal')));
+      }
+    });
+    $('.use_bazar_id').each(function(){
+      if(!$(this).hasClass('select2-hidden-accessible')){
+        $(this).select2(select2Options($('#bazarModal')));
+      }
+    });
+
+    // apply uniqueness filter
+    refreshUniqueOptions('#addBulkContainer', 'add_bazar_id');
+    refreshUniqueOptions('#bulkContainer', 'use_bazar_id');
+
+    $('#bazarModal').modal('show');
+    $('#content').css('overflow','hidden');
+  };
+
+  window.openHistoryModal = function(){
+    $('#history_bazar_id').val('');
+    resetChartsAndCss();
+    $('#historyModal').modal('show');
+    $('#content').css('overflow','hidden');
+
+    // initialize history select2 with history modal as dropdown parent
+    if(!$('#history_bazar_id').hasClass('select2-hidden-accessible')){
+      $('#history_bazar_id').select2(select2Options($('#historyModal')));
+    }
+  };
+
+  // Render charts
+  function renderHistoryCharts(){
+    if(!$('#historyModal').hasClass('show')) return;
+    setCanvasCssHeight('priceChart', 200);
+    setCanvasCssHeight('quantityChart', 200);
+    priceChart = safeDestroyChart(priceChart);
+    qtyChart   = safeDestroyChart(qtyChart);
+
+    if(priceDataCache && priceDataCache.labels && priceDataCache.labels.length){
+      const ctxP = document.getElementById('priceChart')?.getContext?.('2d');
+      if(ctxP){
+        priceChart = new Chart(ctxP, {
+          type: 'line',
+          data: {
+            labels: priceDataCache.labels,
+            datasets: [{
+              label: 'Price',
+              data: priceDataCache.values,
+              borderColor: '#007bff',
+              backgroundColor: 'rgba(0,123,255,0.06)',
+              tension: 0.2,
+              pointRadius: 3,
+              fill: false
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: { x: { display: true }, y: { display: true } }
+          }
+        });
+      }
+    }
+
+    if(qtyDataCache && qtyDataCache.labels && qtyDataCache.labels.length){
+      const ctxQ = document.getElementById('quantityChart')?.getContext?.('2d');
+      if(ctxQ){
+        qtyChart = new Chart(ctxQ, {
+          type: 'line',
+          data: {
+            labels: qtyDataCache.labels,
+            datasets: [{
+              label: 'Remaining',
+              data: qtyDataCache.values,
+              borderColor: '#28a745',
+              backgroundColor: 'rgba(40,167,69,0.06)',
+              tension: 0.2,
+              pointRadius: 3,
+              fill: false
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: { x: { display: true }, y: { display: true, beginAtZero: true } }
+          }
+        });
+      }
+    }
+  }
+
+  // init page
+  window.initbazarPage = function(){
+    $(document).off('.bazarPage');
+
+    // user filter cookie
+    const $user = $('#user_id');
+    const savedUser = getCookie('bazar_usr');
+    if(savedUser && !$user.val()) $user.val(savedUser);
+    $user.on('change.bazarPage', function(){ setCookie('bazar_usr', this.value||''); });
+
+    // snapshot option html for rebuilding selects
+    // Use the innerHTML of the plain <select> (not the select2 wrapper).
+    optionHtmlAdd = $('#addBulkContainer .add_bazar_id').first().html() || '';
+    optionHtmlUse = $('#bulkContainer .use_bazar_id').first().html() || '';
+
+    // init entry date picker for modal
+    if($('#bazar_entry_date').length){
+      if(window.bazarDatePicker) window.bazarDatePicker.destroy();
+      window.bazarDatePicker = flatpickr('#bazar_entry_date', {
+        dateFormat: 'Y-m-d',
+        defaultDate: getCookie('bazar_entry_date') || new Date(),
+        onChange: function(selectedDates, dateStr){
+          setCookie('bazar_entry_date', dateStr);
+        }
+      });
+    }
+
+    // when a select changes, update placeholders and enforce uniqueness
+    $(document).on('change.bazarPage', '.add_bazar_id, .use_bazar_id', function(){
+      if(isRefreshing) return;
+      const $opt = $(this).find(':selected');
+      const unit = $opt.data('unit') || '';
+      const $row = $(this).closest('.bulk-row');
+      if($(this).hasClass('add_bazar_id')){
+        $row.find('input[name="quantity[]"]').attr('placeholder', unit || '');
+        $row.find('input[name="price[]"]').attr('placeholder', unit ? 'Per ' + unit : '');
+        refreshUniqueOptions('#addBulkContainer', 'add_bazar_id');
+      } else {
+        $row.find('input[name="quantity[]"]').attr('placeholder', unit ? 'Per ' + unit : '');
+        refreshUniqueOptions('#bulkContainer', 'use_bazar_id');
+      }
+    });
+
+    // date range flatpickr
+    if(flatpickrInstance) flatpickrInstance.destroy();
+    flatpickrInstance = flatpickr('#date_start_end', {
+      mode: 'range',
+      dateFormat: 'Y-m-d',
+      altInput: true,
+      altFormat: 'F j, Y',
+      allowInput: false,
+      onChange(selectedDates, dateStr) {
+        setCookie('bazar_date', dateStr);
+        DataTableRefresh();
+      },
+      onReady(_, __, instance) {
+        const saved = getCookie('bazar_date');
+        if (saved) {
+          const parts = saved.split(' to ').filter(Boolean);
+          const dates = parts.map(d => new Date(d));
+          if (dates.length) instance.setDate(dates, true);
+        }
+        const datepickerContainer = instance.calendarContainer;
+        const today = new Date();
+        const startOfWeek = new Date(today);
+        startOfWeek.setDate(today.getDate() - today.getDay());
+        const endOfWeek = new Date(today);
+        endOfWeek.setDate(today.getDate() + (6 - today.getDay()));
+        const lastWeekStart = new Date(startOfWeek);
+        lastWeekStart.setDate(startOfWeek.getDate() - 7);
+        const lastWeekEnd = new Date(endOfWeek);
+        lastWeekEnd.setDate(endOfWeek.getDate() - 7);
+        const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+        const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+        const startOfLastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+        const endOfLastMonth = new Date(today.getFullYear(), today.getMonth(), 0);
+
+        const quickRanges = [
+          { label: 'Today', range: [today, today] },
+          { label: 'This Week', range: [startOfWeek, endOfWeek] },
+          { label: 'Last Week', range: [lastWeekStart, lastWeekEnd] },
+          { label: 'This Month', range: [startOfMonth, endOfMonth] },
+          { label: 'Last Month', range: [startOfLastMonth, endOfLastMonth] }
+        ];
+
+        quickRanges.forEach(option => {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.textContent = option.label;
+          btn.className = 'btn btn-sm btn-outline-secondary me-1 mb-1';
+          btn.addEventListener('click', function() {
+            instance.setDate(option.range, true); // set and trigger onChange
+            instance.close();
+          });
+          datepickerContainer.prepend(btn);
+        });
+      }
+    });
+
+    // DataTable
+    if($.fn.DataTable.isDataTable('#bazarUsageTable')){
+      $('#bazarUsageTable').DataTable().destroy();
+      $('#bazarUsageTable tbody').empty();
+    }
+    table = $('#bazarUsageTable').DataTable({
+      processing: true,
+      serverSide: true,
+      pageLength: 50,
+      ajax: {
+        url: Wo_Ajax_Requests_File() + '?f=manage_bazar&s=fetch_all_entries',
+        type: 'POST',
+        data: function(d){
+          const dr = ($('#date_start_end').val()||'').split(' to ');
+          d.user_id = $('#user_id').val()||'';
+          d.data_start = dr[0]||'';
+          d.data_end   = dr[1]||dr[0]||'';
+        }
+      },
+      columns: [
+        { data: 'date' },
+        { data: 'type' },
+        { data: 'item_name' },
+        { data: 'quantity' },
+        { data: 'remaining' },
+        { data: 'user_name' }
+      ],
+      order: [[0,'desc']]
+    });
+
+    // UI bindings
+    $('#showAddBazarBtn').off('click').on('click', ()=>openBazarModal('add'));
+    $('#showUseBazarBtn').off('click').on('click', ()=>openBazarModal('use'));
+
+    // Add new row (build fresh select from snapshot to avoid cloning select2 internals)
+    $(document).on('click.bazarPage','#addRowBtn,#addBazarRowBtn', function(){
+      const isAdd = $(this).is('#addBazarRowBtn');
+      const containerSelector = isAdd ? '#addBulkContainer' : '#bulkContainer';
+      const selectClass = isAdd ? 'add_bazar_id' : 'use_bazar_id';
+      const snapshotHtml = isAdd ? optionHtmlAdd : optionHtmlUse;
+
+      const $tpl = $(containerSelector + ' .bulk-row').first();
+      const $new = $tpl.clone(false);
+
+      // remove any select2 DOM artifacts inside clone
+      $new.find('.select2-container').remove();
+
+      // replace each select inside clone with a fresh select built from snapshotHtml
+      $new.find('select').each(function(){
+        const $old = $(this);
+        const name = $old.attr('name') || 'bazar_id[]';
+        const classes = $old.attr('class') || '';
+        const required = $old.prop('required') ? 'required' : '';
+        const $fresh = $(`<select name="${name}" class="${classes}" ${required}></select>`);
+        $fresh.html(snapshotHtml);
+        $old.replaceWith($fresh);
+      });
+
+      // clear inputs in clone
+      $new.find('input').val('');
+
+      // append and init
+      $(containerSelector).append($new);
+      $new.find('select.' + selectClass).each(function(){
+        const parentModal = $(this).closest('.modal').length ? $(this).closest('.modal') : $('#bazarModal');
+        $(this).select2(select2Options(parentModal));
+      });
+
+      // enforce uniqueness across that container immediately
+      refreshUniqueOptions(containerSelector, selectClass);
+    });
+
+    // remove row
+    $(document).on('click.bazarPage','.remove-row', function(){
+      const $row = $(this).closest('.bulk-row');
+      const parentId = $row.parent().attr('id') || '';
+      $row.remove();
+      // refresh both containers so removed item becomes available again
+      refreshUniqueOptions('#addBulkContainer', 'add_bazar_id');
+      refreshUniqueOptions('#bulkContainer', 'use_bazar_id');
+    });
+
+    // add form submit
+    $('#addBazarForm').off('submit').on('submit', function(e){
+      e.preventDefault();
+      const uid = $('#user_id').val();
+      if(!uid){ $('#bazar_feedback').html('⚠️ Please select a user.'); return; }
+      const data = $(this).serialize() + '&entry_date=' + encodeURIComponent($('#bazar_entry_date').val()) + '&user_id=' + encodeURIComponent(uid);
+      $.post(Wo_Ajax_Requests_File()+'?f=manage_bazar&s=bulk_add_bazar', data, function(res){
+        if(res && res.status === 200){
+          $('#bazarModal').modal('hide'); DataTableRefresh(); $('#bazar_feedback').html('');
+          if(typeof pos5_success_noti === 'function') pos5_success_noti(res.message||'Saved');
+        } else $('#bazar_feedback').html((res && res.message) ? res.message : 'Failed');
+      }, 'json').fail(()=>$('#bazar_feedback').html('Network error'));
+    });
+
+    // use form submit
+    $('#useBazarForm').off('submit').on('submit', function(e){
+      e.preventDefault();
+      const uid = $('#user_id').val();
+      if(!uid){ $('#bazar_feedback').html('⚠️ Please select a user.'); return; }
+      const data = $(this).serialize()
+                  + '&user_id=' + uid
+                  + '&entry_date=' + encodeURIComponent($('#bazar_entry_date').val());
+      $.post(Wo_Ajax_Requests_File()+'?f=manage_bazar&s=use_bazar', data, function(res){
+        if(res && res.status === 200){
+          $('#bazarModal').modal('hide'); DataTableRefresh(); $('#bazar_feedback').html('');
+          if(typeof pos5_success_noti === 'function') pos5_success_noti(res.message||'Saved');
+        } else $('#bazar_feedback').html((res && res.message) ? res.message : 'Failed');
+      }, 'json').fail(()=>$('#bazar_feedback').html('Network error'));
+    });
+
+    $('#bazarSubmitBtn').off('click').on('click', function(){
+      if($('#addBazarForm').is(':visible')) $('#addBazarForm').submit();
+      else $('#useBazarForm').submit();
+    });
+
+    // history item change -> fetch & render
+    $('#history_bazar_id').off('change.history').on('change.history', function(){
+      const bazar_id = $(this).val();
+      if(!bazar_id) return;
+      const dateParts = ($('#date_start_end').val()||'').split(' to ');
+      const dataStart = dateParts[0]||'';
+      const dataEnd   = dateParts[1]||dateParts[0]||'';
+      priceDataCache = null; qtyDataCache = null;
+      resetChartsAndCss();
+      $.post(Wo_Ajax_Requests_File()+'?f=manage_bazar&s=fetch_history', {
+        bazar_id: bazar_id,
+        data_start: dataStart,
+        data_end: dataEnd
+      }, function(res){
+        if(!res || res.status !== 200) return;
+        const priceArr = Array.isArray(res.priceHistory) ? res.priceHistory : [];
+        const usageArr = Array.isArray(res.usageHistory_visible) ? res.usageHistory_visible : [];
+        priceDataCache = {
+          labels: priceArr.map(it => {
+            const d = (typeof it.date === 'number') ? new Date(it.date*1000) : new Date(it.date);
+            return d.toLocaleString();
+          }),
+          values: priceArr.map(it => Number(it.price) || 0)
+        };
+        qtyDataCache = {
+          labels: usageArr.map(it => {
+            const d = (typeof it.date === 'number') ? new Date(it.date*1000) : new Date(it.date);
+            return d.toLocaleString();
+          }),
+          values: usageArr.map(it => Number(it.remaining ?? it.quantity) || 0)
+        };
+        renderHistoryCharts();
+      }, 'json').fail(()=>{/* ignore */});
+    });
+
+    // show charts after modal shown
+    $('#historyModal').off('shown.bs.modal.history').on('shown.bs.modal.history', function(){
+      setTimeout(renderHistoryCharts, 60);
+    });
+
+    // cleanup & restore scroll
+    $('#bazarModal, #historyModal').on('hidden.bs.modal', function(){ $('#content').css('overflow','auto'); });
+
+    // initial uniqueness enforcement
+    refreshUniqueOptions('#addBulkContainer', 'add_bazar_id');
+    refreshUniqueOptions('#bulkContainer', 'use_bazar_id');
+  }; // initbazarPage
+
+  $(document).ready(initbazarPage);
+})(jQuery);
+</script>
+
+<?php } else { echo Wo_LoadManagePage('permission-required/content'); } ?>

@@ -1,0 +1,77 @@
+<script <?= 'nonce="' . $wo['nonce'] . '"' ?>>
+function TargetedUrl(type_q, is_reset) {
+	var color = "";
+	var orientation = "";
+	var page = "";
+	var issearched = '0';
+	var query = $('#search-input').val();
+	var issearched_input = $('#issearched').val();
+	
+	var search_val_main = $('#search-input');
+	if (search_val_main.val().length < 1) {
+		search_val_main[0].setCustomValidity("Required!");
+		search_val_main[0].reportValidity();
+		return false;
+	}
+	
+	if (type_q == 'btn') {
+		issearched = '1';
+		p_type = 'search';
+	} else {
+		issearched = issearched_input;
+		p_type = 'search';
+	}
+	$(".details-content label input").each(function() {
+		if ($(this).prop('checked')) {
+			color = $(this).val();
+		}
+	});
+	$(".orientation-content input").each(function() {
+		if ($(this).prop('checked')) {
+			orientation = $(this).val();
+		}
+	});
+	$(".prev-next-content label input").each(function() {
+		if ($(this).prop('checked')) {
+			page = $(this).val();
+		}
+	});
+	var data = {
+	  'f' : 'load_posts',
+	  'id' : query,
+	  'p_type' : "<?php echo $_GET['link1']; ?>",
+	  'color' : color,
+	  'page' : page,
+	  'is_reset' : is_reset,
+	  'issearched' : issearched
+	};
+	$('#posts-list').html('');
+	const formData = $('.sticky_topbar form').serialize() + '&' + $.param(data);
+	  $.ajax({
+		 url: Wo_Ajax_Requests_File(),
+		 type: 'GET',
+		 dataType: 'json',
+		 data: formData,
+		 success:function(data){
+			if (data['status'] == 200) {
+				$("#issearched").attr("value", data['current_page']);
+				location.href = data['url'];
+			 }else{
+			   $(".posts_load").remove();
+			 }
+		 }
+	  });
+	if (type_q == 'color' || type_q == 'orientation' || type_q == 'cf' || type_q == 'ct' || type_q == 'page' || type_q == 'btn') {
+		Tigger_gourl(type_q);
+	}
+}
+function Tigger_gourl (type_q) {
+	var issearched = '0';
+	var issearched_input = $('#issearched').val();
+	if (type_q == 'btn') {
+		issearched = '1';
+	} else {
+		issearched = issearched_input;
+	}
+}
+</script>

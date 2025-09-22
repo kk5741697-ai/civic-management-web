@@ -1,0 +1,82 @@
+<script <?= 'nonce="' . $wo['nonce'] . '"' ?>>
+
+let timeoutId = null;
+
+const notification = document.getElementById('notification');
+const statusElement = document.getElementById('status');
+
+$(document).on('click', '.notif-refresh', function(event) {
+	location.reload();
+});
+function notif_hide() {
+	notification.classList.remove('active');
+}
+function showNotification(className) {
+	clearTimeout(timeoutId); // Clear any existing timeouts
+	notification.classList.add(className, 'active');
+	if (className == 'online') {
+		timeoutId = setTimeout(() => {
+			notification.classList.remove('active');
+		}, 2500); // Display notification for 3.5 seconds
+		notification.classList.remove('offline');
+	} else {
+		timeoutId = setTimeout(() => {
+			notification.classList.remove('active');
+		}, 4500); // Display notification for 3.5 seconds
+		notification.classList.remove('online');
+	}
+}
+// Function to check internet connection
+function isOnline() {
+	return navigator.onLine;
+}
+
+// Function to prevent default behavior and show "You are in offline" message
+function handleOfflineClick(event) {
+	event.preventDefault();
+	showNotification('offline');
+}
+// Function to enable hyperlinks and restore onclick behavior
+function enableLinks() {
+	const links = document.querySelectorAll('a[data-original-onclick]');
+	links.forEach(link => {
+		link.removeAttribute('data-original-onclick');
+		link.removeEventListener('click', handleOfflineClick);
+		link.setAttribute('onclick', link.dataset.originalOnclick);
+	});
+
+	const hrefLinks = document.querySelectorAll('a[data-original-href]');
+	hrefLinks.forEach(link => {
+		link.href = link.getAttribute('data-original-href');
+		link.removeEventListener('click', handleOfflineClick);
+		link.removeAttribute('data-original-href');
+	});
+	showNotification('online');
+}
+
+// Function to enable hyperlinks and restore onclick behavior
+function disableLinks() {
+	// Disable all hyperlinks with onclick behavior and save original onclick
+	const links = document.querySelectorAll('a[onclick]');
+	links.forEach(link => {
+		link.dataset.originalOnclick = link.getAttribute('onclick');
+		link.removeAttribute('onclick');
+		link.addEventListener('click', handleOfflineClick);
+	});
+
+	// Disable all hyperlinks with href and save original href
+	const hrefLinks = document.querySelectorAll('a[href]');
+	hrefLinks.forEach(link => {
+		link.dataset.originalHref = link.href;
+		link.href = 'javascript:void(0)';
+		link.addEventListener('click', handleOfflineClick);
+	});
+	showNotification('offline');
+}
+
+// Add event listeners to check for online status
+window.addEventListener('online', enableLinks);
+window.addEventListener('offline', () => {
+	disableLinks();
+});
+</script>

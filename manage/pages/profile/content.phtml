@@ -1,0 +1,181 @@
+<!--start breadcrumb-->
+<div class="page-breadcrumb d-flex align-items-center mb-3">
+	<div class="breadcrumb-title pe-3"><?php echo $wo['title']; ?></div>
+</div>
+<div class="mb-3">
+	<div class="row row-cols-auto g-3 justify-content-center">
+		<div class="col-lg-8">
+				<div class="wo_settings_page wow_content">
+				   <form  method="post" class="form-horizontal setting-profile-form" enctype="multipart/form-data">
+					  <div class="setting-profile-alert setting-update-alert"></div>
+					  
+					  <div class="wow_cset_cover" title="<?php echo $wo['lang']['cover']; ?>">
+							<div class="wow_cset_cover_hdr">
+								<span class="btn btn-file d-flex w-100" id="coverimage-holder" onclick="$('#cover').trigger('click'); return false;" style=" cursor: auto; ">
+									
+								</span>
+								<input type="file" class="hidden" id="cover" accept="image/x-png, image/gif, image/jpeg" name="cover" disabled>
+							</div>
+							<div class="avatar-read" id="cover-form"><p></p></div>
+						</div>
+						<div class="wow_cset_avtr">
+							<div class="wow_cset_avtr_hdr wow_cset_avtr_hdr d-flex justify-content-center">
+								<span class="btn btn-file d-flex" id="avatarimage-holder" onclick="$('#avatar').trigger('click'); return false;" title="<?php echo $wo['lang']['avatar']; ?>">
+									<img src="<?php echo $wo['user']['avatar']; ?>" alt="Picture">
+								</span>
+								<input type="file" class="hidden" id="avatar" accept="image/x-png, image/gif, image/jpeg" name="avatar">
+							</div>
+							<div class="avatar-read" id="photo-form"><p></p></div>
+						</div>
+					  
+						<div class="infoz text-center" style=" margin-top: -25px; ">
+							<h5 title="<?php echo $wo['user']['name']?>" style=" margin-bottom: 3px; "><a><?php echo $wo['user']['name']?></a></h5>
+							<p class="mb-0"><?php echo $wo['user']['designation']; ?></p>
+							<p><?php echo $wo['user']['department']; ?></p>
+						</div>
+						<div class="row row-cols-1 row-cols-sm-2 row-cols-lg-2 row-cols-xl-2 g-3 mb-5" style="max-width: 800px;margin: auto;" id="profile_details">
+						
+							<div class="col">
+								<div class="d-flex align-items-center theme-icons shadow-sm p-2 cursor-pointer rounded">
+									<div class="font-22">
+									    <i class='fadeIn animated bx bx-fingerprint' ></i>
+									</div>
+									<div class="ms-2">
+										<span><?php echo $wo['user']['username']; ?></span>
+									</div>
+								</div>
+							</div>
+							<div class="col">
+								<div class="d-flex align-items-center theme-icons shadow-sm p-2 cursor-pointer rounded">
+									<div class="font-22">
+	                                    <i class='fadeIn animated bx bx-time-five' ></i>
+									</div>
+									<div class="ms-2">
+										<span><?php echo $wo['user']['joining_date']; ?></span>
+									</div>
+								</div>
+							</div>
+							
+							<div class="col">
+								<div class="d-flex align-items-center theme-icons shadow-sm p-2 cursor-pointer rounded">
+									<div class="font-22">
+	                                    <i class='fadeIn animated bx bx-phone-call' ></i>
+									</div>
+									<div class="ms-2">
+										<span><?php echo $wo['user']['phone_number']; ?></span>
+									</div>
+								</div>
+							</div>
+							
+							<div class="col">
+								<div class="d-flex align-items-center theme-icons shadow-sm p-2 cursor-pointer rounded">
+									<div class="font-22">
+	                                    <i class='fadeIn animated bx bx-envelope' ></i>
+									</div>
+									<div class="ms-2">
+										<span><?php echo $wo['user']['email']; ?></span>
+									</div>
+								</div>
+							</div>
+							<small class="w-100 fw-500">Note: Click on your profile picture to choose a new one. After selecting, click "Save" to update it.</small>
+						</div>
+						
+						<div class="">
+							<label for="signature">Signature (700x270)</label>
+							<div class="wow_cset_avtr_hdr wow_cset_avtr_hdr d-flex justify-content-center">
+								<span class="btn btn-file d-flex" id="signature-holder" onclick="$('#signature').trigger('click'); return false;" title="<?php echo $wo['lang']['avatar']; ?>">
+									<img src="<?php echo $wo['user']['signature_url']; ?>" alt="Picture" style="height: 60px;width: 200px;">
+								</span>
+								<input type="file" class="hidden" id="signature" accept="image/jpeg" name="signature">
+							</div>
+							<div class="signature-read" id="photo-form"><p></p></div>
+						</div>
+						
+						<div class="text-center" id="change_save" style="display: none;">
+							<button type="submit" class="btn btn-primary w-50 mb-3"><?php echo $wo['lang']['save']; ?></button>
+						</div>
+
+					  <input type="hidden" name="user_id" id="user-id" value="<?php echo $wo['user']['user_id'];?>">
+					  <input type="hidden" name="hash_id" value="<?php echo Wo_CreateSession();?>">
+				   </form>
+				</div>
+
+				<script type="text/javascript">
+
+				$(document).ready(function() {
+					$("#avatar").on('change', function() {
+					//Get count of selected files
+					$("#avatarimage-holder").html("<img src='" + window.URL.createObjectURL(this.files[0]) + "' alt='Picture'>");
+					$("#profile_details").fadeOut(200);
+					$("#change_save").fadeIn(200);
+					});
+				});
+
+            	$(document).ready(function() {
+            		$("#signature").on('change', function() {
+            		//Get count of selected files
+            		$("#signature-holder").html("<img style='height: 60px;width: 200px;' src='" + window.URL.createObjectURL(this.files[0]) + "' alt='Picture'>");
+            		$("#change_save").fadeIn(200);
+            		});
+            	});
+				$(function() {
+				  $("#cover").change(function() {
+							var filename = $(this).val().replace(/C:\\fakepath\\/i, '');
+							$("#cover-form p").html(filename);
+							$("#cover-form").fadeIn(200);
+							$("#change_save").fadeIn(200);
+							
+						});
+				  $('form.setting-profile-form').ajaxForm({
+					url: Wo_Ajax_Requests_File() + '?f=update_images_setting',
+					beforeSend: function() {
+					  $('.wo_settings_page').find('.add_wow_loader').addClass('btn-loading');
+					},
+					success: function(data) {
+					  if (data.status == 200) {
+						$(".cover-read, .avatar-read").slideUp(200);
+						if (data.avatar) {
+						  var user_id = $('form.setting-profile-form').find('#user-id').val();
+						  $('[id^=updateImage-' + user_id + ']').fadeOut(300, function () { $('[id^=updateImage-' + user_id + ']').attr("src", data.avatar)}).fadeIn(300);
+						}
+						$('.setting-profile-alert').html('<div class="alert alert-success">' + data.message + '</div>');
+						$('.alert-success').fadeIn('fast', function() {
+						  $(this).delay(2500).slideUp(500, function() {
+							$(this).remove();
+						  });
+						});
+					  }
+					  $('.wo_settings_page').find('.add_wow_loader').removeClass('btn-loading');
+						$("#change_save").fadeOut(200);
+						$("#profile_details").fadeIn(200);
+					}
+				  });
+				});
+				</script>
+		</div>
+	</div>
+</div>
+
+<style>
+/*Avatar and Cover*/
+.wow_cset_cover, .wow_cset_avtr {position: relative;}
+.wow_cset_cover .wow_cset_cover_hdr .btn-file {justify-content: center;box-shadow: none;background-color: #f3f3f3;border-radius: 10px;height: 140px;overflow: hidden;padding: 0;border: 0;}
+.wow_cset_cover .wow_cset_cover_hdr .btn-file img, .wow_cset_avtr .wow_cset_avtr_hdr .btn-file img {width: 100%;height: 100%;object-fit: cover;}
+.wow_cset_cover .wow_cset_cover_hdr .btn-file svg, .wow_cset_avtr .wow_cset_avtr_hdr .btn-file svg {margin: 0;width: 30px;height: 30px;}
+.wow_cset_cover .avatar-read {position: absolute;top: 10px;left: 10px;}
+.wow_cset_cover .avatar-read p {margin: 0;background-color: rgba(0, 0, 0, 0.5);color: white;height: 34px;padding: 6px 12px;border-radius: 4px;}
+.wow_cset_cover .avatar-read p:empty {padding: 0;}
+.wow_cset_avtr .wow_cset_avtr_hdr .btn-file {justify-content: center;box-shadow: none;background-color: #f3f3f3;width: 140px;height: 140px;border-radius: 50%;border: 5px solid #fff;overflow: hidden;margin: -70px auto 20px;padding: 0;}
+.wow_content {background-color: #fff;box-shadow: 0 1px 3px 0 rgba(0,0,0,.1), 0 1px 2px 0 rgba(0,0,0,.06);border-radius: 10px;padding: 15px 15px 1px;}
+.dark-theme .wow_content {background-color: #ffffff0d;}
+.wow_content.negg_padd {padding: 0;}
+.wow_sett_content {padding: 3px 20px 20px;}
+.wow_sett_content .text-center > .btn-mat {min-width: 150px;margin: 17px 0;}
+.tag_content {position: relative;display: block;margin-left: 350px;transition: opacity 0.25s linear;/*will-change: opacity;*/}
+.tag_content.tag_chat_content {margin-right: 90px;}
+.tag_content.opacity_start {opacity: 0;pointer-events: none;}
+.tag_content_n_margin {margin: 0 !important;}
+.main  {color: var(--main);}
+.valign {display: -webkit-box;display: -webkit-flex;display: -ms-flexbox;display: flex;-webkit-box-align: center;-webkit-align-items: center;-ms-flex-align: center;align-items: center;}
+
+</style>

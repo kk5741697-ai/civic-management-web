@@ -1,0 +1,407 @@
+<?php Global $lead; ?>
+<div class="modal fade" id="assignLead-modal" role="dialog">
+	<div class="modal-dialog modal-lg wow_mat_mdl invoice_print">
+		<div class="modal-content p-3">
+		<style>
+		#assignLead-modal .card-body {
+			padding: 10px;
+		}
+		#assignLead-modal p.mb-0 {
+			font-size: 12px;
+		}
+		#assignLead-modal h4.mb-0 {
+			font-size: 18px;
+			line-break: anywhere;
+		}
+		.allocation-members {
+			width: calc(100% - 40px);
+		}
+		.allocation-input {
+			margin-top: 7px;
+		}
+		</style>
+		<?php
+			
+			$total_leads = 0;
+			
+			
+			
+			
+			$mode_text = '';
+			
+			$users = '';
+			
+			if (Wo_IsAdmin() || Wo_IsModerator()) {
+				$total_leads = $db->where('assigned', 0)->where('member', 0)->getValue(T_LEADS, 'COUNT(*)');
+				
+				$user_mode = 'admin';
+				$mode_text = 'Leader ';
+				$users = $db->where('is_team_leader', '1')->where('active', '1')->orderBy('position', 'ASC')->get(T_USERS);
+			} else if ($wo['user']['is_team_leader'] == 1) {
+				$total_leads = $db->where('assigned', $wo['user']['user_id'])->where('member', 0)->getValue(T_LEADS, 'COUNT(*)');
+				
+				$user_mode = 'leader';
+				$mode_text = 'Member ';
+				$users = $db->where('leader_id', $wo['user']['user_id'])->where('active', '1')->orderBy('position', 'ASC')->get(T_USERS);
+			} else if ($wo['user']['leader_id'] > 0) {
+				$user_mode = 'member';
+				$mode_text = 'Your ';
+			} else {
+				$user_mode = 'non';
+			}
+			
+		?>
+		<div class="d-flex justify-content-between">
+			<h3 class="mb-2">Assign Lead</h3>
+			<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+		</div>
+		
+		<div class="row row-cols-2 row-cols-lg-2 row-cols-xl-2">
+			<div class="col">
+				<div class="card radius-10 mb-2">
+					<div class="card-body">
+						<div class="d-flex align-items-center">
+							<div class="allocation-members">
+								<h4 class="mb-0">Total: <b><?= $total_leads; ?></b></h4>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div class="col">
+				<div class="card radius-10 mb-2">
+					<div class="card-body">
+						<div class="d-flex align-items-center">
+							<div class="allocation-members">
+								<h4 class="mb-0">Remaining: <b id="lead_count"><?= $total_leads; ?></b></h4>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+		<small class="fw-500 warning" style=" color: red; ">NB. Remaining lead gose to team leader.</small>
+		<hr/>
+		<form id="assign_lead_form">
+			<div class="row row-cols-1 row-cols-lg-2 row-cols-xl-2">
+			<?php foreach ($users as $key => $user) : ?>
+				<div class="col">
+					<div class="card radius-10 mb-2">
+						<div class="card-body">
+							<div class="d-flex align-items-center">
+								<div class="allocation-members">
+									<p class="mb-0"><?= $mode_text; ?>Name</p>
+									<h4 class="mb-0"><?= ucfirst($user->first_name) ?><?= (!empty($user->last_name)) ? ' ' . ucfirst($user->last_name) : ''; ?></h4>
+									<input type="number" name="allot[<?= "{$key}" ?>][given]" id="<?= "user{$key}Input" ?>" class="allocation-input form-control" min="0" max="<?= $total_leads; ?>" value="0" step="1" oninput="updateRanges(<?= "{$key}" ?>)" <?php echo ($key > 0) ? 'disabled' : ''; ?>>
+									<input type="number" name="allot[<?= "{$key}" ?>][user_id]" value="<?= $user->user_id; ?>" class="hidden" hidden>
+									<input type="text" name="allot[<?= "{$key}" ?>][user_mode]" value="<?= $user_mode; ?>" class="hidden" hidden>
+								</div>
+								<div class="ms-auto fs-2">
+									<ion-icon name="person-outline" role="img" class="md hydrated" aria-label="bag handle sharp"></ion-icon>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			<?php endforeach; ?>
+				<input type="number" id="fixedInput" class="allocation-input" min="0" max="<?= $total_leads; ?>" value="<?= $total_leads; ?>" step="1" disabled hidden>
+			</div>
+			<div class="user">
+				<input type="submit" value="Assign Lead" class="btn btn-primary mt-3 w-100">
+			</div>
+		</form>
+		
+		<script>
+			$(document).ready(function() {
+				$('#assign_lead_form').submit(function(event) {
+					event.preventDefault(); 
+					
+					var formData = new FormData(this);
+
+					$.ajax({
+						url: Wo_Ajax_Requests_File() + '?f=manage_leads&s=assign_lead',
+						type: 'POST',
+						data: formData,
+						cache: false,
+						contentType: false,
+						processData: false,
+						success: function(response) {
+							$('#assignLead-modal').fadeOut(200);
+							$('.modal-backdrop').fadeOut(200);
+							$('#assignLead-modal').remove();
+							$('.modal-backdrop').remove();
+							pos5_success_noti('Assign lead successful to users.');
+						},
+						error: function() {
+							pos4_error_noti('Something went wrong to assign leads.');
+						}
+					});
+				});
+				$('#assignLead-modal [data-dismiss="modal"]').on('click', function() {
+					$('#assignLead-modal').fadeOut(200);
+					$('#assignLead-modal').remove();
+				});
+				// Attach a listener for the modal hidden event
+				$('#assignLead-modal').on('hidden.bs.modal', function() {
+					$('#assignLead-modal').fadeOut(200);
+					$('#assignLead-modal').remove();
+				});
+			});
+			// Function to update allocations based on which input triggered the update
+			function updateRanges(userNumber) {
+				var totalValue = <?= $total_leads; ?>;
+				var userValues = [];
+				var user_number = userNumber + 1;
+				// Loop through each user input to collect values
+				for (var i = 0; i < <?= count($users) ?>; i++) {
+					userValues[i] = parseInt(document.getElementById('user' + i + 'Input').value) || 0;
+				}
+						
+				switch (userNumber) {
+					case 0: //1no user
+					
+						var remainingValue = totalValue - userValues[0];
+						if (<?= count($users) ?> != user_number) {
+							document.getElementById('user1Input').disabled = false;
+							for (var i = 2; i < <?= count($users) ?>; i++) {
+								document.getElementById('user' + i + 'Input').disabled = true;
+							}
+							document.getElementById('user1Input').max = remainingValue;
+							document.getElementById('user1Input').value = remainingValue;
+						}
+						
+						var remainingFixed = totalValue - (userValues[0] + remainingValue);
+						document.getElementById('fixedInput').max = remainingFixed;
+						document.getElementById('fixedInput').value = remainingFixed;
+						$('#lead_count').html(remainingFixed);
+
+						for (var i = 2; i < <?= count($users) ?>; i++) {
+							document.getElementById('user' + i + 'Input').max = 0;
+							document.getElementById('user' + i + 'Input').value = 0;
+						}
+						
+						if (<?= count($users) ?> == user_number) {
+							document.getElementById('fixedInput').max = remainingValue;
+							document.getElementById('fixedInput').value = remainingValue;
+							$('#lead_count').html(remainingValue);
+						}
+						break;
+					case 1: //2no user
+						var remainingValue = totalValue - (userValues[0] + userValues[1]);
+						if (<?= count($users) ?> != user_number) {
+							document.getElementById('user2Input').disabled = false;
+							for (var i = 3; i < <?= count($users) ?>; i++) {
+								document.getElementById('user' + i + 'Input').disabled = true;
+							}
+							
+							document.getElementById('user2Input').max = remainingValue;
+							document.getElementById('user2Input').value = remainingValue;
+						}
+						var remainingFixed = totalValue - (userValues[0] + userValues[1] + remainingValue);
+						document.getElementById('fixedInput').max = remainingFixed;
+						document.getElementById('fixedInput').value = remainingFixed;
+						$('#lead_count').html(remainingFixed);
+						
+						if (<?= count($users) ?> == user_number) {
+							document.getElementById('fixedInput').max = remainingValue;
+							document.getElementById('fixedInput').value = remainingValue;
+							$('#lead_count').html(remainingValue);
+						}
+						break;
+						
+					case 2: //3no user
+						var remainingValue = totalValue - (userValues[0] + userValues[1] + userValues[2]);
+						if (<?= count($users) ?> != user_number) {
+							document.getElementById('user3Input').disabled = false;
+							for (var i = 4; i < <?= count($users) ?>; i++) {
+								document.getElementById('user' + i + 'Input').disabled = true;
+							}
+							
+							document.getElementById('user3Input').max = remainingValue;
+							document.getElementById('user3Input').value = remainingValue;
+						}
+						var remainingFixed = totalValue - (userValues[0] + userValues[1] + userValues[2] + remainingValue);
+						document.getElementById('fixedInput').max = remainingFixed;
+						document.getElementById('fixedInput').value = remainingFixed;
+						$('#lead_count').html(remainingFixed);
+						
+						if (<?= count($users) ?> == user_number) {
+							document.getElementById('fixedInput').max = remainingValue;
+							document.getElementById('fixedInput').value = remainingValue;
+							$('#lead_count').html(remainingValue);
+						}
+						break;
+						
+					case 3: //4no user
+						var remainingValue = totalValue - (userValues[0] + userValues[1] + userValues[2] + userValues[3]);
+						
+						if (<?= count($users) ?> != user_number) {
+							document.getElementById('user4Input').disabled = false;
+							for (var i = 5; i < <?= count($users) ?>; i++) {
+								document.getElementById('user' + i + 'Input').disabled = true;
+							}
+							
+							document.getElementById('user4Input').max = remainingValue;
+							document.getElementById('user4Input').value = remainingValue;
+						}
+						var remainingFixed = totalValue - (userValues[0] + userValues[1] + userValues[2] + userValues[3] + remainingValue);
+						document.getElementById('fixedInput').max = remainingFixed;
+						document.getElementById('fixedInput').value = remainingFixed;
+						$('#lead_count').html(remainingFixed);
+						
+						if (<?= count($users) ?> == user_number) {
+							document.getElementById('fixedInput').max = remainingValue;
+							document.getElementById('fixedInput').value = remainingValue;
+							$('#lead_count').html(remainingValue);
+						}
+						break;
+						
+					case 4: //5no user
+						var remainingValue = totalValue - (userValues[0] + userValues[1] + userValues[2] + userValues[3] + userValues[4]);
+						if (<?= count($users) ?> != user_number) {
+							document.getElementById('user5Input').disabled = false;
+							for (var i = 6; i < <?= count($users) ?>; i++) {
+								document.getElementById('user' + i + 'Input').disabled = true;
+							}
+							
+							document.getElementById('user5Input').max = remainingValue;
+							document.getElementById('user5Input').value = remainingValue;
+						}
+						var remainingFixed = totalValue - (userValues[0] + userValues[1] + userValues[2] + userValues[3] + userValues[4] + remainingValue);
+						document.getElementById('fixedInput').max = remainingFixed;
+						document.getElementById('fixedInput').value = remainingFixed;
+						$('#lead_count').html(remainingFixed);
+						
+						if (<?= count($users) ?> == user_number) {
+							document.getElementById('fixedInput').max = remainingValue;
+							document.getElementById('fixedInput').value = remainingValue;
+							$('#lead_count').html(remainingValue);
+						}
+						break;
+						
+					case 5: //6no user
+						var remainingValue = totalValue - (userValues[0] + userValues[1] + userValues[2] + userValues[3] + userValues[4] + userValues[5]);
+						if (<?= count($users) ?> != user_number) {
+							document.getElementById('user6Input').disabled = false;
+							for (var i = 7; i < <?= count($users) ?>; i++) {
+								document.getElementById('user' + i + 'Input').disabled = true;
+							}
+							
+							document.getElementById('user6Input').max = remainingValue;
+							document.getElementById('user6Input').value = remainingValue;
+						}
+						var remainingFixed = totalValue - (userValues[0] + userValues[1] + userValues[2] + userValues[3] + userValues[4] + userValues[5] + remainingValue);
+						document.getElementById('fixedInput').max = remainingFixed;
+						document.getElementById('fixedInput').value = remainingFixed;
+						$('#lead_count').html(remainingFixed);
+						
+						if (<?= count($users) ?> == user_number) {
+							document.getElementById('fixedInput').max = remainingValue;
+							document.getElementById('fixedInput').value = remainingValue;
+							$('#lead_count').html(remainingValue);
+						}
+						break;
+						
+					case 6: //7no user
+						var remainingValue = totalValue - (userValues[0] + userValues[1] + userValues[2] + userValues[3] + userValues[4] + userValues[5] + userValues[6]);
+						if (<?= count($users) ?> != user_number) {
+							document.getElementById('user7Input').disabled = false;
+							for (var i = 8; i < <?= count($users) ?>; i++) {
+								document.getElementById('user' + i + 'Input').disabled = true;
+							}
+							
+							document.getElementById('user7Input').max = remainingValue;
+							document.getElementById('user7Input').value = remainingValue;
+						}
+						var remainingFixed = totalValue - (userValues[0] + userValues[1] + userValues[2] + userValues[3] + userValues[4] + userValues[5] + userValues[6] + remainingValue);
+						document.getElementById('fixedInput').max = remainingFixed;
+						document.getElementById('fixedInput').value = remainingFixed;
+						$('#lead_count').html(remainingFixed);
+						
+						if (<?= count($users) ?> == user_number) {
+							document.getElementById('fixedInput').max = remainingValue;
+							document.getElementById('fixedInput').value = remainingValue;
+							$('#lead_count').html(remainingValue);
+						}
+						break;
+						
+					case 7: //8no user
+						var remainingValue = totalValue - (userValues[0] + userValues[1] + userValues[2] + userValues[3] + userValues[4] + userValues[5] + userValues[6] + userValues[7]);
+						if (<?= count($users) ?> != user_number) {
+							document.getElementById('user8Input').disabled = false;
+							for (var i = 9; i < <?= count($users) ?>; i++) {
+								document.getElementById('user' + i + 'Input').disabled = true;
+							}
+							
+							document.getElementById('user8Input').max = remainingValue;
+							document.getElementById('user8Input').value = remainingValue;
+						}
+						var remainingFixed = totalValue - (userValues[0] + userValues[1] + userValues[2] + userValues[3] + userValues[4] + userValues[5] + userValues[6] + userValues[7] + remainingValue);
+						document.getElementById('fixedInput').max = remainingFixed;
+						document.getElementById('fixedInput').value = remainingFixed;
+						$('#lead_count').html(remainingFixed);
+						
+						if (<?= count($users) ?> == user_number) {
+							document.getElementById('fixedInput').max = remainingValue;
+							document.getElementById('fixedInput').value = remainingValue;
+							$('#lead_count').html(remainingValue);
+						}
+						break;
+						
+					case 8: //9no user
+						var remainingValue = totalValue - (userValues[0] + userValues[1] + userValues[2] + userValues[3] + userValues[4] + userValues[5] + userValues[6] + userValues[7] + userValues[8]);
+						if (<?= count($users) ?> != user_number) {
+							document.getElementById('user8Input').disabled = false;
+							for (var i = 10; i < <?= count($users) ?>; i++) {
+								document.getElementById('user' + i + 'Input').disabled = true;
+							}
+							
+							document.getElementById('user9Input').max = remainingValue;
+							document.getElementById('user9Input').value = remainingValue;
+						}
+						var remainingFixed = totalValue - (userValues[0] + userValues[1] + userValues[2] + userValues[3] + userValues[4] + userValues[5] + userValues[6] + userValues[7] + userValues[8] + remainingValue);
+						document.getElementById('fixedInput').max = remainingFixed;
+						document.getElementById('fixedInput').value = remainingFixed;
+						$('#lead_count').html(remainingFixed);
+						
+						if (<?= count($users) ?> == user_number) {
+							document.getElementById('fixedInput').max = remainingValue;
+							document.getElementById('fixedInput').value = remainingValue;
+							$('#lead_count').html(remainingValue);
+						}
+						break;
+						
+					case 9: //10no user
+						var remainingValue = totalValue - (userValues[0] + userValues[1] + userValues[2] + userValues[3] + userValues[4] + userValues[5] + userValues[6] + userValues[7] + userValues[8] + userValues[9]);
+						if (<?= count($users) ?> != user_number) {
+							document.getElementById('user9Input').disabled = false;
+							for (var i = 11; i < <?= count($users) ?>; i++) {
+								document.getElementById('user' + i + 'Input').disabled = true;
+							}
+							
+							document.getElementById('user10Input').max = remainingValue;
+							document.getElementById('user10Input').value = remainingValue;
+						}
+						var remainingFixed = totalValue - (userValues[0] + userValues[1] + userValues[2] + userValues[3] + userValues[4] + userValues[5] + userValues[6] + userValues[7] + userValues[8] + userValues[9] + remainingValue);
+						document.getElementById('fixedInput').max = remainingFixed;
+						document.getElementById('fixedInput').value = remainingFixed;
+						$('#lead_count').html(remainingFixed);
+						
+						if (<?= count($users) ?> == user_number) {
+							document.getElementById('fixedInput').max = remainingValue;
+							document.getElementById('fixedInput').value = remainingValue;
+							$('#lead_count').html(remainingValue);
+						}
+						break;
+						
+					default:
+						break;
+				}
+			}
+		</script>
+				</div>
+			</div>
+			<!--end row-->
+		</div>
+	</div>
+</div>

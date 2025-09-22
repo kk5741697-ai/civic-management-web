@@ -1,0 +1,47 @@
+<!-- Transfer Purchase Modal -->
+<div class="modal fade" id="transferPurchaseModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+  <div class="modal-dialog modal-md modal-dialog-centered">
+    <div class="modal-content border-0 shadow-lg">
+      <div class="modal-header bg-gradient-info text-white border-0">
+        <h5 class="modal-title mb-0">
+          <i class="lni lni-users me-2"></i>Transfer Purchase
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+
+      <div class="modal-body py-4">
+        <input type="hidden" id="transfer_purchase_id" value="">
+        
+        <div class="mb-3">
+          <label class="form-label fw-medium">Select Target Client</label>
+          <select id="transfer_client_select" class="form-control">
+            <option value="">Choose client to transfer to...</option>
+          </select>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label fw-medium">Transfer Date</label>
+          <input type="date" id="transfer_date" class="form-control" value="<?= date('Y-m-d') ?>">
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label fw-medium">Transfer Reason</label>
+          <textarea id="transfer_reason" class="form-control" rows="3" placeholder="Enter reason for transfer..."></textarea>
+        </div>
+
+        <div class="alert alert-warning">
+          <strong>Note:</strong> This will transfer the purchase to the selected client. The action cannot be undone.
+        </div>
+
+        <div class="alert alert-danger d-none" id="transfer_error" role="alert"></div>
+      </div>
+
+      <div class="modal-footer border-0 bg-light">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button id="transfer_purchase_save" class="btn btn-info text-white">
+          <i class="lni lni-users me-1"></i>Transfer Purchase
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

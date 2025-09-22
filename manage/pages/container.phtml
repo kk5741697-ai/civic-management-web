@@ -1,0 +1,229 @@
+<?php Global $page; ?>
+<!doctype html>
+<html lang="en" class="semi-dark">
+
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+
+	<link href="<?php echo Wo_LoadManageLink('assets/css/pace.min.css') . '?version=' . $wo['config']['version']; ?>" rel="stylesheet" />
+	<script src="<?php echo Wo_LoadManageLink('assets/js/pace.min.js') . '?version=' . $wo['config']['version']; ?>"></script>
+	<link rel="shortcut icon" href="<?php echo Wo_LoadManageLink('assets/img/favicon.ico') . '?version=' . $wo['config']['version']; ?>">
+	<link rel="manifest" href="<?php echo Wo_LoadManageLink('pages/manifest.json') . '?version=' . $wo['config']['version']; ?>">
+	<link href="<?php echo Wo_LoadManageLink('assets/plugins/simplebar/css/simplebar.css') . '?version=' . $wo['config']['version']; ?>" rel="stylesheet" />
+	<link href="<?php echo Wo_LoadManageLink('assets/plugins/perfect-scrollbar/css/perfect-scrollbar.css') . '?version=' . $wo['config']['version']; ?>" rel="stylesheet" />
+	<script src="<?php echo Wo_LoadManageLink('assets/plugins/perfect-scrollbar/js/perfect-scrollbar.js') . '?version=' . $wo['config']['version']; ?>"></script>
+	<link href="<?php echo Wo_LoadManageLink('assets/plugins/metismenu/css/metisMenu.min.css') . '?version=' . $wo['config']['version']; ?>" rel="stylesheet" />
+	<link href="<?php echo Wo_LoadManageLink('assets/plugins/notifications/css/lobibox.min.css') . '?version=' . $wo['config']['version']; ?>" rel="stylesheet" />
+	<link href="<?php echo Wo_LoadManageLink('assets/plugins/datatable/css/dataTables.bootstrap5.min.css') . '?version=' . $wo['config']['version']; ?>" rel="stylesheet" />
+	<link rel="stylesheet" href="<?php echo Wo_LoadManageLink('assets/css/flatpickr.min.css') . '?version=' . $wo['config']['version']; ?>">
+	<script src="<?php echo Wo_LoadManageLink('assets/js/flatpickr.js') . '?version=' . $wo['config']['version']; ?>"></script>
+	<script src="<?php echo Wo_LoadManageLink('assets/js/gsap.min.js') . '?version=' . $wo['config']['version']; ?>"></script>
+	<script src="<?php echo Wo_LoadManageLink('assets/js/circletype.min.js') . '?version=' . $wo['config']['version']; ?>"></script>
+	<script src="<?php echo Wo_LoadManageLink('assets/js/xstate.js') . '?version=' . $wo['config']['version']; ?>"></script>
+
+	<link href="<?php echo Wo_LoadManageLink('assets/css/bootstrap.min.css') . '?version=' . $wo['config']['version']; ?>" rel="stylesheet">
+	<link href="<?php echo Wo_LoadManageLink('assets/css/bootstrap-extended.css') . '?version=' . $wo['config']['version']; ?>" rel="stylesheet">
+	<link href="<?php echo Wo_LoadManageLink('assets/css/style.css') . '?version=' . $wo['config']['version']; ?>" rel="stylesheet">
+	<link href="<?php echo Wo_LoadManageLink('assets/css/icons.css') . '?version=' . $wo['config']['version']; ?>" rel="stylesheet">
+	<link rel="stylesheet" href="<?php echo Wo_LoadManageLink('assets/css/roboto-google-font.css') . '?version=' . $wo['config']['version']; ?>">
+
+	<link href="<?php echo Wo_LoadManageLink('assets/css/dark-theme.css') . '?version=' . $wo['config']['version']; ?>" rel="stylesheet" />
+	<link href="<?php echo Wo_LoadManageLink('assets/css/semi-dark.css') . '?version=' . $wo['config']['version']; ?>" rel="stylesheet" />
+	<link href="<?php echo Wo_LoadManageLink('assets/css/header-colors.css') . '?version=' . $wo['config']['version']; ?>" rel="stylesheet" />
+
+	<script src="<?php echo Wo_LoadManageLink('assets/js/jquery.min.js') . '?version=' . $wo['config']['version']; ?>"></script>
+
+	<script src="<?php echo Wo_LoadManageLink('assets/js/select2.min.js') . '?version=' . $wo['config']['version']; ?>"></script>
+	<link href="<?php echo Wo_LoadManageLink('assets/css/select2.min.css') . '?version=' . $wo['config']['version']; ?>" rel="stylesheet">
+	<link href="<?php echo Wo_LoadManageLink('assets/css/select2-bootstrap-5-theme.min.css') . '?version=' . $wo['config']['version']; ?>" rel="stylesheet">
+	<link href="<?php echo Wo_LoadManageLink('assets/froala/css/froala_editor.pkgd.min.css') . '?version=' . $wo['config']['version']; ?>" rel="stylesheet" type="text/css" />
+	<link href="<?php echo Wo_LoadManageLink('assets/froala/css/plugins.pkgd.min.css') . '?version=' . $wo['config']['version']; ?>" rel="stylesheet" type="text/css" />
+
+	<link rel="stylesheet" href="<?php echo Wo_LoadManageLink('assets/green-audio-player/green-audio-player.css') . '?version=' . $wo['config']['version']; ?>" />
+	<script src="<?php echo Wo_LoadManageLink('assets/green-audio-player/green-audio-player.js') . '?version=' . $wo['config']['version']; ?>"></script>
+	<link rel="stylesheet" href="<?php echo Wo_LoadManageLink('assets/font-awesome-4.7.0/css/font-awesome.min.css') . '?version=' . $wo['config']['version']; ?>">
+	
+	<!-- flatpickr core (keep if you're using flatpickr) -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <!-- Month select plugin -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/monthSelect/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/monthSelect/index.js"></script>
+
+    <!-- Chart.js v4 + moment + moment adapter (only if you want time scale) -->
+    <script src="https://cdn.jsdelivr.net/npm/moment@2.29.4/moment.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-moment@1.2.0/dist/chartjs-adapter-moment.min.js"></script>
+
+    
+    <link href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.css" />
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.css" />
+	<style>
+		.panel_switcher {
+			background: #ffffffe6;
+			z-index: 9999999999;
+			position: fixed;
+			top: 0px;
+			bottom: 0px;
+			left: 0px;
+			right: 0px;
+			display: flex;
+			justify-content: center;
+			align-items: center;
+			backdrop-filter: blur(8px);
+		}
+		.contact-administrator {
+			background: #f4f4f7;
+			border-left: 2px solid #5989d6;
+			padding: 5px 12px;
+			display: block;
+			width: 290px;
+			text-align: center;
+			margin: auto;
+			margin-top: 15px;
+			color: #707070;
+		}
+		.footer {
+			display: flex;
+			justify-content: space-between;
+		}
+		.footer .footer-text {
+			text-align: start;
+		}
+		.footer .designby {
+			text-align: end;
+		}
+		@media (max-width:768px) {
+			.footer {
+				justify-content: center;
+				flex-direction: column;
+			}
+			.footer .footer-text {
+				text-align: center;
+			}
+			.footer .designby {
+				text-align: center;
+			}
+		}
+	</style>
+	<?php if ($page == 'salary_report') { ?>
+	<title>
+		<?php
+			// Get month_year from cookie, default to current month if not set
+			$month_year_name = !empty($_COOKIE['month_year']) ? urldecode($_COOKIE['month_year']) : date('Y-m');
+
+			// Convert month_year_name into a Unix timestamp and format it as 'M-Y'
+			$timestamp = strtotime($month_year_name); // Convert to Unix timestamp
+			$month_year_name = date('M-Y', $timestamp); // Format the date
+
+			// Sanitize output to prevent XSS
+			$month_year_name = htmlspecialchars($month_year_name, ENT_QUOTES, 'UTF-8');
+
+			// Generate the title with month-year and site title
+			echo ucfirst(str_replace('_', ' ', $page) . ' | ' . $month_year_name . ' | ' . htmlspecialchars($wo['config']['siteTitle'], ENT_QUOTES, 'UTF-8'));
+			?>
+			</title>
+			<?php } else { ?>
+			<title>
+			<?php
+			// Default title for other pages
+			echo ucfirst(str_replace('_', ' ', $page) . ' | ' . htmlspecialchars($wo['config']['siteTitle'], ENT_QUOTES, 'UTF-8'));
+		?>
+	</title>
+	<?php } ?>
+
+    	<script src="<?php echo Wo_LoadManageLink('assets/js/jquery.form.min.js'); ?>"></script>
+    	<script>
+    		function load_unseen_notification(site, view = 'no') {
+    			$.ajax({
+    				url: Wo_Ajax_Requests_File() + '?f=notifications&s=fetch',
+    				method:"POST",
+    				data:{view:view, site:site},
+    				dataType:"json",
+    				success:function(data) {
+    					$('#show_notification').html(data.notification);
+    					if(data.unseen_notification > 0 || data.unseen_notification == '9+') {
+    						$('.notify-badge').removeClass('d-none');
+    						$('.notify-badge').html(data.unseen_notification);
+    					} else {
+    						$('.notify-badge').addClass('d-none');
+    					}
+    				}
+    			});
+    		}
+    		function zk_device_command(action = '') {
+    			// Define the common AJAX settings
+    			const ajaxSettings = {
+    				url: Wo_Ajax_Requests_File() + '?f=zk_command',
+    				method: "POST",
+    				data: { action: action },
+    				dataType: "json",
+    				success: function(data) {
+    					if (data.status === 200) {
+    						if (action === 'open_door') {
+    							$('.door_icon').addClass('bx-lock');
+    							$('.door_icon').removeClass('bx-door-open');
+    							
+    							setTimeout(function() {
+    								zk_device_command('close_door');
+    							}, 1000);
+    						}
+    						if (action === 'close_door') {
+    							$('.door_icon').addClass('bx-door-open');
+    							$('.door_icon').removeClass('bx-lock');
+    						} else {							
+    							pos5_success_noti(data.response);
+    						}
+    					} else {
+    						pos4_error_noti(data.response);
+    					}
+    				}
+    			};
+    
+    			// Send AJAX request
+    			$.ajax(ajaxSettings);
+    		}
+    
+    		function wo_panelswitchStart() {
+    			$('.wrapper').fadeOut(100);
+    			$('.panel_switcher').fadeIn();
+    			setTimeout(function() {
+    				$('.panel_switcher_content').fadeIn();
+    			}, 3000);
+    			
+    		}
+    		function wo_panelswitchEnd() {
+    			$('.wrapper').fadeIn(100);
+    			setTimeout(function() {
+    				$('.panel_switcher').fadeOut(200);
+    			}, 3000);
+    		}
+    		function Wo_Ajax_Requests_File(){
+    			return "<?php echo $wo['config']['site_url'].'/requests.php';?>"
+    		}
+    		function Wo_Ajax_Requests_File_load(){
+    			return "<?php echo $wo['config']['site_url'].'/admin_load.php';?>"
+    		}
+    	    <?php if (Wo_IsMobile() == false) { ?>
+			$(document).ready(function() {
+				$(".wrapper").hasClass("toggled") ? ($(".wrapper").removeClass("toggled"), $(".sidebar-wrapper").unbind("hover")) : ($(".wrapper").addClass("toggled"), $(".sidebar-wrapper").hover(function() {
+                	$(".wrapper").addClass("sidebar-hovered");
+                }, function() {
+                	$(".wrapper").removeClass("sidebar-hovered");
+                }));
+			});
+    	    <?php } ?>
+    	</script>
+	</head>
+	<?php echo Wo_LoadManagePage("smc"); ?>
+	
+	<body id="full_page">
+		<?php echo Wo_LoadManagePage("wrapper"); ?>
+	</body>
+</html>

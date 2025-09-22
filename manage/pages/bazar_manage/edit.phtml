@@ -1,0 +1,173 @@
+<?php global $bazar, $bx_icons; ?>
+<div class="modal fade full_screen" id="updatebazar-modal" data-id="<?= $bazar->id ?>" role="dialog">
+  <div class="modal-dialog modal-lg wow_mat_mdl invoice_print">
+    <div class="modal-content p-3">
+      <div class="d-flex justify-content-between">
+        <h3 class="mb-2 fs-5">Update bazar Item</h3>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <hr class="style-one" style="margin-bottom: 15px !important;">
+
+      <form id="updateForm" enctype="multipart/form-data">
+        <input type="hidden" name="id" value="<?= $bazar->id ?>" />
+
+        <div class="row row-cols-1 row-cols-lg-2 row-cols-xl-2">
+
+          <!-- Icon dropdown -->
+          <div class="col">
+            <div class="card radius-10 mb-2">
+              <div class="card-body p-2">
+                <div class="form-input">
+                  <label for="icon" class="mb-0">Item Icon</label>
+                  <select name="icon" id="icon" class="form-select w-100 select2-icons" required>
+                    <option value="" disabled>Select an icon</option>
+                    <?php foreach ($bx_icons as $icon): ?>
+                      <option value="<?= $icon ?>" data-icon="<?= $icon ?>" <?= $bazar->icon === $icon ? 'selected' : '' ?>>
+                        <?= $icon ?>
+                      </option>
+                    <?php endforeach; ?>
+                  </select>
+                  <div class="mt-2">
+                    <span>Preview: <i id="iconPreview" class="<?= $bazar->icon ?>"></i></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Item Name -->
+          <div class="col">
+            <div class="card radius-10 mb-2">
+              <div class="card-body p-2">
+                <div class="form-input">
+                  <label for="item_name" class="mb-0">Item Name</label>
+                  <input type="text" name="item_name" id="item_name" class="form-control w-100" placeholder="Item Name" value="<?= $bazar->name ?>" required />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Unit -->
+          <div class="col">
+            <div class="card radius-10 mb-2">
+              <div class="card-body p-2">
+                <div class="form-input">
+                  <label for="unit" class="mb-0">Unit</label>
+                  <select name="unit" id="unit" class="form-select w-100" required>
+                    <?php
+                      $units = ['pcs', 'box', 'kg', 'liters', 'pack', 'dozen', 'bottle'];
+                      foreach ($units as $unit) {
+                        $selected = $bazar->unit === $unit ? 'selected' : '';
+                        echo "<option value=\"$unit\" $selected>$unit</option>";
+                      }
+                    ?>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Quantity -->
+          <div class="col">
+            <div class="card radius-10 mb-2">
+              <div class="card-body p-2">
+                <div class="form-input">
+                  <label for="quantity" class="mb-0">Quantity</label>
+                  <input type="number" name="quantity" id="quantity" class="form-control w-100" min="0" placeholder="Quantity" value="<?= $bazar->quantity ?>" required />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Price -->
+          <div class="col">
+            <div class="card radius-10 mb-2">
+              <div class="card-body p-2">
+                <div class="form-input">
+                  <label for="price" class="mb-0">Unit Price (৳)</label>
+                  <input type="number" name="price" id="price" class="form-control w-100" min="0" step="0.01" placeholder="Unit Price" value="<?= $bazar->price ?>" required />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Low bazar Threshold -->
+          <div class="col">
+            <div class="card radius-10 mb-2">
+              <div class="card-body p-2">
+                <div class="form-input">
+                  <label for="low_bazar_threshold" class="mb-0">Low bazar Threshold</label>
+                  <input type="number" name="low_bazar_threshold" id="low_bazar_threshold" class="form-control w-100" min="0" value="<?= $bazar->low_bazar_threshold ?>" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="fixed_bottom_space"></div>
+        <br>
+        <div class="d-flex gap-3 fixed_bottom">
+          <button type="submit" class="btn btn-primary mt-3 w-100">Update</button>
+          <input type="button" id="reset_close_form" value="Clear & Close" class="btn btn-outline-secondary mt-3 w-100" data-bs-dismiss="modal">
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Script for icon preview and AJAX submission -->
+<script>
+  $('#icon').on('change', function () {
+    const icon = $(this).val();
+    $('#iconPreview').attr('class', icon);
+  });
+
+  $('#updateForm').on('submit', function (e) {
+    e.preventDefault();
+
+    const formData = $(this).serialize();
+
+    $.ajax({
+      type: 'POST',
+      url: Wo_Ajax_Requests_File() + '?f=manage_bazar&s=update_bazar',
+      data: formData,
+      dataType: 'json',
+      success: function (response) {
+        if (response.status === 200) {
+          pos5_success_noti(response.message);
+          $('#updatebazar-modal').modal('hide');
+          DataTableRefresh(); // Update list after edit
+        } else {
+          pos4_error_noti(response.message);
+        }
+      }
+    });
+  });
+  
+$(document).ready(function() {
+    // Attach a listener for the modal hidden event
+    $('#updatebazar-modal').on('hidden.bs.modal', function() {
+    	$('#updatebazar-modal').fadeOut(200);
+    	$('#updatebazar-modal').remove();
+    });
+    
+    $('#updatebazar-modal [data-dismiss="modal"]').off('click').on('click', function() {
+        $('#updatebazar-modal').fadeOut(200, function() { $(this).remove(); });
+    });
+    
+    $('#updatebazar-modal').off('hidden.bs.modal').on('hidden.bs.modal', function() {
+        $(this).fadeOut(200, function() {
+            $(this).remove();
+        });
+    });
+
+
+    // Back/ESC handling: if any dropup is open, close it; otherwise, close the modal.
+    $(document).off('keydown').on('keydown', function(e) {
+        if (e.key === "Escape" || e.which === 27) {
+    	    $('#updatebazar-modal').fadeOut(200);
+            $(this).remove();
+        }
+    });
+});
+</script>

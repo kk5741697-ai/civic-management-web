@@ -1,0 +1,304 @@
+<?php if (Wo_IsAdmin() || Wo_IsModerator()) { ?>
+<!--start breadcrumb-->
+<div class="page-breadcrumb d-flex align-items-center mb-3">
+	<div class="breadcrumb-title pe-3">Sort Users</div>
+</div>
+
+<div class="mb-3">
+	<div class="row row-cols-auto g-3 justify-content-center">
+		<div class="col-lg-4">
+			<span class="for_leads_badge">Management</span>
+			<ul id="sortable_management">
+			<?php
+				// echo Wo_LoadManagePage('view_notif/content');
+				// Fetch users from the database
+				$get_users = $db
+					->orderBy('serial', 'ASC')
+					->where('active', '1')
+					->where('banned', '0')
+					->where('management', '1')
+					->get(T_USERS);
+
+				// Iterate through the list of users and display them
+				foreach ($get_users as $userlist) {
+					// Determine the class for team leader and team member
+					$is_team_leader = ($userlist->is_team_leader == '1') ? 'team_leader' : '';
+					$is_member = ($userlist->leader_id > '0' && $userlist->leader_id != $userlist->user_id) ? 'team_member' : '';
+					$is_management = ($management->leader_id == '1') ? 'yes' : 'no';
+					
+					
+					// Concatenate classes with a space if both conditions are met
+					$class_names = trim("$is_team_leader $is_member");
+
+					// Process avatar URL
+					$avatar = ''; // Initialize the avatar variable
+
+					if (!empty($userlist->avatar)) {
+						// Check if the avatar is not a default avatar
+						if ($userlist->avatar != $wo["userDefaultAvatar"] && $userlist->avatar != $wo["userDefaultFAvatar"]) {
+							// Split the avatar filename into parts
+							$avatar_parts = explode('.', $userlist->avatar);
+							// Ensure that the filename contains an extension
+							if (count($avatar_parts) > 1) {
+								$extension = array_pop($avatar_parts); // Get the file extension
+								$avatar_base = implode('.', $avatar_parts); // Reassemble the base name
+								$avatar = $wo['site_url'] . '/' . $avatar_base . '_24.' . $extension; // Construct the new avatar URL
+							}
+						} else {
+							// If the avatar is a default avatar, use it directly
+							$avatar = $wo['site_url'] . '/' . $userlist->avatar;
+						}
+					}
+
+
+					// Output each user as a list item with the appropriate data-id and name
+					echo '<li class="ui-state-default ' . htmlspecialchars($class_names, ENT_QUOTES, 'UTF-8') . '">
+						<img src="' . htmlspecialchars($avatar, ENT_QUOTES, 'UTF-8') . '" class="user-img" style="width: 24px; height: 24px; border-radius: 35px; margin-left: 8px; margin-right: 8px;">
+						<span data-id="' . htmlspecialchars($userlist->user_id, ENT_QUOTES, 'UTF-8') . '" 
+							  data-management="' . htmlspecialchars($is_management, ENT_QUOTES, 'UTF-8') . '">'
+						. htmlspecialchars($userlist->first_name . ' ' . $userlist->last_name . ' - ' . short_name($userlist->designation), ENT_QUOTES, 'UTF-8') .
+					'</span></li>';
+				}
+			?>
+			</ul>
+			
+			<span class="for_leads_badge">For Leads</span>
+			<ul id="sortable_leads">
+			<?php
+				// Fetch users from the database
+				$get_users = $db
+					->where('is_team_leader', '1')
+					->orWhere('leader_id', '0', '>')
+					->where('active', '1')
+					->where('banned', '0')
+					->orderBy('position', 'ASC')
+					->get(T_USERS);
+
+				// Iterate through the list of users and display them
+				foreach ($get_users as $userlist) {
+					// Determine the class for team leader and team member
+					$is_team_leader = ($userlist->is_team_leader == '1') ? 'team_leader' : '';
+					$is_team_leader2 = ($userlist->is_team_leader == '1') ? 'true' : 'false';
+					$is_member = ($userlist->leader_id > '0' && $userlist->leader_id != $userlist->user_id) ? 'team_member' : '';
+					
+					$starting = ($userlist->is_team_leader == '1') ? '#' . $userlist->user_id . '-' : '#' . $userlist->leader_id . '-';
+					
+					// Concatenate classes with a space if both conditions are met
+					$class_names = trim("$is_team_leader $is_member");
+
+					// Process avatar URL
+					$avatar = ''; // Initialize the avatar variable
+
+					if (!empty($userlist->avatar)) {
+						// Check if the avatar is not a default avatar
+						if ($userlist->avatar != $wo["userDefaultAvatar"] && $userlist->avatar != $wo["userDefaultFAvatar"]) {
+							// Split the avatar filename into parts
+							$avatar_parts = explode('.', $userlist->avatar);
+							// Ensure that the filename contains an extension
+							if (count($avatar_parts) > 1) {
+								$extension = array_pop($avatar_parts); // Get the file extension
+								$avatar_base = implode('.', $avatar_parts); // Reassemble the base name
+								$avatar = $wo['site_url'] . '/' . $avatar_base . '_24.' . $extension; // Construct the new avatar URL
+							}
+						} else {
+							// If the avatar is a default avatar, use it directly
+							$avatar = $wo['site_url'] . '/' . $userlist->avatar;
+						}
+					}
+
+
+					// Output each user as a list item with the appropriate data-id and name
+					echo '<li class="ui-state-default ' . htmlspecialchars($class_names, ENT_QUOTES, 'UTF-8') . '">
+						<img src="' . htmlspecialchars($avatar, ENT_QUOTES, 'UTF-8') . '" class="user-img" style="width: 24px; height: 24px; border-radius: 35px; margin-left: 8px; margin-right: 8px;">
+						<span data-id="' . htmlspecialchars($userlist->user_id, ENT_QUOTES, 'UTF-8') . '"  data-team-leader="' . htmlspecialchars($is_team_leader2, ENT_QUOTES, 'UTF-8') . '"
+							  data-management="' . htmlspecialchars($is_management, ENT_QUOTES, 'UTF-8') . '">'
+						. htmlspecialchars($starting . $userlist->first_name . ' ' . $userlist->last_name . ' - ' . short_name($userlist->designation), ENT_QUOTES, 'UTF-8') .
+					'</span></li>';
+				}
+			?>
+
+
+			</ul>
+
+			<script>
+			$(function() {
+			  $("#sortable_leads").sortable({
+				update: function(event, ui) {
+				  // Collect the updated order of items
+				  var itemOrder = [];
+				  $("#sortable_leads li").each(function(index) {
+					var user_id = $(this).find("span").data("id");
+					var team_leader = $(this).find("span").data("team-leader");
+					itemOrder.push({ user_id: user_id, team_leader: team_leader, position: index + 1 });
+
+				  });
+
+				  // Send the updated order via AJAX
+				  $.ajax({
+					url: Wo_Ajax_Requests_File() + '?f=sort_users&s=for_leads',
+					method: 'POST',
+					contentType: 'application/json',
+					data: JSON.stringify({ order: itemOrder }),
+					success: function(response) {
+					  console.log('Order updated successfully:', response);
+					},
+					error: function(xhr, status, error) {
+					  console.error('Error updating order:', error);
+					}
+				  });
+				}
+			  });
+			});
+			</script>
+		</div>
+		<div class="col-lg-4">
+		
+			<span class="for_leads_badge">Employee</span>
+			<ul id="sortable">
+			<?php
+				// Fetch users from the database
+				$get_users = $db
+					->where('active', '1')
+					->where('banned', '0')
+					->where('management', '0')
+					->orderBy('serial', 'ASC')
+					->get(T_USERS);
+
+				// Iterate through the list of users and display them
+				foreach ($get_users as $userlist) {
+					// Determine the class for team leader and team member
+					$is_team_leader = ($userlist->is_team_leader == '1') ? 'team_leader' : '';
+					$is_member = ($userlist->leader_id > '0' && $userlist->leader_id != $userlist->user_id) ? 'team_member' : '';
+					$is_management = ($management->leader_id == '1') ? 'yes' : 'no';
+
+					// Concatenate classes with a space if both conditions are met
+					$class_names = trim("$is_team_leader $is_member");
+
+					// Process avatar URL
+					$avatar = ''; // Initialize the avatar variable
+
+					if (!empty($userlist->avatar)) {
+						// Check if the avatar is not a default avatar
+						if ($userlist->avatar != $wo["userDefaultAvatar"] && $userlist->avatar != $wo["userDefaultFAvatar"]) {
+							// Split the avatar filename into parts
+							$avatar_parts = explode('.', $userlist->avatar);
+							// Ensure that the filename contains an extension
+							if (count($avatar_parts) > 1) {
+								$extension = array_pop($avatar_parts); // Get the file extension
+								$avatar_base = implode('.', $avatar_parts); // Reassemble the base name
+								$avatar = $wo['site_url'] . '/' . $avatar_base . '_24.' . $extension; // Construct the new avatar URL
+							}
+						} else {
+							// If the avatar is a default avatar, use it directly
+							$avatar = $wo['site_url'] . '/' . $userlist->avatar;
+						}
+					}
+
+
+					// Output each user as a list item with the appropriate data-id and name
+					echo '<li class="ui-state-default ' . htmlspecialchars($class_names, ENT_QUOTES, 'UTF-8') . '">
+						<img src="' . htmlspecialchars($avatar, ENT_QUOTES, 'UTF-8') . '" class="user-img" style="width: 24px; height: 24px; border-radius: 35px; margin-left: 8px; margin-right: 8px;">
+						<span data-id="' . htmlspecialchars($userlist->user_id, ENT_QUOTES, 'UTF-8') . '" 
+							  data-management="' . htmlspecialchars($is_management, ENT_QUOTES, 'UTF-8') . '">'
+						. htmlspecialchars($userlist->first_name . ' ' . $userlist->last_name . ' - ' . short_name($userlist->designation), ENT_QUOTES, 'UTF-8') .
+					'</span></li>';
+				}
+
+			?>
+			</ul>
+
+			<script>
+			$(function() {
+			  $("#sortable").sortable({
+				update: function(event, ui) {
+				  // Collect the updated order of items
+				  var itemOrder = [];
+				  $("#sortable li").each(function(index) {
+					var user_id = $(this).find("span").data("id");
+					itemOrder.push({ user_id: user_id, type: 'employee', position: index + 1 });
+				  });
+
+				  // Send the updated order via AJAX
+				  $.ajax({
+					url: Wo_Ajax_Requests_File() + '?f=sort_users&s=global',
+					method: 'POST',
+					contentType: 'application/json',
+					data: JSON.stringify({ order: itemOrder }),
+					success: function(response) {
+					  console.log('Order updated successfully:', response);
+					},
+					error: function(xhr, status, error) {
+					  console.error('Error updating order:', error);
+					}
+				  });
+				}
+			  });
+			});
+			$(function() {
+			  $("#sortable_management").sortable({
+				update: function(event, ui) {
+				  // Collect the updated order of items
+				  var itemOrder = [];
+				  $("#sortable_management li").each(function(index) {
+					var user_id = $(this).find("span").data("id");
+					itemOrder.push({ user_id: user_id, type: 'management', position: index + 1 });
+				  });
+
+				  // Send the updated order via AJAX
+				  $.ajax({
+					url: Wo_Ajax_Requests_File() + '?f=sort_users&s=global',
+					method: 'POST',
+					contentType: 'application/json',
+					data: JSON.stringify({ order: itemOrder }),
+					success: function(response) {
+					  console.log('Order updated successfully:', response);
+					},
+					error: function(xhr, status, error) {
+					  console.error('Error updating order:', error);
+					}
+				  });
+				}
+			  });
+			});
+			</script>
+		</div>
+	</div>
+</div>
+
+<style>
+#sortable,
+#sortable_management,
+#sortable_leads {
+    gap: 10px;
+    display: flex;
+    flex-direction: column;
+    border: 2px dashed #dfdfdf;
+    padding: 20px;
+    border-radius: 25px;
+}
+.for_leads_badge {
+    border: 2px dashed #dfdfdf;
+    padding: 10px 20px;
+    width: 100%;
+    display: block;
+    margin-bottom: 15px;
+    border-radius: 25px;
+    text-align: center;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 15px;
+    color: black;
+}
+.ui-state-default {
+    list-style: none;
+    padding: 6px 0px;
+    border-radius: 25px;
+    cursor: move;
+	font-weight: 500 !important;
+    color: #000000 !important;
+}
+.team_leader {
+	background: #ffe9e9 !important;
+}
+</style>
+<?php } else { echo Wo_LoadManagePage('permission-required/content'); } ?>

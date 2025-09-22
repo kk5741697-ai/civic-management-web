@@ -1,0 +1,119 @@
+<div class="modal fade" id="add-reason-modal" role="dialog">
+	<?php
+		$if_exist = $db->where('Badgenumber', $wo['reason']['user_id'])->where('date', $wo['reason']['date'])->getOne('atten_reason');
+	?>
+	<div class="modal-dialog modal-lg wow_mat_mdl">
+		<form method="post" id="add-reason-form">
+			<div class="modal-content">
+				<div class="modal-header" style="display: flex;justify-content: space-between;align-items: center;">
+					<h4 class="modal-title">Add or Update Reason</h4>
+					<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" data-remove-code="true"></button>
+				</div>
+				<div class="modal-body">
+					<div class="row">
+						<div id="create-ads-alert" class="w100" style="padding-bottom: 10px;"></div>
+						<div>
+							<div class="wow_form_fields">
+								<label class="form-label">Reason Type</label>
+								<select class="form-select reason_select" style="width: 100%; margin-bottom: 16px;" name="reason" onchange="detect_change_reason()">
+									<option value="">Select Reason</option>
+									<?php
+									Global $reasons_array;
+									foreach ($reasons_array as $reason) : ?>
+										<option value="<?php echo $reason; ?>" <?php echo ($if_exist && $if_exist->reason == $reason) ? 'selected' : ''; ?>><?php echo $reason; ?></option>
+									<?php endforeach; ?>
+									<?php if ($if_exist) { ?>
+										<option value="remove">Remove Reason</option>											
+									<?php } ?>
+								</select>
+							</div>
+							<div class="wow_form_fields reason_details">
+								<label>Describe you reason</label>
+								<textarea dir="auto" rows="6" name="text" placeholder="Describe..." class="form-control"><?php echo $if_exist ? $if_exist->text : ''; ?></textarea>
+							</div>
+						</div>
+						<input type="hidden" name="date" value="<?php echo $wo['reason']['date'];?>">
+						<input type="hidden" name="user" value="<?php echo $wo['reason']['user_id'];?>">
+					</div>
+					<div class="modal-footer" style="border: none">
+						<div class="ball-pulse"><div></div><div></div><div></div></div>
+					</div>
+					<?php if ($if_exist) { ?>							
+						<input type="hidden" class="is_update" name="is_update" value="1">
+						<button type="submit" class="btn btn-primary reason_btn">Update Reason</button>
+					<?php } else { ?>
+						<input type="hidden" class="is_update" name="is_update" value="0">
+						<button type="submit" class="btn btn-primary reason_btn">Add Reason</button>
+					<?php } ?>
+				</div>
+			</div>
+		</form>
+	</div>
+	<script type="text/javascript">
+		function detect_change_reason() {
+			var reason = $('#add-reason-modal .reason_select').val();
+			var is_update = $('#add-reason-modal .is_update').val();
+			if (reason == 'remove') {
+				$('#add-reason-modal .reason_btn').text('Remove Reason');
+				$('#add-reason-modal .reason_details').addClass('d-none');
+			} else {
+				$('#add-reason-modal .reason_details').removeClass('d-none');
+				if (is_update == 1) {
+					$('#add-reason-modal .reason_btn').text('Update Reason');
+				} else {
+					$('#add-reason-modal .reason_btn').text('Add Reason');
+				}
+			}
+		}
+
+		$(document).ready(function() {
+			$('#add-reason-form').ajaxForm({
+				url: Wo_Ajax_Requests_File() + '?f=attandence&s=add_reason',
+				type:"POST",
+				beforeSend: function() {
+					$("#add-reason-modal .ball-pulse").fadeIn();
+				},
+				success: function(data) {
+					if (data['status'] == 200) {
+						$("#create-ads-alert").html('<div class="alert alert-success">'+ data['message'] +'</div>');
+						$('#add-reason-modal').modal('hide');
+						if (data['reason_text'] == 'remove') {
+							$('.' + data['target_id']).removeClass('late_present');
+							$('.' + data['target_id']).removeClass('absent');
+							$('.' + data['target_id']).removeClass('reason');					
+							$('.' + data['target_id'] + ' .status_text').text(' ');
+						} else {
+							$('.' + data['target_id']).removeClass('late_present');
+							$('.' + data['target_id']).removeClass('absent');
+							$('.' + data['target_id']).addClass('reason');							
+							$('.' + data['target_id'] + ' .status_text').text(data['reason_text']);
+						}
+						setTimeout(function() {
+							$('#add-reason-modal').remove();
+						}, 500);
+					} 
+
+					else if (data['message']) {
+						$("#create-ads-alert").html('<div class="alert alert-danger">' + data['message'] + '</div>');
+					} 
+					
+					$("#add-reason-modal .ball-pulse").fadeOut();
+				}
+			});
+		});
+		$('#add-reason-modal [data-dismiss="modal"]').on('click', function() {
+			DataTableRefresh();
+			setTimeout(function() {
+				$('#add-reason-modal').remove();
+			}, 500);
+		});
+		// Attach a listener for the modal hidden event
+		$('#add-reason-modal').on('hidden.bs.modal', function () {
+			DataTableRefresh();
+			// Your logic to remove the modal or other actions
+			setTimeout(function() {
+				$('#add-reason-modal').remove();
+			}, 500);
+		});
+	</script>
+</div>

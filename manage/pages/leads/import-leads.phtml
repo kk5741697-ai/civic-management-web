@@ -1,0 +1,231 @@
+<div class="ms-auto button_flex_middle">
+ <div id="dataSheet_download"></div>
+ <style>
+	#dataSheet_download {
+		margin-right: 10px;
+	}
+	#dataSheet_download button.btn {
+		border: 2px solid transparent;
+		padding: 6px 2px;
+		width: 40px;
+		border-radius: 8px;
+	}
+	#dataSheet_download button.btn:hover {
+		background: white;
+		border: 2px solid #6c757d;
+		color: #6c757d;
+	}
+	
+	@media (max-width: 768px) {
+		#dataSheet_download button.btn i {
+			margin-right: 0px !important;
+			margin-left: 0px !important;
+		}
+		.ai_auto {
+			padding-left: 10px;
+			padding-right: 10px;
+		}
+		
+		#dataSheet_download button.btn {
+			width: 30px;
+		}
+	}
+ </style>
+	<!-- Button trigger modal -->
+	<button type="button" class="btn btn-primary ai_auto" data-bs-toggle="modal" data-bs-target="#import_leadsModal">Insert</button>
+	<!-- Modal -->
+	<div class="modal fade full_screen" id="import_leadsModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+		<div class="modal-dialog modal-lg">
+			<div class="modal-content">
+				<div class="modal-body">
+					<div>
+						<form id="uploadForm" enctype="multipart/form-data">
+                			<div class="d-flex justify-content-between fixed_top" style=" align-items: center; ">
+                				<h3 class="mb-2 d-flex align-items-center fs-6 mr-auto" style="justify-content: space-between;width: 100%;margin-right: 6px;" title="<?php echo Wo_Time_Elapsed_String_word($lead->created); ?>"><?php echo date('d M Y - h:ia', $lead->created); ?>
+                				    <span>
+            							<select name="insert_source" class="form-select" style=" padding: 5px 29px 5px 5px; font-size: 12px; ">
+            								<option value="Reference" selected>Reference</option>
+            								<?php echo (Wo_IsAdmin() || Wo_IsModerator() || check_permission('manage-leads')) ? '<option value="Hotline">Hotline</option><option value="Facebook">Facebook</option>' : ''; ?>
+            								<option value="Personal">Personal</option>
+            							</select>
+                				    </span>
+            				    </h3>
+                				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" style=" margin-top: -10px; "></button>
+                			</div>
+                            <div class="row row-cols-1 row-cols-lg-2 row-cols-xl-2">
+                                <div class="col">
+                					<div class="card radius-10 mb-2">
+                						<div class="card-body p-2">
+                							<div class="d-flex align-items-center gap-3">
+                								<div class="w-100 form-input">
+                									<label for="insert_client_name" class="mb-0">Name</label>
+                									<input type="text" name="insert_client_name" id="insert_client_name" class="form-control w-100" placeholder="Aminul Islam Mehedi"/>
+                								</div>
+                								<div class="ms-auto fs-2">
+                                                    <i class='fadeIn animated bx bx-user'></i>
+                								</div>
+                							</div>
+                						</div>
+                					</div>
+                				</div>
+                				<div class="col">
+                					<div class="card radius-10 mb-2">
+                						<div class="card-body p-2">
+                							<div class="d-flex align-items-center gap-3">
+                								<div class="w-100 form-input">
+                									<label for="insert_profession" class="mb-0">Profession</label>
+                									<input type="text" name="insert_profession" id="insert_profession" class="form-control w-100" placeholder="Full Stack Developer, Example Inc."/>
+                								</div>
+                								<div class="ms-auto fs-2">
+                                                    <i class='fadeIn animated bx bxl-redux bx-tada bx-rotate-90 fs-1' ></i>
+                								</div>
+                							</div>
+                						</div>
+                					</div>
+                				</div>
+                				<div class="col">
+                					<div class="card radius-10 mb-2">
+                						<div class="card-body p-2">
+                							<div class="d-flex align-items-center gap-3">
+                								<div class="w-100 form-input">
+                									<label for="insert_phone" class="mb-0">Phone</label>
+                									<input type="tel" name="insert_phone" id="insert_phone" class="form-control w-100" placeholder="8801744841662"/>
+                								</div>
+                								<div class="ms-auto fs-2">
+                                                    <i class="lni lni-whatsapp bx-tada bx-rotate-90"></i>
+                								</div>
+                							</div>
+                						</div>
+                					</div>
+                				</div>
+                				<div class="col">
+                					<div class="card radius-10 mb-2">
+                						<div class="card-body p-2">
+                							<div class="d-flex align-items-center gap-3">
+                								<div class="w-100 form-input">
+                									<label for="insert_project" class="mb-0">Project</label>
+                        							<select name="insert_project" class="form-select w-100">
+                        								<option value="moon_hill" selected>Civic Moon Hill</option>
+                        								<option value="hill_town">Civic Hill Town</option>
+                        							</select>
+                								</div>
+                								<div class="ms-auto fs-2">
+                                                    <i class='fadeIn animated bx bxl-product-hunt' ></i>
+                								</div>
+                							</div>
+                						</div>
+                					</div>
+                				</div>
+                				<div class="col w-100">
+                					<div class="card radius-10 mb-2">
+                						<div class="card-body p-2">
+                							<div class="d-flex align-items-center gap-3">
+                								<div class="w-100 form-input">
+                									<label for="insert_katha" class="mb-0">কত কাঠা</label>
+                        							<select name="insert_katha" class="form-select w-100">
+                        								<option value="3_katha" selected>3 Katha</option>
+                        								<option value="4_katha">4 Katha</option>
+                        								<option value="5_katha">5 Katha</option>
+                        								<option value="10_katha">10 Katha</option>
+                        							</select>
+                								</div>
+                								<div class="ms-auto fs-2">
+                                                    <i class='fadeIn animated bx bx-area' ></i>
+                								</div>
+                							</div>
+                						</div>
+                					</div>
+                				</div>
+                            </div>
+                            
+							<small><strong>Note:</strong> Your entry will remain private and visible only to you. Others won’t be able to see it, but you can still generate a visit report!</small>
+				            <div class="fixed_bottom_space"></div>
+							<br>
+                            <div class="d-flex gap-3 fixed_bottom">
+                            	<input type="submit" value="Add" class="btn btn-primary mt-3 w-100">
+                            	<input type="button" id="reset_close_form" value="Clear &amp; Close" class="btn btn-outline-secondary mt-3  w-100">
+                            </div>
+						</form>
+
+						<pre id="uploadResult"></pre> <!-- To display server response -->
+					</div>
+					<script>
+                      $(function() {
+                        // ——— normalizePhone (unchanged) ———
+                        function normalizePhone(value) {
+                          let num = value.trim().replace(/[^\d+]/g, '');
+                          if (num.startsWith('+')) {
+                            return num.slice(1);
+                          }
+                          num = num.replace(/\D/g, '');
+                          if (/^0[1-9]\d{8,9}$/.test(num)) {
+                            return '880' + num.slice(1);
+                          }
+                          if (/^[1-9]\d{9}$/.test(num)) {
+                            return '880' + num;
+                          }
+                          if (num.startsWith('880') && num.length === 13) {
+                            return num;
+                          }
+                          return num;
+                        }
+                    
+                        // ——— helper to reset the form & close the modal ———
+                        function resetAndClose() {
+                          const modalEl = document.getElementById('import_leadsModal');
+                          const form = modalEl.querySelector('form');
+                          if (form) form.reset();
+                    
+                          // Bootstrap5: get the Modal instance (or create it) and hide
+                          const bsModal = bootstrap.Modal.getInstance(modalEl) 
+                                        || new bootstrap.Modal(modalEl);
+                          bsModal.hide();
+                        }
+                    
+                        // ——— hook the Reset & Close button ———
+                        $('#reset_close_form').on('click', resetAndClose);
+                    
+                        // ——— phone normalization on blur ———
+                        $('#insert_phone').on('blur', function() {
+                          this.value = normalizePhone(this.value);
+                        });
+                    
+                        // ——— AJAX form submission ———
+                        $('#uploadForm').on('submit', function(event) {
+                          event.preventDefault();
+                          var formData = new FormData(this);
+                    
+                          $.ajax({
+                            url: Wo_Ajax_Requests_File() + '?f=manage_leads&s=add_lead',
+                            type: 'POST',
+                            data: formData,
+                            dataType: 'json',
+                            cache: false,
+                            contentType: false,
+                            processData: false,
+                                success: function(response) {
+                                    if (response.status == 200) {
+                                        $('#uploadResult').html(response.html || '');
+                                        pos5_success_noti('Lead import successful.');
+                                        setTimeout(function() {
+                                            resetAndClose();
+                                        }, 200);
+                                    } else {
+                                        pos4_error_noti(response.message);
+                                    }
+                                },
+
+                            error: function() {
+                              pos4_error_noti('Error uploading file.');
+                            }
+                          });
+                        });
+                      });
+                    </script>
+
+				</div>
+			</div>
+		</div>
+	</div>
+
+</div>

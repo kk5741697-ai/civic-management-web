@@ -1,0 +1,26 @@
+<?php
+// $status = is_connected();
+// echo ($status) ? '<div class="alert alert-info">Device F18 : Connected </div>' : '<div class="alert alert-danger">Device F18 : Communication failed! </div>';
+
+// 	echo '<br /> avillable data: ';
+	
+	// $notification_data_array = array(
+		// 'text' => 'test adsfsa df asd',
+		// 'url' => 'management/attendance'
+	// );
+	// Wo_RegisterNotification($notification_data_array);
+	
+	$action = Wo_Secure($_GET['action']);
+	if ($action == 'register_attendance' && $_GET['access'] == 'true' && Wo_IsAdmin()) {
+		if (Wo_IsAdmin()) {
+			echo Wo_LoadManagePage('view_notif/content');
+			echo Wo_LoadManagePage('attendance/register_attendance');
+		} else {
+			echo Wo_LoadManagePage('permission-required/content');
+		}
+	} else {
+		echo Wo_LoadManagePage('view_notif/content');
+		echo Wo_LoadManagePage('attendance/attendance');
+	}
+	
+?>

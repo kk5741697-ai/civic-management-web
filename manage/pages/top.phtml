@@ -1,0 +1,177 @@
+<?php echo ($wo['panel_mode'] !== 'management') ? '<style> @media screen and (min-width:1025px) { .wrapper.toggled:not(.sidebar-hovered) .sidebar-wrapper .metismenu li.menu-label { margin: 31px 0 14px 0px; } } </style>' : ''; ?>
+<nav class="navbar navbar-expand gap-3">
+	<div class="toggle-icon">
+	  <i class='fadeIn animated bx bx-menu'></i>
+	</div>
+   
+	<form class="searchbar">
+	  <div class="position-absolute top-50 translate-middle-y search-icon ms-3">
+	      <i class='fadeIn animated bx bx-search' ></i>
+	  </div>
+	  <input class="form-control" type="text" placeholder="Search for anything">
+	  <div class="position-absolute top-50 translate-middle-y search-close-icon">
+	      <i class='fadeIn animated bx bx-x' ></i>
+	  </div>
+	</form>
+	<div class="top-navbar-right ms-auto">
+
+	  <ul class="navbar-nav align-items-center">
+	  
+		<li class="nav-item dropdown dropdown-large" id="open_door">
+		  <a class="nav-link" href="javascript:;" onclick="zk_device_command('open_door')" title="Unlock Door">
+			  <i class="door_icon fadeIn animated bx bx-door-open" style=" display: flex; font-size: 21px; "></i>
+		  </a>
+		</li>
+		<li class="nav-item dropdown dropdown-large" id="notifications_drop">
+		  <a class="nav-link dropdown-toggle dropdown-toggle-nocaret" href="javascript:;" data-bs-toggle="dropdown">
+			<div class="position-relative">
+			  <span class="notify-badge d-none">0</span>
+			  <i class='fadeIn animated bx bx-bell' style=" display: flex; font-size: 21px; "></i>
+			</div>
+		  </a>
+		  <div class="dropdown-menu dropdown-menu-end" id="show_notification">
+			<a href="javascript:;">
+			  <div class="msg-header">
+				<p class="msg-header-title">Notifications</p>
+				<p class="msg-header-clear ms-auto">Marks all as read</p>
+			  </div>
+			</a>
+			<div class="header-notifications-list"></div>
+			<a href="javascript:;">
+			  <div class="text-center msg-footer">View All Notifications</div>
+			</a>
+		  </div>
+		</li>
+		
+		<li class="nav-item">
+		  <a class="nav-link dark-mode-icon" href="javascript:;">
+			<div class="mode-icon">
+			  <i class='fadeIn animated bx bx-moon' style=" display: flex; font-size: 21px; "></i>
+			</div>
+		  </a>
+		</li>
+		<li class="nav-item dropdown dropdown-large dropdown-apps d-none">
+		  <a class="nav-link dropdown-toggle dropdown-toggle-nocaret" href="javascript:;" data-bs-toggle="dropdown">
+			<div class="">
+	            <i class='fadeIn animated bx bx-reset' ></i>
+			</div>
+		  </a>
+		  <div class="dropdown-menu dropdown-menu-end dropdown-menu-dark">
+			
+		  </div>
+		</li>
+		<li class="nav-item dropdown dropdown-user-setting" id="profile_drop">
+		  <a class="nav-link dropdown-toggle dropdown-toggle-nocaret" href="javascript:;" data-bs-toggle="dropdown">
+			<div class="user-setting">
+			  <img src="<?php echo $wo['user']['avatar']; ?>" class="user-img" alt="" id="updateImage-<?php echo $wo['user']['user_id']; ?>">
+			</div>
+		  </a>
+		  <ul class="dropdown-menu dropdown-menu-end">
+			<li>
+			  <a class="dropdown-item" href="<?php echo $wo['site_url']; ?>/management/profile">
+				<div class="d-flex flex-row align-items-center gap-2">
+				  <img src="<?php echo $wo['user']['avatar']; ?>" alt="" class="rounded-circle" width="54" height="54" id="updateImage-<?php echo $wo['user']['user_id']; ?>">
+				  <div class="">
+					<h6 class="mb-0 dropdown-user-name" style="text-overflow: ellipsis;width: 140px;overflow: hidden;"><?php echo short_name($wo['user']['name']); ?></h6>
+					<small class="mb-0 dropdown-user-designation text-secondary"><?php echo short_name($wo['user']['designation']); ?></small>
+				  </div>
+				</div>
+			  </a>
+			</li>
+			<li>
+			  <hr class="dropdown-divider">
+			</li>
+			<li>
+			  <a class="dropdown-item" href="<?php echo $wo['site_url']; ?>/management/general_settings">
+				<div class="d-flex align-items-center">
+				  <div class="">
+	                <i class='fadeIn animated bx bx-cog' ></i>
+				  </div>
+				  <div class="ms-3"><span>General Setting</span></div>
+				</div>
+			  </a>
+			</li>
+			<li>
+			  <a class="dropdown-item" href="<?php echo $wo['site_url']; ?>/management/change_password">
+				<div class="d-flex align-items-center">
+				  <div class="">
+	                <i class='fadeIn animated bx bx-lock' ></i>
+				  </div>
+				  <div class="ms-3"><span>Change Password</span></div>
+				</div>
+			  </a>
+			</li>
+			<?php if (Wo_IsAdmin() || Wo_IsModerator()) { ?>
+			<li>
+			  <a class="dropdown-item" href="<?php echo $wo['site_url']; ?>/management/sort_users">
+				<div class="d-flex align-items-center">
+				  <div class="">
+	                <i class='fadeIn animated bx bx-list-ul' ></i>
+				  </div>
+				  <div class="ms-3"><span>Sort Users</span></div>
+				</div>
+			  </a>
+			</li>
+			<li>
+			  <a class="dropdown-item" href="<?php echo $wo['site_url']; ?>/management/edit_user">
+				<div class="d-flex align-items-center">
+				  <div class="">
+	                <i class='fadeIn animated bx bx-cog' ></i>
+				  </div>
+				  <div class="ms-3"><span>Edit Users</span></div>
+				</div>
+			  </a>
+			</li>
+			<?php } ?>
+			<li>
+			  <hr class="dropdown-divider">
+			</li>
+			<li>
+			  <a class="dropdown-item" href="<?php echo $wo['site_url']; ?>/logout/">
+				<div class="d-flex align-items-center">
+				  <div class="">
+	                <i class='fadeIn animated bx bx-log-out' ></i>
+				  </div>
+				  <div class="ms-3"><span>Logout</span></div>
+				</div>
+			  </a>
+			</li>
+		  </ul>
+		</li>
+
+	  </ul>
+	  <style>
+	  .msg-name {
+			white-space: nowrap; /* Prevents text from wrapping */
+			overflow: hidden;    /* Hides the overflowed text */
+			text-overflow: ellipsis; /* Adds ellipsis for overflowed text */
+			font-weight: bold;   /* Optional: makes the text bold */
+		}
+
+		.msg-info {
+			white-space: nowrap; /* Prevents text from wrapping */
+			overflow: hidden;    /* Hides the overflowed text */
+			text-overflow: ellipsis; /* Adds ellipsis for overflowed text */
+			font-size: 0.875rem; /* Optional: adjusts font size */
+		}
+
+		.float-end {
+			float: right;
+		}
+	  </style>
+	<script>
+		
+		$(document).on('click', '.dropdown-toggle-nocaret', function() {
+			$('.notify-badge').addClass('d-none');
+			load_unseen_notification("<?php echo (isset($wo['panel_mode'])) ? $wo['panel_mode'] : 'management'; ?>", "yes");
+		});
+		
+		// setInterval(function() {
+			// load_unseen_notification("<?php echo (isset($wo['panel_mode'])) ? $wo['panel_mode'] : 'management'; ?>");
+		// }, 5000);
+				
+		load_unseen_notification("<?php echo (isset($wo['panel_mode'])) ? $wo['panel_mode'] : 'management'; ?>");
+		
+	</script>
+	</div>
+  </nav>

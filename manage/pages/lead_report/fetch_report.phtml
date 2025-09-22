@@ -1,0 +1,198 @@
+<?php
+Global $date_start, $date_end, $project;
+
+// Adjust date format and set timestamps
+if (empty($date_end)) {
+    $date_end = $date_start . ' 23:59:59';
+    $date_start = $date_start . ' 00:00:00';
+} else {
+    $date_start = $date_start . ' 00:00:00';
+    $date_end = $date_end . ' 23:59:59';
+}
+$start_timestamp = strtotime($date_start);
+$end_timestamp = strtotime($date_end);
+
+// Initialize total counters
+$intotalPositive = 0;
+$intotalNegative = 0;
+$intotalVisit = 0;
+$intotalSale = 0;
+$intotalLowBudget = 0;
+$grandTotal = 0; // Initialize grand total counter
+
+// Arrays for grouping the fields
+$positive_array = array('positive', 'ready plot', 'semi-ready plot', 'sale done', 'low budget', 'visit done');
+$negative_array = array('negative', 'not interest', 'not capable to buy', 'location not match', 'closed');
+$sale_array = array('sale', 'sale done');
+$low_budget_array = array('low budget', 'budget not match');
+$visit_array = array('want_visit', 'visit done');
+
+$get_user_id = $wo['user']['user_id'];
+
+if (Wo_IsAdmin() == true || Wo_IsModerator() == true || check_permission('manage-leads') || $wo["user"]["management"] == true) {
+    if (isset($_GET['hide_members']) && $_GET['hide_members'] == true) {
+        $get_users = $db->orderBy('position', 'ASC')->where('active', '1')->where('is_team_leader', '1')->get(T_USERS);
+    } else {
+        $get_users = $db->where('is_team_leader', '1')->orWhere('leader_id', '0', '>')->orderBy('position', 'ASC')->where('active', '1')->get(T_USERS);
+    }
+} else if ($wo["user"]["is_team_leader"] == true) {
+    $get_users = $db->orderBy('position', 'ASC')->where('active', '1')->where('leader_id', $get_user_id)->orWhere('user_id', $get_user_id)->get(T_USERS);
+} else {
+    $get_users = $db->orderBy('position', 'ASC')->where('active', '1')->where('user_id', $get_user_id)->get(T_USERS);
+}
+
+if ($project == 'moon_hill') {
+    $page_id = '1932174893479181';
+    $page_name = 'Civic Real Estate Ltd.';
+} else if ($project == 'hill_town') {
+    $page_id = '259547413906965';
+    $page_name = 'Civic Design & Development Ltd.';
+} else {
+    $page_id = '0';
+    $page_name = 'N/A';
+}
+
+foreach ($get_users as $user) {
+    // Initialize total leads for this user
+    $intotal = 0; // Reset for each user
+
+    // Fetch records assigned to the user within the date range
+    if ($user->is_team_leader == true) {
+        $db->where('assigned', $user->user_id);
+    } else {
+        $db->where('member', $user->user_id);
+    }
+    
+    if ($project != 'all') {
+        $db->where("additional", '%"page_id":"' . $page_id . '"%', 'LIKE');
+    }  
+    $records = $db->where('created', $start_timestamp, '>=')
+                  ->where('created', $end_timestamp, '<=')
+                  ->get(T_LEADS, null, array('quick_remarks', 'status')); // Add other relevant fields here
+
+    // Initialize sums for the current user
+    $positiveSum = 0;
+    $pendingSum = 0;
+    $negativeSum = 0;
+    $visitSum = 0;
+    $saleSum = 0;
+    $lowBudgetSum = 0;
+
+    // Check if records are not empty
+    if (!empty($records)) {
+        foreach ($records as $record) {
+            // Check if quick_remark matches any of the sale-related values
+            if (in_array($record->quick_remarks, $sale_array)) {
+                $saleSum += 1;
+            }
+            
+            // Check if quick_remark matches any of the positive-related values
+            if (in_array($record->quick_remarks, $positive_array)) {
+                $positiveSum += 1;
+            }
+
+            // Check if quick_remark matches any of the low_budget-related values
+            if (in_array($record->quick_remarks, $low_budget_array)) {
+                $lowBudgetSum += 1;
+            }
+
+            // Check if quick_remark matches any of the negative-related values
+            if (in_array($record->quick_remarks, $negative_array)) {
+                $negativeSum += 1;
+            }
+
+            // Check if quick_remark matches any of the visit-related values
+            if (in_array($record->quick_remarks, $visit_array)) {
+                $visitSum += 1;
+            }
+            
+            // Increment pending leads for the current user
+            if ($record->status == 4) {
+                $pendingSum += 1;
+            }
+
+            // Increment total leads for the current user
+            $intotal += 1;
+        }
+    }
+    
+    // Include 50% of pending leads as "virtual positives"
+    $adjustedPositive = $positiveSum + (0.5 * $pendingSum);
+
+    // Calculate adjusted positive percentage
+    $positivePercent = ($intotal > 0) ? ($adjustedPositive / $intotal) * 100 : 0;
+
+    if ($user->is_team_leader == true) {
+        // Add the user's total leads to the grand total
+        $grandTotal += $intotal;
+    }
+?>
+<div class="col <?php echo ($user->is_team_leader == true) ? 'team_leader_color' : ''; ?>">
+    <div class="card radius-10">
+        <div class="card-body">
+            <div class="text-center">
+                <p class="fs-4 mb-0"><?= htmlspecialchars(ucfirst($user->first_name) . (!empty($user->last_name) ? ' ' . ucfirst($user->last_name) : '')); ?></p>
+                <small class="mb-3">Total Pending: <strong><?php echo $pendingSum; ?></strong> Leads</small>
+                <hr/>
+                <div class="row row-cols-2 row-cols-lg-2 row-cols-xl-2 row-cols-xxl-2 justify-content-center">
+                    <div class="text-center">
+                        <h4 class="my-2 mb-0"><?php echo $intotal; ?></h4> <!-- Display total leads for the user -->
+                        <small>Total Leads</small>
+                    </div>
+                    <div class="text-center">
+                        <h4 class="my-2 mb-0"><?php echo number_format($positivePercent, 2); ?>%</h4>
+                        <small>Positive Percent</small>
+                    </div>
+                    <div class="text-center">
+                        <h4 class="my-2 mb-0"><?php echo $positiveSum; ?></h4>
+                        <small>Positive</small>
+                    </div>
+                    <div class="text-center">
+                        <h4 class="my-2 mb-0"><?php echo $negativeSum; ?></h4>
+                        <small>Negative</small>
+                    </div>
+                    <?php if (check_permission('manage-lead-report') || Wo_IsAdmin() || Wo_IsModerator()) { ?>
+                    <div class="text-center">
+                        <h4 class="my-2 mb-0"><?php echo $visitSum; ?></h4>
+                        <small>Visit</small>
+                    </div>
+                    <div class="text-center">
+                        <h4 class="my-2 mb-0"><?php echo $saleSum; ?></h4>
+                        <small>Sale</small>
+                    </div>
+                    <?php } ?>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<?php
+
+    if ($user->is_team_leader == true) {
+        // Accumulate total sums for each category
+        $intotalPositive += $positiveSum;
+        $intotalPendings += $pendingSum;
+        $intotalNegative += $negativeSum;
+        $intotalVisit += $visitSum;
+        $intotalSale += $saleSum;
+        $intotalLowBudget += $lowBudgetSum;
+    }
+}
+
+// Include 50% of pending leads in positive count
+$adjustedTotalPositive = $intotalPositive + (0.5 * $intotalPendings);
+
+// Calculate positive percentage including 50% of pending leads
+$intotalParcent = ($grandTotal > 0) ? ($adjustedTotalPositive / $grandTotal) * 100 : 0;
+
+?>
+<style>
+.team_leader_color .card {
+    border-color: red;
+}
+</style>
+<input type="hidden" value="<?php echo $grandTotal; ?>" id="intotal">
+<input type="hidden" value="<?php echo $intotalPendings; ?>" id="intotalPendings">
+<input type="hidden" value="<?php echo $intotalPositive; ?>" id="intotalPositive">
+<input type="hidden" value="<?php echo $intotalNegative; ?>" id="intotalNegative">
+<input type="hidden" value="<?php echo number_format($intotalParcent, 2); ?>%" id="intotalParcent">

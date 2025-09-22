@@ -1,0 +1,382 @@
+<!--start breadcrumb-->
+<div class="page-breadcrumb d-flex align-items-center mb-3">
+  <div class="breadcrumb-title pe-3"><?php echo $wo['title']; ?></div>
+  <div class="ps-3 d-sm-flex d-none">
+	<nav aria-label="breadcrumb">
+	  <ol class="breadcrumb mb-0 p-0 align-items-center">
+		<li class="breadcrumb-item"><a href="javascript:;">
+			<ion-icon name="receipt-outline"></ion-icon>
+		  </a>
+		</li>
+		<li class="breadcrumb-item active" aria-current="page">Invoice List</li>
+	  </ol>
+	</nav>
+  </div>
+  <?php echo Wo_LoadManagePage('invoice/create-invoice'); ?>
+</div>
+<!--end breadcrumb-->
+<div class="mb-3">
+	<div class="row row-cols-auto g-3">
+		<div class="col">
+		</div>
+	</div>
+</div>
+<!-- Your HTML code starts here -->
+<div class="card radius-10 w-100">
+    <div class="card-body">
+        <div class="table-responsive mt-2">
+            <table id="invoiceTable" class="table align-middle mb-0" style="width: 100%;">
+                <thead class="table-light">
+                    <tr>
+                        <th>#ID</th>
+                        <th>Name</th>
+                        <th>Project Name</th>
+                        <th>Amount</th>
+                        <th>Pay Amount</th>
+                        <th>Due</th>
+                        <th>Date</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+<div class="modal fade" id="viewInvoice-modal" role="dialog">
+    <div class="modal-dialog modal-lg wow_mat_mdl invoice_print" style=" width: 7.401in;">
+        <div class="modal-content invoice_container">
+		<div class="card" style=" margin-bottom: 0; box-shadow: none; border: none; ">
+			<div class="card-body" style=" display: flex; justify-content: space-between; ">
+				<h4 class="modal-title">View Invoice</h4>
+				<button id="printButton" class="btn btn-primary">Print</button>
+			</div>
+		</div>
+			<div class="print_adjustable">
+				<div id="invoiceBackground"></div>
+				<div id="changable_modal_content"></div>
+				<style>
+					.print_adjustable {
+						overflow: hidden;
+						width: 7.401in; /* A4 width */
+						height: 11.597in; /* A4 width */
+						font-size: 13px;
+						font-weight: 600;
+						color: #000;
+						margin-top: 3px;
+						font-family: none;
+						margin: 0 auto;
+					}
+
+					.invoice_container {
+						overflow: hidden;
+						height: 11.597in; /* A4 width */
+						max-height: calc(297mm + 70px);
+						min-height: calc(297mm + 70px);
+						height: calc(297mm + 70px);
+						user-select: none;
+					}
+				
+					#invoiceBackground {
+						width: 7.401in; /* A4 width */
+						height: 11.597in; /* A4 width */
+						background-size: cover;
+						background-position: center;
+						background-repeat: no-repeat;
+					}
+					#changable_modal_content {
+						width: 7.401in; /* A4 width */
+						height: 11.597in; /* A4 width */
+						position: absolute;
+						display: flex;
+						flex-direction: column;
+						top: 70px;
+					}
+					#printButton {
+						z-index: 9;
+					}
+					
+					.print_margin {width: 100%;position: relative;height: 327px;}
+					.print_margin.step1 {margin: 44px 13px 0px 46px;}
+					.print_margin.step2 {margin: 61px 13px 0px 46px;}
+					
+					/* Set image as background only when printing */
+					#invoiceBackground {
+						background: url("<?php echo(Wo_LoadManageLink('pages/invoice/invoice.jpg')) ?>") center/cover no-repeat;
+					}
+					
+					@media print {
+						/* Disable headers and footers */
+						@page {
+							size: A4;
+							margin: 0;
+						}
+						#changable_modal_content {
+							top: 0px;
+						}
+					}
+					.receipt_pay_type {
+						position: absolute;
+						left: 364px;
+						top: 144px;
+						width: 288px;
+						text-align: center;
+						text-transform: capitalize;
+					}
+					.receipt_remarks {
+						position: absolute;
+						left: 384px;
+						top: 210px;
+						width: 265px;
+						text-align: center;
+					}
+					.receipt_down_payment {
+						position: absolute;
+						left: 455px;
+						top: 188px;
+						width: 195px;
+						text-align: center;
+					}
+					.receipt_branch {
+						position: absolute;
+						left: 530px;
+						top: 167px;
+						width: 120px;
+						text-align: center;
+					}
+					.receipt_bank {
+						position: absolute;
+						left: 208px;
+						top: 167px;
+						width: 276px;
+						text-align: center;
+					}
+					.receipt_project {
+						position: absolute;
+						left: 80px;
+						top: 210px;
+						width: 206px;
+						text-align: center;
+					}
+					.receipt_booking_money {
+						position: absolute;
+						left: 156px;
+						top: 188px;
+						width: 159px;
+						text-align: center;
+					}
+					.receipt_date_in_body {
+						position: absolute;
+						left: 27px;
+						top: 167px;
+						width: 146px;
+						text-align: center;
+					}
+					.receipt_in_words {
+						position: absolute;
+						left: 0;
+						top: 123px;
+						width: 652px;
+						text-indent: 60%;
+					}
+					.receipt_pay_amount {
+						position: absolute;
+						left: 192px;
+						top: 123px;
+						width: 136px;
+						text-align: center;
+					}
+					.receipt_address {
+						position: absolute;
+						left: 20px;
+						top: 79px;
+						width: 600px;
+						text-indent: 8%;
+					}
+					.receipt_name {
+						position: absolute;
+						left: 140px;
+						top: 58px;
+						text-transform: uppercase;
+					}
+					.receipt_no {
+						position: absolute;
+						left: 53px;
+						top: 20px;
+						width: 66px;
+						text-align: center;
+					}
+					.receipt_date {
+						position: absolute;
+						left: 554px;
+						top: -3px;
+						width: 92px;
+						text-align: center;
+					}
+					.receipt_client_id {
+						position: absolute;
+						left: 562px;
+						top: 18px;
+						width: 88px;
+						text-align: center;
+					}
+				</style>
+			</div>
+        </div>
+    </div>
+    <script type="text/javascript">
+        $('#viewInvoice-modal [data-dismiss="modal"]').on('click', function() {
+            $('#changable_modal_content').fadeOut(200);
+            $('#changable_modal_content').html('');
+        });
+
+        // Attach a listener for the modal hidden event
+        $('#viewInvoice-modal').on('hidden.bs.modal', function() {
+            $('#changable_modal_content').fadeOut(200);
+            $('#changable_modal_content').html('');
+        });
+
+        // Add a print button functionality
+        $('#viewInvoice-modal').on('shown.bs.modal', function () {
+            $('#printButton').on('click', function() {
+                var printWindow = window.open('', '_blank');
+                printWindow.document.write('<html><head><title>Print</title><style>#printButton, .invoice_container .card { display: none; } #changable_modal_content { top: 0px !important; } .invoice_container { width: 210mm !important; max-width: 210mm !important; min-width: 210mm !important; height: 297mm !important;  max-height: 297mm !important;  min-height: 297mm !important; color: #000;display: flex; align-items: center; justify-content: center;} body { margin: 0; } .print_adjustable { position: relative; margin-top: 4px !important;} .print_margin.step2 { margin: 65px 13px 0px 46px !important; }</style></head><body>');
+                printWindow.document.write($('.invoice_print').html());
+                printWindow.document.write('</body></html>');
+                printWindow.document.close();
+                printWindow.print();
+            });
+        });
+    </script>
+</div>
+
+
+
+<script>
+function viewInvoice(invoice_id) {
+    $.ajax({
+        type: "POST",
+        url: Wo_Ajax_Requests_File() + '?f=manage_settings&s=viewInvoice_modal', // Ensure Wo_Ajax_Requests_File() returns the correct URL
+        data: { invoice_id: invoice_id },
+        success: function (response) {
+            if (response['status'] == 200) {
+				$("#changable_modal_content").append(response['result']);
+				$("#viewInvoice-modal").modal('show');
+				$('#changable_modal_content').fadeIn(200);
+            }
+        }
+    });
+}
+function deleteInvoice(invoice_id) {
+    if (invoice_id == null) {
+        return false;
+    }
+	
+    // Assuming you have a confirmation from the user (e.g., using a modal)
+    var confirmed = confirm("Are you sure you want to delete this invoice?");
+
+    if (confirmed) {
+        // Trigger Ajax request
+        $.ajax({
+            url: Wo_Ajax_Requests_File() + '?f=manage_settings&s=delete_invoice',
+            type: 'POST',
+            data: { invoice_id: invoice_id },
+            success: function(response) {
+				if (response['status'] == 200) {
+					pos5_success_noti(response['message']);
+					DataTableRefresh();
+				} else if (response['message']) {
+					pos4_error_noti(response['message']);
+				}
+            },
+            error: function(xhr, status, error) {
+                // Handle errors
+                console.error(error);
+            }
+        });
+    }
+}
+$(document).ready(function() {
+    // Initialize DataTables without buttons
+    var table = $('#invoiceTable').DataTable({
+        "processing": true,
+		"serverSide": true,
+        "pageLength": 25,  // Set the default number of entries per page
+        "ajax": {
+            "url": Wo_Ajax_Requests_File() + '?f=manage_settings&s=fetch_invoices',
+            "type": "POST",
+            "beforeSend": function(xhr) {
+                // Set opacity to 0 before the Ajax request
+                $('#invoiceTable').css('opacity', .5);
+            },
+            "complete": function(xhr) {
+                // Set opacity to 1 after the Ajax request is complete
+                $('#invoiceTable').css('opacity', 1);
+            }
+        },
+        "columns": [
+            { "data": "id", "orderable": true },  // ID column is orderable
+            { "data": "customer_name", "orderable": false },
+            { "data": "project_name", "orderable": false },
+            { "data": "total_amount", "orderable": false },
+            { "data": "pay_amount", "orderable": false },
+            { "data": "remaining_due", "orderable": false },
+            { "data": "formatted_time", "orderable": false },
+            { "data": "status", "orderable": false },
+            { "data": "actions", "orderable": false }
+        ],
+        "order": [],
+        "language": {
+            "emptyTable": "No data available in the table",
+            "infoEmpty": "Showing 0 to 0 of 0 entries",
+            "infoFiltered": "(filtered from _MAX_ total entries)",
+            "zeroRecords": "No matching records found"
+        },
+    });
+
+    // Append buttons separately
+    new $.fn.dataTable.Buttons(table, {
+        buttons: [
+            { 
+                extend: 'copy',
+                text: '<i class="fadeIn animated bx bx-copy"></i>',
+                titleAttr: 'Copy to clipboard',
+                exportOptions: {
+                    columns: ':not(:last-child)'  // Exclude the last column (Actions)
+                }
+            },
+            { 
+                extend: 'excel',
+                text: '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="18" viewBox="0 0 18 24"><path fill="currentColor" d="M20.34,4.59,16.41.66A2.28,2.28,0,0,0,14.82,0H5.25A2.25,2.25,0,0,0,3,2.25v19.5A2.25,2.25,0,0,0,5.25,24h13.5A2.25,2.25,0,0,0,21,21.75V6.19A2.27,2.27,0,0,0,20.34,4.59ZM18.57,6H15V2.44ZM5.25,21.75V2.25h7.5V7.13a1.12,1.12,0,0,0,1.12,1.12h4.88v13.5ZM15.19,10.5H13.84a.55.55,0,0,0-.49.3A24.54,24.54,0,0,0,12,13.5c-.65-1.36-.32-.81-1.34-2.7a.56.56,0,0,0-.49-.3H8.81a.56.56,0,0,0-.48.85L10.5,15,8.33,18.66a.56.56,0,0,0,.48.84h1.36a.56.56,0,0,0,.49-.29A23.15,23.15,0,0,0,12,16.5c.7,1.42.28.75,1.34,2.71a.57.57,0,0,0,.5.29h1.35a.56.56,0,0,0,.48-.84L13.5,15c0-.05,1.42-2.36,2.17-3.65A.56.56,0,0,0,15.19,10.5Z" transform="translate(-3)"/></svg>', // Font Awesome Excel icon
+                titleAttr: 'Export to Excel',
+                exportOptions: {
+                    columns: ':not(:last-child)'  // Exclude the last column (Actions)
+                }
+            },
+            { 
+                extend: 'pdf',
+                text: '<i class="fadeIn animated bx bxs-file-pdf"></i>', // Font Awesome PDF icon
+                titleAttr: 'Export to PDF',
+                exportOptions: {
+                    columns: ':not(:last-child)'  // Exclude the last column (Actions)
+                }
+            },
+            { 
+                extend: 'print',
+                text: '<i class="fadeIn animated bx bx-printer"></i>',
+                titleAttr: 'Print',
+                exportOptions: {
+                    columns: ':not(:last-child)'  // Exclude the last column (Actions)
+                }
+            }
+        ]
+    }).container().appendTo('#dataSheet_download');
+	
+    // DataTableRefresh function to reload the DataTable
+    window.DataTableRefresh = function() {
+        table.ajax.reload();
+    };
+});
+</script>

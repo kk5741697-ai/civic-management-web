@@ -1,0 +1,226 @@
+<?php if (check_permission('bazar') || check_permission('manage-bazar') || $wo['user']['is_bazar'] == 1 || Wo_IsAdmin() || Wo_IsModerator()) { ?>
+<div class="page-breadcrumb d-flex align-items-center mb-3">
+  <div class="breadcrumb-title pe-3">Bazar Item Management</div>
+  <?php echo Wo_LoadManagePage('bazar_manage/btns'); ?>
+</div>
+
+<div class="card radius-10 w-100 no_border">
+  <div class="card-body">
+    <div class="table-responsive mt-2">
+      <table id="invoiceTable" class="table align-middle mb-0" style="width:100%;">
+        <thead class="table-light">
+          <tr>
+            <th style="width:0px">SL</th>
+            <th>Item Name</th>
+            <th>Prev. Bazar</th>
+            <th>Used Bazar</th>
+            <th>Curr. Bazar</th>
+            <th>Price</th>
+            <th>Total</th>
+            <th class="hide_in_print">Last Updated</th>
+            <?php if (Wo_IsAdmin() || Wo_IsModerator()) { ?>
+            <th style="width:60px" class="hide_in_print">Actions</th>
+            <?php } ?>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+/**
+ * Item-wise stock table (calls fetch_stock_status)
+ * deleteItem -> deletes entire item via delete_item
+ */
+
+function deleteItem(id) {
+<?php if (!(Wo_IsAdmin() || Wo_IsModerator() || check_permission('manage-bazar'))) { ?>
+    alert('You do not have permission to delete this item.');
+    return;
+<?php } ?>
+
+  if (!id) return;
+  if (!confirm('Are you sure you want to permanently delete this bazar item and all its history?')) return;
+
+  $.post(Wo_Ajax_Requests_File() + '?f=manage_bazar&s=delete_item', { id: id }, function(res){
+    if (res && res.status === 200) {
+      if (typeof DataTableRefresh === 'function') DataTableRefresh();
+      pos5_success_noti(res.message || 'Deleted');
+    } else {
+      pos4_error_noti((res && res.message) ? res.message : 'Delete failed');
+    }
+  }, 'json').fail(function(){ pos4_error_noti('AJAX error while deleting bazar.'); });
+}
+
+function edit_entry_modal(id) {
+<?php if (!(Wo_IsAdmin() || Wo_IsModerator() || check_permission('manage-bazar'))) { ?>
+    return;
+<?php } ?>
+  if (!id) return false;
+  var project = $('#project').val();
+  $.post(Wo_Ajax_Requests_File() + '?f=manage_bazar&s=edit_modal', { id: id, project: project }, function(response){
+    if (response && response.status == 200) {
+      $("#contnet").append(response.result);
+      $("#updatebazar-modal").modal('show');
+    } else {
+      pos4_error_noti((response && response.message) ? response.message : 'Failed to open modal');
+    }
+  }, 'json').fail(function(){ pos4_error_noti('AJAX error while loading modal'); });
+}
+
+$(document).ready(function(){
+  // Helper: month -> start/end
+  function monthToRange(monthVal) {
+    if (!monthVal) {
+      var now = new Date();
+      monthVal = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
+    }
+    var parts = monthVal.split('-');
+    if (parts.length < 2) {
+      var now = new Date();
+      parts = [now.getFullYear(), String(now.getMonth()+1).padStart(2,'0')];
+    }
+    var y = parseInt(parts[0],10), m = parseInt(parts[1],10);
+    var start = new Date(y, m-1, 1);
+    var end = new Date(y, m, 0);
+    function fmt(d){ return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
+    return { start: fmt(start), end: fmt(end) };
+  }
+
+  var table = $('#invoiceTable').DataTable({
+    processing: true,
+    serverSide: true,
+    pageLength: 100,
+    ajax: {
+      url: Wo_Ajax_Requests_File() + '?f=manage_bazar&s=fetch_stock_status',
+      type: 'POST',
+      data: function(d){
+        var monthVal = (document.getElementById('month_year') || {}).value || '';
+        if (monthVal) {
+          d.month_year = monthVal;
+        } else {
+          var range = monthToRange(monthVal);
+          d.data_start = range.start;
+          d.data_end   = range.end;
+        }
+      }
+    },
+    columns: [
+      { data: 'sl', orderable: false },
+      { data: 'item', orderable: false },
+      { data: 'prev_bazar', orderable: false },
+      { data: 'used_bazar', orderable: false },
+      { data: 'quantity', orderable: false },
+      { data: 'price', orderable: false},
+      { data: 'total', orderable: false },
+      { data: 'last_update', orderable: false },
+      <?php if (Wo_IsAdmin() || Wo_IsModerator()) { ?>
+      { data: 'actions', orderable: false },
+      <?php } ?>
+    ],
+    order: [],
+    rowCallback: function(row,data){
+      $(row).attr('data-id', data.id);
+      // low stock visual
+      if (typeof data.quantity !== 'undefined' && typeof data.bazar_threshold !== 'undefined') {
+        if (parseInt(data.quantity,10) < parseInt(data.bazar_threshold,10)) {
+          $(row).addClass('low_bazar');
+        } else {
+          $(row).removeClass('low_bazar');
+        }
+      }
+    }
+  });
+
+    // ---------- Buttons (safe customize for print + excel) ----------
+    new $.fn.dataTable.Buttons(table, {
+      buttons: [
+        { 
+          extend: 'excel',
+          text: '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="18" viewBox="0 0 18 24"><path fill="currentColor" d="M20.34,4.59,16.41.66A2.28,2.28,0,0,0,14.82,0H5.25A2.25,2.25,0,0,0,3,2.25v19.5A2.25,2.25,0,0,0,5.25,24h13.5A2.25,2.25,0,0,0,21,21.75V6.19A2.27,2.27,0,0,0,20.34,4.59ZM18.57,6H15V2.44ZM5.25,21.75V2.25h7.5V7.13a1.12,1.12,0,0,0,1.12,1.12h4.88v13.5ZM15.19,10.5H13.84a.55.55,0,0,0-.49.3A24.54,24.54,0,0,0,12,13.5c-.65-1.36-.32-.81-1.34-2.7a.56.56,0,0,0-.49-.3H8.81a.56.56,0,0,0-.48.85L10.5,15,8.33,18.66a.56.56,0,0,0,.48.84h1.36a.56.56,0,0,0,.49-.29A23.15,23.15,0,0,0,12,16.5c.7,1.42.28.75,1.34,2.71a.57.57,0,0,0,.5.29h1.35a.56.56,0,0,0,.48-.84L13.5,15c0-.05,1.42-2.36,2.17-3.65A.56.56,0,0,0,15.19,10.5Z" transform="translate(-3)"/></svg>',
+          titleAttr: 'Export to Excel',
+          exportOptions: {
+            // exclude the Actions column (if it's the last) and any column with class "hide_in_print"
+            columns: ':visible:not(.hide_in_print)'
+          }
+        },
+        {
+          extend: 'print',
+          text: '<i class="fadeIn animated bx bx-printer"></i>',
+          titleAttr: 'Print',
+          exportOptions: {
+            columns: ':visible:not(.hide_in_print)'
+          },
+          customize: function (win) {
+            try {
+              // ---------- helper: format month input (YYYY-MM or fallback) ----------
+              function formatMonthValue(val) {
+                if (!val) return '';
+                // If format is YYYY-MM
+                var parts = val.split('-');
+                if (parts.length === 2) {
+                  var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+                  var y = parts[0], m = parseInt(parts[1],10);
+                  return months[m-1] + ' ' + y; // e.g. "Sep 2025"
+                }
+                return val;
+              }
+    
+              // get month value
+              var monthEl = document.getElementById('month_year');
+              var monthVal = monthEl ? monthEl.value : '';
+              var monthText = formatMonthValue(monthVal) || 'All dates';
+    
+              // try to get user selection name (optional)
+              var userText = '';
+              var sel = document.getElementById('user_id');
+              if (sel && sel.options && sel.selectedIndex >= 0) {
+                userText = sel.options[sel.selectedIndex].text || '';
+              }
+    
+              // Build header HTML (safe strings)
+              var headerHtml = '<div class="atten_print_text d-flex justify-content-between" style="width:100%;font-family:Arial,Helvetica,sans-serif;">' +
+                                 '<span class="atten_header" style="font-size:18px;font-weight:700">Bazar Report</span>' +
+                                 '<div class="atten_details" style="text-align:right;font-size:13px;">' +
+                                   (userText ? '<div><strong>' + $('<div>').text(userText).html() + '</strong></div>' : '') +
+                                   '<div><small>' + $('<div>').text(monthText).html() + '</small></div>' +
+                                 '</div>' +
+                               '</div>';
+    
+              // Replace default title (h1) with our header
+              $(win.document.body).find('h1').html(headerHtml);
+    
+              // Preserve row classes (non-fatal)
+              $(document.body).find('tr').each(function(idx) {
+                var originalClasses = $(this).attr('class') || '';
+                // +1 offset because the print table includes a header row
+                $(win.document.body).find('tr').eq(idx+1).addClass(originalClasses);
+              });
+    
+              // Add a small style block so .low_bazar rows show red highlight in print
+              var style = '<style>table{width:100%;border-collapse:collapse} .low_bazar td{background:#ffecec !important;} .atten_header{margin-bottom:6px;}</style>';
+              $(win.document.head).append(style);
+            } catch (err) {
+              // swallow any error so print still proceeds
+              console && console.warn && console.warn('Print customize warning:', err);
+            }
+          }
+        }
+      ]
+    }).container().appendTo('#dataSheet_download');
+
+  // row click opens edit modal
+  $('#invoiceTable tbody').on('click','tr', function(){
+    var id = $(this).data('id');
+    if (id) edit_entry_modal(id);
+  });
+
+  // expose DataTable helpers
+  window.DataTableRefresh = function(){ table.ajax.reload(null,false); };
+  window.DataTableReset = function(){ table.ajax.reload(); };
+});
+</script>
+
+<?php } else { echo Wo_LoadManagePage('permission-required/content'); } ?>

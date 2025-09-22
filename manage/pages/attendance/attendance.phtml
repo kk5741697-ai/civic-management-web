@@ -1,0 +1,471 @@
+<!--start breadcrumb-->
+<div class="page-breadcrumb d-flex align-items-center mb-3">
+  <div class="breadcrumb-title pe-3"><?php echo $wo['title']; ?></div>
+	<div class="ms-auto button_flex_middle">
+		<?php if (Wo_IsAdmin() || Wo_IsModerator() || check_permission('check-attandance') || check_permission('manage-attandance') || $wo['user']['is_team_leader'] == true) { ?>
+		<?php } else { ?>
+		<div class="attandence">
+			<div class="select-panel d-flex justify-content-between">
+				<select id="user_id" name="user_id" class="form-select d-none w-auto">
+					<option value="<?php echo $wo['user']['user_id'];?>" selected><?php echo $wo['user']['Name'];?></option>
+				</select>
+				<!-- Use flatpickr for date selection -->
+				<input class="form-select w-auto ml-auto" type="text" id="date_start_end" name="date_start_end" placeholder="Select date range" readonly onchange="DataTableRefresh()" value="<?php echo urldecode($_COOKIE['start_end'] ?? '') ?: date('Y-m-01') . ' to ' . date('Y-m-t'); ?>">
+			</div>
+		</div>
+		<?php } ?>
+		<div id="attendanceSheet_download"></div>
+		<style>
+			#attendanceSheet_download button.btn {
+				border: 2px solid transparent;
+				padding: 6px 2px;
+				width: 40px;
+				border-radius: 8px;
+			}
+			#attendanceSheet_download button.btn:hover {
+				background: white;
+				border: 2px solid #6c757d;
+				color: #6c757d;
+			}
+		</style>
+	</div>
+</div>
+<!--end breadcrumb-->
+<div class="mb-3">
+	<div class="row row-cols-auto g-3">
+		<div class="col">
+		</div>
+	</div>
+</div>
+
+    <!-- Your HTML code starts here -->
+
+	<?php if (Wo_IsAdmin() || Wo_IsModerator() || check_permission('check-attandance') || check_permission('manage-attandance') || $wo['user']['is_team_leader'] == true) { ?>
+	<div class="attandence mb-3">
+        <div class="select-panel d-flex justify-content-between">
+                <select id="user_id" name="user_id" class="form-select w-auto wm-150" onchange="DataTableRefresh()">
+                    <option value="999">All User</option>
+                    <?php 
+                        if ($wo['user']['is_team_leader'] == true) {
+                            $get_users = $db->where('active', '1')->where('leader_id', $wo['user']['user_id'])->orWhere('user_id', $wo['user']['user_id'])->orderBy('serial', 'ASC')->get(T_USERS);
+                        } else {
+                            $get_users = $db->where('active', '1')->orderBy('serial', 'ASC')->get(T_USERS);
+                        }
+                        
+                        $selected_user_id = isset($_COOKIE['default_u_atten']) && !empty($_COOKIE['default_u_atten']) 
+                            ? $_COOKIE['default_u_atten'] 
+                            : $wo['user']['user_id'];
+                        
+                        foreach ($get_users as $userlist) {
+                            $first_name = cleanName($userlist->first_name);
+                            $selected = ($selected_user_id == $userlist->user_id) ? ' selected' : '';
+                            echo "<option value='{$userlist->user_id}'{$selected}>{$first_name} {$userlist->last_name}</option>";
+                        }
+                    ?>
+                </select>
+				<!-- Use flatpickr for date selection -->
+				<input class="form-select w-auto ml-auto wm-150" type="text" id="date_start_end" name="date_start_end" placeholder="Select date range" readonly onchange="DataTableRefresh()" value="<?php echo urldecode($_COOKIE['start_end'] ?? '') ?: date('Y-m-01') . ' to ' . date('Y-m-t'); ?>">
+
+        </div>
+    </div>
+	<?php } ?>
+
+    <div class="card radius-10 w-100">
+        <div class="card-body">
+            <div class="table-responsive atten_container" id="atten_container">
+                <table class="table align-middle mb-0 atten_container" id="invoiceTable" style="width: 100%;">
+                    <thead class="table-light" style=" position: sticky; top: 0; background: white; ">
+                        <tr>
+                            <th class="date">Date</th>
+                            <th class="day">Day</th>
+                            <?php if (Wo_IsAdmin() || Wo_IsModerator() || check_permission('manage-attandance') || $wo['user']['is_team_leader'] == true) { ?>
+                            <th>Name</th>
+                            <th>Designation</th>
+                            <?php } ?>
+                            <th class="in_out">In</th>
+                            <th class="in_out">Out</th>
+                            <th class="w1">Late</th>
+                            <th class="w12">Status</th>
+                            <?php if (Wo_IsAdmin() || Wo_IsModerator() || check_permission('manage-attandance')) { ?>
+                            <th class="w24px hide_in_print">A</th>
+                            <?php } ?>
+                        </tr>
+                    </thead>
+                    <tbody id="result">
+                        <!-- Your PHP-generated table rows go here -->
+                        <!-- Example row provided -->
+                        <?php echo $your_php_generated_rows; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+<style>
+    .atten_container .reason.paid {
+        --bs-table-bg: #eafff0;
+        --bs-table-color: #00702e;
+        background: #eafff0;
+        color: #00702e;
+    }
+    
+    /* Unpaid Leave */
+    .atten_container .reason.unpaid {
+        --bs-table-bg: #fff4f4;
+        --bs-table-color: #b00020;
+        background: #fff4f4;
+        color: #b00020;
+    }
+    
+    /* Pending Leave */
+    .atten_container .reason.pending {
+        --bs-table-bg: #fffbea;
+        --bs-table-color: #9a6b00;
+        background: #fffbea;
+        color: #9a6b00;
+    }
+    
+    /* Holiday / Weekend */
+    .atten_container .reason.holiday {
+        --bs-table-bg: #f0f7ff;
+        --bs-table-color: #004c99;
+        background: #f0f7ff;
+        color: #004c99;
+    }
+    
+	.atten_container .dataTables_info {
+		display: none !important;
+	}
+	.atten_container .absent {
+		--bs-table-bg: #fff5f5;
+		--bs-table-color: #b70000;
+		background: #fff5f5;
+		color: #b70000;
+	}
+	.atten_container .late {
+		--bs-table-bg: #fcf3ff;
+		--bs-table-color: #6e0089;
+		background: #fcf3ff;
+		color: #6e0089;
+	}
+	.atten_container .weekend {
+		--bs-table-bg: #e8f6ff;
+		--bs-table-color: #0400ff;
+		background: #e8f6ff;
+		color: #0400ff;
+	}
+	.atten_container .eid_ajha {
+		--bs-table-bg: #e8f6ff;
+		--bs-table-color: #0400ff;
+		background: #e8f6ff;
+		color: #0400ff;
+	}
+	table.dataTable {
+		margin-top: 0px !important;
+		margin-bottom: 0px !important;
+	}
+	
+	.flatpickr-calendar button {
+		border-radius: 0;
+		padding: 8px 38px;
+		color: #000000;
+		border: none;
+		border-bottom: 1px solid #e7e7e7;
+		background-color: #ffffff;
+		width: 100%;
+	}
+	table,
+	td,
+	th {
+		border: 1px solid rgba(0, 0, 0, 0.1);
+	}
+	table {
+		border-collapse: separate;
+		border-spacing: 0;
+		border-width: 1px 0 0 1px;
+		margin: 0 0 1.5em;
+		width: 100%;
+	}
+	th {
+		font-weight: 700;
+	}
+	td,
+	th {
+		padding: 8px;
+		text-align: left;
+		border-width: 0 1px 1px 0;
+	}
+	
+	.atten_container thead th.w1 {
+		width: 10px;
+	}
+	.atten_container thead th.w12 {
+		width: 120px;
+	}
+	.atten_container thead th.in_out {
+		width: 90px;
+	}
+	.atten_container thead th.date {
+		width: 100px;
+	}
+	.atten_container thead th.day {
+		width: 70px;
+	}
+	.atten_container thead th.w24px {
+		width: 24px;
+	}
+	.atten_print_text {
+		align-items: center;
+		
+	}
+	.atten_header {}
+	.atten_details {
+		font-size: 14px;
+	}
+	.atten_name {}
+	.atten_date {}
+	@media print {
+		body, td, tr {
+			font-size: 11px !important;
+		}
+		body h1 {
+			font-size: 15px !important;
+			text-align: center;
+		}
+		.atten_container .reason {
+			--bs-table-bg: #eafff0;
+			--bs-table-color: #00702e;
+			background: #eafff0;
+			color: #00702e;
+		}
+		.atten_container .absent {
+			--bs-table-bg: #fff5f5;
+			--bs-table-color: #b70000;
+			background: #fff5f5;
+			color: #b70000;
+		}
+		.atten_container .late {
+			--bs-table-bg: #fcf3ff;
+			--bs-table-color: #6e0089;
+			background: #fcf3ff;
+			color: #6e0089;
+		}
+		.atten_container .weekend {
+			--bs-table-bg: #e8f6ff;
+			--bs-table-color: #0400ff;
+			background: #e8f6ff;
+			color: #0400ff;
+		}
+		.atten_container .eid_ajha {
+			--bs-table-bg: #e8f6ff;
+			--bs-table-color: #0400ff;
+			background: #e8f6ff;
+			color: #0400ff;
+		}
+		.table>:not(caption)>*>* {
+			padding: .45rem .5rem;
+		}
+	}
+</style>
+   <script>
+    $(document).ready(function() {
+		
+        // Initialize Flatpickr
+        var flatpickrInstance = flatpickr('#date_start_end', {
+            mode: 'range',
+            dateFormat: 'Y-m-d',
+            altFormat: 'F j, Y',
+            altInput: false,
+            allowInput: false,
+            clickOpens: true,
+            onChange: function(selectedDates, dateStr, instance) {
+                // console.log(selectedDates);
+                // // You can add additional logic here if needed
+            },
+            onReady: function(selectedDates, dateStr, instance) {
+                // Add custom date range options to the Flatpickr container
+                var datepickerContainer = instance.calendarContainer;
+
+                var dateRangeOptions = [
+                    { label: 'Today', range: [new Date(), new Date()] },
+                    { label: 'Yesterday', range: [new Date(new Date().setDate(new Date().getDate() - 1)), new Date(new Date().setDate(new Date().getDate() - 1))] },
+                    { label: 'This Month', range: [new Date(new Date().getFullYear(), new Date().getMonth(), 1), new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0)] },
+                    { label: 'Last Month', range: [new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1), new Date(new Date().getFullYear(), new Date().getMonth(), 0)] },
+                ];
+
+                dateRangeOptions.forEach(function(option) {
+                    var button = document.createElement('button');
+                    button.textContent = option.label;
+                    button.addEventListener('click', function() {
+                        flatpickrInstance.setDate(option.range);
+                        flatpickrInstance.close(); // Close Flatpickr instance
+                        DataTableRefresh();
+                    });
+
+                    datepickerContainer.prepend(button);
+                });
+            }
+        });
+
+        // Initialize DataTables without buttons
+		var table = $('#invoiceTable').DataTable({
+			"processing": true,
+			"serverSide": true,
+			"paging": false, // Disable pagination
+			"searching": false, // Disable search
+			"pageLength": 20000,
+			"ajax": {
+				"url": Wo_Ajax_Requests_File() + '?f=attandence&s=result',
+				"type": "POST",
+				"data": function (d) {
+					// Include additional parameters for the AJAX request
+					d.user_id = $('#user_id').val();
+					var dateRange = document.getElementById('date_start_end').value;
+					// If date range is not selected, use the single selected date
+					var dates = dateRange.split(' to ');
+					var data_start = dates[0];
+					var data_end = dates.length > 1 ? dates[1] : data_start;
+					
+					d.data_start = data_start;
+					d.data_end = data_end;
+				},
+				"beforeSend": function (xhr) {
+					// Set opacity to 0 before the Ajax request
+					$('#invoiceTable').css('opacity', 0.5);
+				},
+				"complete": function (xhr) {
+					// Set opacity to 1 after the Ajax request is complete
+					$('#invoiceTable').css('opacity', 1);
+				},
+				"dataSrc": function (json) {
+					if (json.status === 200) {
+						// Return the data if the response is successful
+						return json.result;
+					} else {
+						// Handle the error and return an empty array
+						console.error("Error: " + json.error);
+						return [];
+					}
+				}
+			},
+			"columns": [
+				{ "data": "date", "orderable": true },
+				{ "data": "day", "orderable": false },
+				<?php if (Wo_IsAdmin() || Wo_IsModerator() || check_permission('manage-attandance') || $wo['user']['is_team_leader'] == true) { ?>
+				{ "data": "name", "orderable": false },
+				{ "data": "designation", "orderable": false },
+				<?php } ?>
+				{ "data": "in_time", "orderable": false },
+				{ "data": "out_time", "orderable": false },
+				{ "data": "late_count", "orderable": false },
+				{ "data": "status", "orderable": false },
+				<?php if (Wo_IsAdmin() || Wo_IsModerator() || check_permission('manage-attandance')) { ?>
+				{ "data": "actions", "orderable": false }
+				<?php } ?>
+			],
+			"order": [],
+			"language": {
+				"emptyTable": "No data available in the table",
+				"infoEmpty": "",
+				"infoFiltered": "",
+				"zeroRecords": "No matching records found"
+			},
+			"initComplete": function (settings, json) {
+				if (json.status === 400) {
+					// Handle error when the response status is 400
+					alert("Error: " + json.error); // You can replace this with your own error handling
+				}
+			},
+			"drawCallback": function (settings) {
+				// Apply the class to the rows after each draw
+				$('#invoiceTable tbody tr').each(function () {
+					var data = table.row(this).data();
+					$(this).attr('class', data.class);
+					if (data.rtext != null) {
+						$(this).attr('data-bs-toggle', 'tooltip');
+						$(this).attr('data-bs-placement', 'right');
+						$(this).attr('data-bs-original-title', data.rtext);
+					}
+				});
+				$('[data-bs-toggle="popover"]').popover();
+				$('[data-bs-toggle="tooltip"]').tooltip();
+			}
+		});
+
+
+	<?php if (Wo_IsAdmin() || check_permission('manage-attandance')) { ?>
+        new $.fn.dataTable.Buttons(table, {
+            buttons: [
+                { 
+                    extend: 'copy',
+                    text: '<i class="fadeIn animated bx bx-copy"></i>',
+                    titleAttr: 'Copy to clipboard',
+                    exportOptions: {
+                        columns: ':not(:last-child)'
+                    }
+                },
+                { 
+                    extend: 'excel',
+                    text: '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="18" viewBox="0 0 18 24"><path fill="currentColor" d="M20.34,4.59,16.41.66A2.28,2.28,0,0,0,14.82,0H5.25A2.25,2.25,0,0,0,3,2.25v19.5A2.25,2.25,0,0,0,5.25,24h13.5A2.25,2.25,0,0,0,21,21.75V6.19A2.27,2.27,0,0,0,20.34,4.59ZM18.57,6H15V2.44ZM5.25,21.75V2.25h7.5V7.13a1.12,1.12,0,0,0,1.12,1.12h4.88v13.5ZM15.19,10.5H13.84a.55.55,0,0,0-.49.3A24.54,24.54,0,0,0,12,13.5c-.65-1.36-.32-.81-1.34-2.7a.56.56,0,0,0-.49-.3H8.81a.56.56,0,0,0-.48.85L10.5,15,8.33,18.66a.56.56,0,0,0,.48.84h1.36a.56.56,0,0,0,.49-.29A23.15,23.15,0,0,0,12,16.5c.7,1.42.28.75,1.34,2.71a.57.57,0,0,0,.5.29h1.35a.56.56,0,0,0,.48-.84L13.5,15c0-.05,1.42-2.36,2.17-3.65A.56.56,0,0,0,15.19,10.5Z" transform="translate(-3)"/></svg>',
+                    titleAttr: 'Export to Excel',
+                    exportOptions: {
+                        columns: ':not(:last-child)'
+                    }
+                },
+                {
+                    extend: 'pdf',
+                    text: '<i class="fadeIn animated bx bxs-file-pdf"></i>',
+                    titleAttr: 'Export to PDF',
+                    exportOptions: {
+                        columns: ':not(:last-child)'
+                    }
+                },
+                {
+                    extend: 'print',
+                    text: '<i class="fadeIn animated bx bx-printer"></i>',
+                    titleAttr: 'Print',
+                    exportOptions: {
+                        columns: ':not(:last-child)'
+                    },
+					customize: function (win) {
+						var dateRange = document.getElementById('date_start_end').value;
+						var get_select = document.getElementById('user_id');
+						var get_select_text = get_select.options[get_select.selectedIndex].text;
+						$(win.document.body).find('h1').html('<div class="atten_print_text d-flex justify-content-between"><span class="atten_header">Attendance Report</span><div class="atten_details"><span class="atten_name">' + get_select_text + '</span> <i class="lni lni-pulse"></i> <span class="atten_date">' + dateRange +'</span></div></div>');
+						// Loop through each <tr> and adapt classes
+						$(document.body).find('tr').each(function() {
+							var originalClasses = $(this).attr('class');
+							$(win.document.body).find('tr').eq($(this).index()+1).addClass(originalClasses);
+						});
+						// Add other custom styles if needed
+					}
+                }
+            ]
+        }).container().appendTo('#attendanceSheet_download');
+	<?php } ?>
+	
+        // DataTableRefresh function to reload the DataTable
+        window.DataTableRefresh = function() {
+            table.ajax.reload();
+        };
+
+        $(document).on('click', '.flatpickr-calendar button', function() {
+            DataTableRefresh();
+        });
+	});
+
+	<?php if (Wo_IsAdmin() || Wo_IsModerator() || check_permission('manage-attandance')) { ?>
+	function add_reason_modal(date, user_id) {
+		$.ajax({
+			type: "POST",
+			url: Wo_Ajax_Requests_File() + '?f=attandence&s=reason_modal',
+			data: { user_id: user_id, date: date },
+			success: function (response) {
+				if (response['status'] == 200) {
+					$("#contnet").append(response['result']);
+					$("#add-reason-modal").modal('show');
+				}
+			}
+		});
+	}
+	<?php } ?>
+    </script>

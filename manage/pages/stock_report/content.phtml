@@ -1,0 +1,343 @@
+    <style>
+    .select2-container .select2-selection--single {
+        width: 100%; height: 100%;padding:  4px;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__arrow {height: 36px;}
+    </style>
+    
+    <!--start breadcrumb-->
+    <div class="page-breadcrumb d-flex align-items-center mb-3">
+      <div class="breadcrumb-title pe-3">Stock Report</div>
+    </div>
+    <!--end breadcrumb-->
+    <div class="mb-3">
+    	<div class="row row-cols-auto g-3">
+    		<div class="col">
+    		</div>
+    	</div>
+    </div>
+
+    <!-- Your HTML code starts here -->
+	<?php if (Wo_IsAdmin() || Wo_IsModerator() || check_permission('check-attandance') || check_permission('manage-attandance') || $wo['user']['is_team_leader'] == true) { ?>
+	<div class="attandence mb-3">
+        <div class="select-panel d-flex justify-content-between">
+            <select id="user_id" name="user_id" class="form-select w-auto wm-150" onchange="DataTableRefresh()">
+                <option value="">All User</option>
+                <?php 
+					$get_users = $db->where('active', '1')->orderBy('serial', 'ASC')->get(T_USERS);
+					foreach ($get_users as $userlist) {
+						$first_name = cleanName($userlist->first_name);
+						echo '<option' . (isset($_COOKIE['stock_usr']) && $_COOKIE['stock_usr'] == $userlist->user_id ? ' selected' : '') . " value='{$userlist->user_id}'>{$first_name} {$userlist->last_name}</option>";
+					}
+                ?>
+            </select>
+            <div style=" display: flex; gap: 10px; ">
+				<!-- Use flatpickr for date selection -->
+				<input class="form-select w-auto ml-auto wm-150" type="text" id="date_start_end" name="date_start_end" placeholder="Select date range" readonly style="user-select: none;" value="<?php echo urldecode($_COOKIE['stock_date'] ?? '') ?: date('Y-m') . ' to ' . date('Y-m'); ?>">
+                <button class="btn btn-primary" onclick="openUseStockModal()">Use</button>
+                <button class="btn btn-secondary" onclick="openHistoryModal()"><i class="fadeIn animated bx bx-history"></i></button>
+                <a class="btn btn-secondary" href="<?php echo(Wo_LoadManageLinkSettings('stock')) ?>" data-spa="true"><i class="fadeIn animated bx bx-cog"></i></a>
+            </div>
+        </div>
+    </div>
+	<?php } ?>
+
+    <div class="card radius-10 w-100">
+        <div class="card-body">
+            <!-- Usage Table -->
+            <div class="table-responsive">
+            <table class="table align-middle mb-0 atten_container" id="stockUsageTable" style="width: 100%;">
+                <thead class="table-light" style=" position: sticky; top: 0; background: white; ">
+                  <tr>
+                    <th>Date</th>
+                    <th>Stock Item</th>
+                    <th>Used Quantity</th>
+                    <th>Remaining</th>
+                    <th>Used By</th>
+                  </tr>
+                </thead>
+                <tbody id="result"></tbody>
+            </table>
+            </div>
+          </div>
+    </div>
+  
+    <!-- History Modal -->
+    <div class="modal fade" id="historyModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content p-3">
+          <div class="modal-header">
+            <h5 class="modal-title">Stock History</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <div class="mb-3">
+              <label for="history_stock_id" class="form-label">Select Stock Item</label>
+              <select id="history_stock_id" class="form-select w-auto">
+                <option value="">-- choose item --</option>
+                <?php
+                  $all = $db->get(T_STOCK, null, ['id','name']);
+                  foreach ($all as $i) {
+                    echo "<option value=\"{$i->id}\">".htmlspecialchars($i->name)."</option>";
+                  }
+                ?>
+              </select>
+            </div>
+            <canvas id="priceChart" height="200"></canvas>
+            <hr>
+            <canvas id="quantityChart" height="200"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Use Stock Modal (bulk) -->
+    <div class="modal fade full_screen" id="useStockModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered modal-lg">
+        <form id="useStockForm">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title">Use Stock Items</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+              <div id="bulkContainer">
+                <!-- ONE ROW TEMPLATE -->
+                <div class="bulk-row d-flex gap-2 mb-2">
+                  <select name="stock_id[]" class="form-select flex-fill use_stock_id" required>
+                    <option value="">-- Select Stock --</option>
+                    <?php foreach ($db->get(T_STOCK, null, ['id','name']) as $s): ?>
+                      <option value="<?= (int)$s->id ?>"><?= htmlspecialchars($s->name) ?></option>
+                    <?php endforeach; ?>
+                  </select>
+                  <input type="number" name="quantity[]" class="form-control w-25" placeholder="Qty" min="1" required>
+                  <button type="button" class="btn btn-outline-danger remove-row">&times;</button>
+                </div>
+              </div>
+              <button type="button" id="addRowBtn" class="btn btn-sm btn-secondary mb-3">+ Add another item</button>
+              <div id="use_stock_feedback" class="text-danger"></div>
+            </div>
+            <div class="modal-footer">
+              <button type="submit" class="btn btn-primary">Use Stock</button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+
+
+    <script>
+    (function($){
+      // ————— Shared instances —————
+      let priceChart, quantityChart, table, flatpickrInstance;
+    
+      // ————— Globals for inline onclick/onchange —————
+      window.openUseStockModal = function(){
+        $('#useStockForm')[0].reset();
+        $('#use_stock_feedback').text('');
+        $('#useStockModal').modal('show');
+      };
+      window.openHistoryModal = function(){
+        $('#history_stock_id').val('');
+        if(priceChart)    priceChart.destroy();
+        if(quantityChart) quantityChart.destroy();
+        $('#historyModal').modal('show');
+      };
+      window.DataTableRefresh = function(){
+        if(table) table.ajax.reload();
+      };
+    
+      // ————— Formatting helper —————
+      function formatTaka(v){ return '৳'+v; }
+    
+      // Cookie helpers
+      function getCookie(name) {
+        const m = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+        return m ? decodeURIComponent(m[1]) : '';
+      }
+      function setCookie(name, val, days = 3650) {
+        const exp = new Date(Date.now() + days*864e5).toUTCString();
+        document.cookie = `${name}=${encodeURIComponent(val)}; expires=${exp}; path=/`;
+      }
+    
+      // ————— Core init —————
+      window.initStockPage = function(){
+        // Unbind all previous handlers in .stockPage namespace
+        $(document).off('.stockPage');
+    
+        // — Flatpickr —
+        if(flatpickrInstance) flatpickrInstance.destroy();
+        flatpickrInstance = flatpickr('#date_start_end', {
+          plugins: [ new monthSelectPlugin({ shorthand:false, dateFormat:"Y-m", altFormat:"F Y" }) ],
+          mode: "range",
+          allowInput: false,
+          onChange(selectedDates, dateStr) {
+            setCookie("stock_date", dateStr);
+            if (typeof DataTableRefresh === "function") DataTableRefresh();
+          },
+          onReady(_, __, instance) {
+            const saved = getCookie("stock_date");
+            if (saved) {
+              const parts = saved.split(" to ");
+              const dates = parts.map(p => {
+                const [y,m] = p.split("-");
+                return new Date(y, parseInt(m,10) - 1, 1);
+              });
+              instance.setDate(dates, true);
+            }
+          }
+        });
+    
+        // — Select2 —
+        $('.use_stock_id').each(function(){
+          if(!$(this).data('select2')){
+            $(this).select2({
+              width:'100%',
+              placeholder:'Select Stock Item',
+              dropdownParent:$('#useStockModal')
+            }).on('select2:open',()=>{
+              setTimeout(() => {
+                document.querySelector('.select2-container--open .select2-search__field')?.focus();
+              }, 0);
+            });
+          }
+        });
+    
+        // — DataTable —
+        if($.fn.DataTable.isDataTable('#stockUsageTable')){
+          table.destroy();
+        }
+        table = $('#stockUsageTable').DataTable({
+          processing:true,
+          serverSide:true,
+          pageLength: 50,
+          ajax:{
+            url: Wo_Ajax_Requests_File()+'?f=manage_stock&s=fetch_usage',
+            type:'POST',
+            data: d => {
+              const dr = ($('#date_start_end').val()||'').split(' to ');
+              d.user_id    = $('#user_id').val() || '';
+              d.data_start = dr[0] || '';
+              d.data_end   = dr[1] || dr[0] || '';
+            }
+          },
+          columns:[
+            { data:'date' },
+            { data:'stock_name' },
+            { data:'quantity' },
+            { data:'remaining' },
+            { data:'user_name' }
+          ]
+        });
+    
+        // ————— Handlers (namespaced) —————
+    
+        $(document)
+    
+        .on('change.stockPage', '#history_stock_id', function(){
+          const stockId = this.value;
+          if(!stockId) return;
+          if(priceChart)    priceChart.destroy();
+          if(quantityChart) quantityChart.destroy();
+          const dr = ($('#date_start_end').val()||'').split(' to ');
+          const ds = dr[0], de = dr[1]||dr[0];
+    
+          $.post(Wo_Ajax_Requests_File()+'?f=manage_stock&s=fetch_price_history',
+            { stock_id:stockId, data_start:ds, data_end:de },
+            resp=>{
+              if(resp.status!==200) return;
+              const labels = resp.data.map(e=>e.date),
+                    vals   = resp.data.map(e=>e.price),
+                    ctx    = $('#priceChart')[0].getContext('2d');
+              priceChart = new Chart(ctx, {
+                type:'line',
+                data:{ labels, datasets:[{ label:'Price (৳)', data:vals, fill:false }] },
+                options:{
+                  scales:{ x:{ title:{ display:true, text:'Date' } },
+                           y:{ title:{ display:true, text:'Price (৳)' }, ticks:{ callback:formatTaka } } },
+                  plugins:{ tooltip:{ callbacks:{ label:c=>formatTaka(c.parsed.y) }}}
+                }
+              });
+            }, 'json'
+          );
+    
+          $.post(Wo_Ajax_Requests_File()+'?f=manage_stock&s=fetch_quantity_history',
+            { stock_id:stockId, data_start:ds, data_end:de },
+            resp=>{
+              if(resp.status!==200) return;
+              const labels = resp.data.map(e=>e.date),
+                    vals   = resp.data.map(e=>e.quantity),
+                    ctx    = $('#quantityChart')[0].getContext('2d');
+              quantityChart = new Chart(ctx, {
+                type:'line',
+                data:{ labels, datasets:[{ label:'Quantity', data:vals, fill:false }] },
+                options:{
+                  scales:{
+                    x:{ title:{ display:true, text:'Date' } },
+                    y:{ title:{ display:true, text:'Quantity' } }
+                  }
+                }
+              });
+            }, 'json'
+          );
+        })
+    
+        .on('submit.stockPage', '#useStockForm', function(e){
+          e.preventDefault();
+          const uid = $('#user_id').val();
+          if(!uid){
+            $('#use_stock_feedback').html('⚠️ Please select a user.');
+            return;
+          }
+          let data = $(this).serializeArray();
+          data.push({ name:'user_id', value:uid });
+    
+          $.ajax({
+            type:'POST',
+            url: Wo_Ajax_Requests_File()+'?f=manage_stock&s=use_stock',
+            data: $.param(data),
+            dataType:'json',
+            success(res){
+              if(res.status===200){
+                $('#useStockModal').modal('hide');
+                pos5_success_noti(res.message);
+                DataTableRefresh();
+              } else {
+                $('#use_stock_feedback').html(res.message.replace(/\n/g,'<br>'));
+              }
+            },
+            error(){
+              $('#use_stock_feedback').html('AJAX error, try again.');
+            }
+          });
+        })
+    
+        .on('click.stockPage', '#addRowBtn', function(){
+          const tpl = $('#bulkContainer .bulk-row').first();
+          const $new = tpl.clone(false).find('.select2-container').remove().end();
+          $new.find('select').val('').show();
+          $new.find('input').val('');
+          $('#bulkContainer').append($new);
+          $new.find('.use_stock_id').select2({
+            width:'100%',
+            placeholder:'Select Stock Item',
+            dropdownParent:$('#useStockModal')
+          });
+        })
+    
+        .on('click.stockPage', '.remove-row', function(){
+          if($('#bulkContainer .bulk-row').length>1){
+            $(this).closest('.bulk-row').remove();
+          }
+        });
+    
+      }; // End of initStockPage
+    
+      // ————— Initialize on first load —————
+      $(document).ready(initStockPage);
+    $(document).on('select2:open', function() {
+      document.querySelectorAll('.select2-search__field').forEach(el => el.focus());
+    });
+
+    })(jQuery);
+    </script>

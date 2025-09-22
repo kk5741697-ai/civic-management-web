@@ -1,0 +1,176 @@
+<?php Global $leave_id;
+?>
+<div class="modal fade" id="updateLeave-modal" role="dialog">
+	<div class="modal-dialog modal-lg wow_mat_mdl invoice_print">
+		<div class="modal-content p-3">
+			<div class="d-flex justify-content-between">
+				<h3 class="mb-2 fs-5">Update Leave</h3>
+				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+			</div>
+			<hr class="style-one" style=" margin-bottom: 15px !important; ">
+			<?php
+				$last_leave = $db->where('id', $leave_id)->getOne(T_LEAVES);
+				$user_data = Wo_UserData($last_leave->user_id);
+				$remaining_leave = remaining_leave($last_leave->user_id);
+				
+				if ($remaining_leave < 1) { ?>			  
+				<div class="alert alert-dismissible fade show py-2 bg-warning">
+                <div class="d-flex align-items-center">
+                  <div class="fs-3 text-dark"><ion-icon name="warning-sharp" role="img" class="md hydrated" aria-label="warning sharp"></ion-icon>
+                  </div>
+                  <div class="ms-3">
+                    <div class="text-dark">Uh-oh! 🌟 This employee has reached their leave limit for the year. They’ve used up: <strong><?php echo $remaining_leave; ?></strong> days.</div>
+                  </div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+              </div>
+				<?php } ?>
+			
+			
+			
+			<div class="row row-cols-1 row-cols-lg-2 row-cols-xl-2">
+				<div class="col w-100">
+					<div class="card radius-10">
+						<div class="card-body">
+							<div class="d-flex align-items-center">
+								<img src="<?php echo $user_data['avatar']; ?>" class="rounded-circle p-1 border" width="90" height="90" alt="...">
+								<div class="flex-grow-1 ms-3">
+									<h5 class="mt-0"><?php echo $user_data['name']; ?></h5>
+									<p class="mb-0"><?php echo $user_data['designation']; ?><?php echo (!empty($user_data['department'])) ? ', ' . $user_data['department'] : ''; ?></p>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="col">
+					<div class="card radius-10 mb-2">
+						<div class="card-body">
+							<div class="d-flex align-items-center">
+								<div class="allocation-members">
+									<p class="mb-0">Reason</p>
+									<h3 class="mb-0 fs-5"><?php echo $last_leave->reason; ?></h3>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="col">
+					<div class="card radius-10 mb-2">
+						<div class="card-body">
+							<div class="d-flex align-items-center">
+								<div class="allocation-members">
+									<p class="mb-0">Durations</p>
+									<h3 class="mb-0 fs-5"><?php echo $last_leave->days; ?> Days</h3>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+				
+				<div class="col">
+					<div class="card radius-10 mb-2">
+						<div class="card-body">
+							<div class="d-flex align-items-center">
+								<div class="allocation-members">
+									<p class="mb-0">Leave From</p>
+									<h3 class="mb-0 fs-5"><?php echo date('d F Y, l', $last_leave->leave_from); ?></h3>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="col">
+					<div class="card radius-10 mb-2">
+						<div class="card-body">
+							<div class="d-flex align-items-center">
+								<div class="allocation-members">
+									<p class="mb-0">Leave To</p>
+									<h3 class="mb-0 fs-5"><?php echo date('d F Y, l', $last_leave->leave_to); ?></h3>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+			
+			<hr class="style-one" style=" margin-bottom: 15px !important; ">
+			<div class="row g-3 needs-validation">
+				<div class="col-md-4">
+					<select name="leave_type" id="leave_type" class="form-select w-100">
+						<option value="Casual" <?php echo ($last_leave->type == 'Casual') ? 'selected' : ''; ?>>Casual</option>
+						<option value="Sick" <?php echo ($last_leave->type == 'Sick') ? 'selected' : ''; ?>>Sick</option>
+						<option value="Earned" <?php echo ($last_leave->type == 'Earned') ? 'selected' : ''; ?>>Earned</option>
+						<option value="Maternity" <?php echo ($last_leave->type == 'Maternity') ? 'selected' : ''; ?>>Maternity</option>
+					</select>
+				</div>
+				<div class="col-md-4">
+					<select name="is_paid" id="is_paid" class="form-select w-100">
+						<option value="1" <?php echo ($last_leave->is_paid == 1) ? 'selected' : ''; ?>>Paid</option>
+						<option value="0" <?php echo ($last_leave->is_paid == 0) ? 'selected' : ''; ?>>Unpaid</option>
+					</select>
+				</div>
+				<div class="col-md-4">
+					<select name="is_approved" id="is_approved" class="form-select w-100">
+						<option value="9" <?php echo ($last_leave->is_approved == 0) ? 'selected' : ''; ?>>Pending</option>
+						<option value="1" <?php echo ($last_leave->is_approved == 1) ? 'selected' : ''; ?>>Approved</option>
+						<option value="2" <?php echo ($last_leave->is_approved == 2) ? 'selected' : ''; ?>>Rejected</option>
+					</select>
+				</div>
+				<div class="text-center mt-3">
+					<button class="btn btn-primary add_wow_loader w-100" onclick="submit_updateLeave()" ><?php echo $wo['lang']['save']; ?></button>
+				</div>
+			</div>
+	
+			<script>
+				function submit_updateLeave() {
+					var leave_type = $('#leave_type').val();
+					var is_approved = $('#is_approved').val();
+					var is_paid = $('#is_paid').val();
+					var leave_id = "<?php echo $last_leave->id; ?>";
+					
+					// Proceed with AJAX request to delete the lead
+					$.ajax({
+						type: "POST",
+						url: Wo_Ajax_Requests_File() + '?f=manage_leave&s=update_leave', // Ensure Wo_Ajax_Requests_File() returns the correct URL
+						data: { leave_type: leave_type, is_approved: is_approved, is_paid: is_paid, leave_id: leave_id },
+						success: function (response) {
+							DataTableRefresh(); // Refresh DataTable on success
+							$('.btn-close').click();
+						},
+						error: function(xhr, status, error) {
+							console.error('Error deleting lead:', error);
+							// Handle error here if needed
+						}
+					});
+				}
+				$(document).ready(function() {
+					// Initialize Flatpickr
+					var flatpickrInstance = flatpickr('#leave_start_end', {
+						mode: 'range',
+						dateFormat: 'Y-m-d',
+						altFormat: 'F j, Y',
+						altInput: false,
+						allowInput: false,
+						clickOpens: true,
+						onChange: function(selectedDates, dateStr, instance) {
+							// console.log(selectedDates);
+							// // You can add additional logic here if needed
+						},
+						onReady: function(selectedDates, dateStr, instance) {
+							// Add custom date range options to the Flatpickr container
+							var datepickerContainer = instance.calendarContainer;
+
+						}
+					});
+					
+					// Attach a listener for the modal hidden event
+					$('#updateLeave-modal').on('hidden.bs.modal', function() {
+						$('#updateLeave-modal').fadeOut(200);
+						$('#updateLeave-modal').remove();
+					});
+				});
+			</script>
+		</div>
+	</div>
+			<!--end row-->
+</div>

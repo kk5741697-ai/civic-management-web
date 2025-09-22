@@ -1,0 +1,254 @@
+<?php Global $lead, $remark; ?>
+<div class="modal fade full_screen" id="viewReminder-modal" role="dialog" data-id="<?php echo $remark->id; ?>">
+	<div class="modal-dialog modal-lg wow_mat_mdl invoice_print">
+		<div class="modal-content p-3">
+			<style>
+				#viewReminder-modal .card-body {
+					padding: 10px;
+				}
+				#viewReminder-modal p.mb-0 {
+					font-size: 12px;
+				}
+				#viewReminder-modal h4.mb-0 {
+					font-size: 18px;
+					line-break: anywhere;
+				}
+				tr[data-id="<?php echo $remark->id; ?>"] {
+					--bs-table-bg: #dddddd;
+				}
+				.system_remark .remarks-item {
+				    color: #000000ab;
+                    font-size: 11px;
+				}
+				.system_remark .time-badge {
+                    font-size: 9px;
+				}
+			</style>
+			<div class="d-flex justify-content-between fixed_top">
+				<h3 class="mb-2 d-flex align-items-center fs-6 mr-auto" style="justify-content: space-between;width: 100%;margin-right: 6px;" title="<?php echo Wo_Time_Elapsed_String_word($lead->created); ?>"><?php echo date('d M Y - h:ia', $lead->created); ?> <span class="badge" style="font-size: 12px;background: #2260ff;"><?php echo $lead->source; ?></span></h3>
+				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+			</div>
+			<div class="row row-cols-1 row-cols-lg-2 row-cols-xl-2">
+				<div class="col w-100 mt-2">
+					<div class="card radius-10 mb-2">
+						<div class="card-body">
+							<div class="d-flex align-items-center">
+								<div class="">
+									<p class="mb-0">Note</p>
+									<h4 class="mb-0"><?php echo $remark->remarks; ?></h4>
+								</div>
+								<div class="ms-auto fs-2">
+                                    <i class='fadeIn animated bx bx-note' ></i>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+				<?php
+				// Format the "Remind At" display. If the reminder date is today, show only time.
+                $reminderDate = date("Y-m-d", $remark->remind_at);
+                $today = date("Y-m-d");
+                $displayRemindAt = ($reminderDate == $today)
+                    ? 'Today - ' . date("h:i A", $remark->remind_at)
+                    : date("d.m.Y h:i A", $remark->remind_at);
+                
+                // Determine the reminder status
+                if ($remark->remind_at > time()) {
+                    // Future reminder
+                    $remind_status = 'Upcoming (' . Wo_Time_Remaining_String_word($remark->remind_at) . ')';
+                } elseif ($remark->remind_at < time()) {
+                    // Past reminder
+                    $remind_status = 'Past (' . Wo_Time_Elapsed_String_word($remark->remind_at) . ')';
+                } else {
+                    $remind_status = 'Running';
+                }
+                ?>
+                <div class="col w-100">
+                    <div class="card radius-10 mb-2">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center">
+                                <div>
+                                    <p class="mb-0">Remind At</p>
+                                    <h4 class="mb-0"><?php echo $displayRemindAt; ?></h4>
+                                    <h4 class="mb-0"><?php echo $remind_status; ?></h4>
+                                </div>
+                                <div class="ms-auto fs-2">
+                                    <i class="fadeIn animated bx bx-alarm"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+				<hr class="style-one w-100">
+				<div class="table-responsive mt-2 w-100">
+					<h5 class="mb-2 fs-6">Additional Details</h5>
+					<table class="table align-middle mb-0">
+						<tbody>
+						    <tr>
+						        <td>Name</td>
+						        <td><?php echo $lead->name; ?></td>
+					        </tr>
+						    <tr>
+						        <td>Profession</td>
+						        <td><?php echo (!empty($lead->profession)) ? $lead->profession : '-'; ?><?php echo (!empty($lead->company)) ? '<br /> ' . $lead->company : ''; ?></td>
+					        </tr>
+						    <tr>
+            				    <?php
+                				    if ($lead->member == 0) {
+                						$selected_id = $lead->assigned;
+                					} else {
+                						$selected_id = $lead->member;
+                					}
+            				    ?>
+						        <td>Phone</td>
+                                <td style=" display: flex; align-items: center; ">
+                                    <?php
+                                    $phone_number = '+' . correctNumber($lead->phone);
+                                    if ($wo['user']['user_id'] == $selected_id) {
+                                        echo $phone_number;
+                                    } else {
+                                        echo maskPhoneNumber($phone_number);
+                                    }
+                                    ?>
+                                    
+                                    <div class="ms-auto fs-4 d-flex gap-3">
+                                        <!-- Call Button -->
+                                        <a href="tel:<?php echo $phone_number; ?>" class="text-primary">
+                                            <i class="lni lni-phone bx-tada bx-rotate-90"></i>
+                                        </a>
+                                        <!-- WhatsApp Button -->
+                                        <?php if (Wo_IsMobile()) { ?>
+                                            <a href="whatsapp://send?phone=<?php echo str_replace('+', '', $phone_number); ?>" class="text-success">
+                                                <i class="lni lni-whatsapp bx-tada bx-rotate-90"></i>
+                                            </a>
+                                        <?php } else { ?>
+                                            <a href="https://wa.me/<?php echo str_replace('+', '', $phone_number); ?>" target="_blank" class="text-success">
+                                                <i class="lni lni-whatsapp bx-tada bx-rotate-90"></i>
+                                            </a>
+                                        <?php } ?>
+                                    </div>
+                                </td>
+                				
+					        </tr>
+                				<?php
+                				// Decode the JSON data stored in 'additional' field
+                				$additionalData = json_decode($lead->additional, true); // Use 'true' to get an associative array
+                				
+                				$additionalData['page_id'] = isset($additionalData['page_id']) ? $additionalData['page_id'] : '';
+                				
+                				if ($additionalData['page_id'] == '259547413906965') {
+                                    $project_name = 'Civic Hill Town';
+                                } else if ($additionalData['page_id'] == '1932174893479181') {
+                                    $project_name = 'Civic Moon Hill';
+                                } else {
+                                    $project_name = 'N/A';
+                                }
+                                
+                                if ($project_name) {
+                				?>
+    						    <tr>
+    						        <td>Project</td>
+    						        <td><?php echo $project_name; ?></td>
+    					        </tr>
+                				<?php } ?>
+		        				<?php
+                				$plotSize = "N/A";
+                                foreach ($additionalData as $key => $value) {
+                                    if (str_contains($key, "কত_কাঠার_প্লট_নির্বাচন_করুন")) {
+                                        $plotSize = $value;
+                                        break;
+                                    }
+                                }
+                
+                                if ($plotSize) {
+                				?>
+    						    <tr>
+    						        <td>কত কাঠা</td>
+    						        <td><?php echo str_replace('_', ' ', $plotSize); ?></td>
+    					        </tr>
+                				<?php } ?>
+                                <?php if (!empty($lead->email) && $lead->email != 'N/A') { ?>
+    						    <tr>
+    						        <td>Email</td>
+    						        <td><?php echo $lead->email; ?></td>
+    					        </tr>
+                                <?php } ?>
+						</tbody>
+					</table>
+				</div>
+				
+                <script>
+                
+                    $(document).ready(function() {
+                        $('#viewClient-modal [data-dismiss="modal"]').off('click').on('click', function() {
+                            $('#viewReminder-modal').fadeOut(200, function() { $(this).remove(); });
+                        });
+                        
+                        $('#viewReminder-modal').off('hidden.bs.modal').on('hidden.bs.modal', function() {
+                            // Reset the URL to remove query parameters and the hash
+                            var cleanURL = location.origin + location.pathname;
+                            history.replaceState(null, '', cleanURL);
+                            
+                            $(this).fadeOut(200, function() {
+                                $(this).remove();
+                            });
+                        });
+
+                
+                        // Back/ESC handling: if any dropup is open, close it; otherwise, close the modal.
+                        $(document).off('keydown').on('keydown', function(e) {
+                            if (e.key === "Escape" || e.which === 27) {
+                                if ($('.dropup .dropdown-menu.show').length) {
+                                    history.back();
+                                } else {
+                                    $('#viewReminder-modal').modal('hide');
+                                    history.back();
+                                }
+                            }
+                        });
+                        
+                        window.onpopstate = function(event) {
+                            if ($('.dropup .dropdown-menu.show').length) {
+                                $('.dropup .dropdown-menu.show').removeClass('show');
+                            } else {
+                                $('#viewReminder-modal').modal('hide');
+                            }
+                        };
+                    });
+                    
+                    document.addEventListener('click', function(e) {
+                        // If the click is outside any element with .dropup and .modal...
+                        if (!e.target.closest('.dropup') && !e.target.closest('.modal')) {
+                            if (location.hash === '#dropup') {
+                                // Close any open dropup menus.
+                                document.querySelectorAll('.dropup .dropdown-menu.show').forEach(menu => {
+                                    menu.classList.remove('show');
+                                });
+                                // Remove the "#dropup" hash from the URL without affecting history.
+                                history.replaceState(null, '', location.href.replace('#dropup', ''));
+                            }
+                        }
+                        
+                        // If the click is outside any element with .dropup and .modal...
+                        if (!e.target.closest('.dropup')) {
+                            if (location.hash === '#dropup') {
+                                // Close any open dropup menus.
+                                document.querySelectorAll('.dropup .dropdown-menu.show').forEach(menu => {
+                                    menu.classList.remove('show');
+                                });
+                                // Remove the "#dropup" hash from the URL without affecting history.
+                                history.replaceState(null, '', location.href.replace('#dropup', ''));
+                            }
+                        }
+                    }, true);
+
+
+                </script>
+
+				</div>
+			</div>
+			<!--end row-->
+		</div>
+	</div>
+</div>

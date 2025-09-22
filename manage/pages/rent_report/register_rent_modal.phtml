@@ -1,0 +1,161 @@
+<div class="modal fade" id="register_rent-modal" role="dialog">
+	<div class="modal-dialog modal-lg wow_mat_mdl invoice_print">
+		<div class="modal-content p-3">
+			<div class="d-flex justify-content-between">
+				<h3 class="mb-2 fs-5">Register Rent</h3>
+				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+			</div>
+			<div class="d-flex justify-content-between mb-1 mt-2">
+				<span style=" align-items: center; display: flex; font-weight: 500; color: black; " id="username_Field"></span>
+				<span style=" align-items: center; display: flex; font-weight: 500; color: black; ">Bill Submit: <?php echo date('d M Y'); ?></span>
+			</div>
+			<hr class="style-one mb-3"/>
+			<div id="user_problem" style=" text-align: center; font-size: 20px;margin: auto; padding: 90px 0px; ">
+				<i class="fadeIn animated bx bx-error-alt" style=" width: 100%; font-size: 44px;"></i>
+				You can`t register vehicle record with <strong class="text-black">`All User`</strong>.<br/> Please select another user.
+			</div>
+			<form class="row g-3 needs-validation" id="register-rent-form">
+				<div class="col-md-6">
+					<label class="form-label" for="visit_date">Visit Date <strong class="text-red">*</strong></label>
+					<input class="form-select w-100" type="text" id="visit_date" name="visit_date" placeholder="Select date" value="<?php echo date('Y-m-d'); ?>" readonly required>
+				</div>
+				
+				<div class="col-md-6">
+					<label class="form-label" for="up_time">Payment</label>
+					<input class="form-control w-100" type="number" id="payment" name="payment" placeholder="Payment">
+				</div>
+				<div class="col-md-6">
+					<label class="form-label" for="up_time">Up Time</label>
+					<input class="form-control w-100" type="time" id="up_time" name="up_time" placeholder="Up Time">
+				</div>
+				<div class="col-md-6">
+					<label class="form-label" for="down_time">Down Time</label>
+					<input class="form-control w-100" type="time" id="down_time" name="down_time" placeholder="Down Time">
+				</div>
+				
+				<div class="col-md-6">
+					<label class="form-label" for="vehcal_type">Vehicle Type <strong class="text-red">*</strong></label>
+					<select name="vehcal_type" id="vehcal_type" class="form-select w-100" required>
+						<option value="">Please Select</option>
+						<option value="Private Car">Private Car</option>
+						<option value="Micro">Micro</option>
+					</select>
+				</div>
+				
+				<div class="col-md-6">
+					<label class="form-label" for="vendor_select">Vendor Type <strong class="text-red">*</strong></label>
+					<select name="vendor_select" id="vendor_select" class="form-select w-100" required>
+						<option value="">Please Select</option>
+						<option value="Office">Office</option>
+						<option value="Others">Others</option>
+					</select>
+				</div>
+				
+				<div class="col-md-12 vendor_name">
+					<label class="form-label" for="vendor">Vendor/Driver Name <strong class="text-red">*</strong></label>
+					<input class="form-control w-100" type="text" id="vendor" name="vendor" placeholder="Type Vendor Name" disabled required>
+				</div>
+				
+				<div class="col-md-9">
+					<label class="form-label" for="destination">Destination <strong class="text-red">*</strong></label>
+					<input class="form-control w-100" type="text" id="destination" name="destination" placeholder="" required>
+				</div>
+				
+				<div class="col-md-3">
+					<label class="form-label" for="person">Total Person</label>
+					<input class="form-control w-100" type="number" id="person" name="person" placeholder="">
+				</div>
+				<input class="form-control w-100 d-none" type="hidden" id="get_user_id" name="user_id" placeholder="" required>
+				
+				<div class="text-center mt-3">
+					<button type="submit" class="btn btn-primary add_wow_loader w-100"><?php echo $wo['lang']['save']; ?></button>
+				</div>
+			</form>
+	
+			<script>
+				function reset_form_data() {
+					document.getElementById('register-rent-form').reset();
+					$('#vendor').val('').prop('disabled', true);
+					$('#vehcal_type, #vendor_select').val('').change();
+				}
+
+				$(document).ready(function() {
+					$('#register-rent-form').ajaxForm({
+						url: Wo_Ajax_Requests_File() + '?f=manage_rent&s=register_rent',
+						type:"POST",
+						beforeSend: function() {
+							
+						},
+						success: function(data) {
+							if (data['status'] == 200) {
+								pos5_success_noti(data['message']);
+								reset_form_data();
+								$("#register_rent-modal").modal('hide');
+							} else {
+								pos4_error_noti(data['message']);
+							}
+						}
+					});
+				});
+				
+				$('.vendor_name').addClass('d-none');
+				$('#vendor').prop('disabled', true);
+				$('#vendor').val('Office');
+				
+				$('#vendor_select').change(function() {
+					if ($(this).val() === 'Office' || $(this).val() === '') {
+						$('.vendor_name').addClass('d-none');
+						$('#vendor').prop('disabled', true);
+						$('#vendor').val('Office');
+					} else {
+						$('.vendor_name').removeClass('d-none');
+						$('#vendor').prop('disabled', false);
+						$('#vendor').val('');
+						$('#vendor').focus();
+					}
+				});
+				
+				function update_field_data() {
+					var user_id = $('#user_id').val();
+					
+					if (user_id == 999) {
+						$("#register-rent-form").addClass('d-none');
+						$("#user_problem").removeClass('d-none');
+					} else {
+						$("#register-rent-form").removeClass('d-none');
+						$("#user_problem").addClass('d-none');
+					}
+					
+					$('#get_user_id').val(user_id);
+					var user_name = $('#user_id :selected').text();
+					$('#username_Field').html(user_name);
+				}
+				update_field_data();
+				$('#user_id').change(function() {
+					update_field_data();
+				});
+
+				$(document).ready(function() {
+					var flatpickrInstance = flatpickr('#visit_date', {
+						dateFormat: 'Y-m-d',
+						altFormat: 'F j, Y',
+						altInput: false,
+						allowInput: false,
+						clickOpens: true,
+						onChange: function(selectedDates, dateStr, instance) {
+						},
+						onReady: function(selectedDates, dateStr, instance) {
+							var datepickerContainer = instance.calendarContainer;
+
+						}
+					});
+					
+					$('#register_rent-modal').on('hidden.bs.modal', function() {
+						$("#register_rent-modal").modal('hide');
+					});
+				});
+			</script>
+		</div>
+	</div>
+			<!--end row-->
+</div>

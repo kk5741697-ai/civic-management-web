@@ -1,0 +1,333 @@
+<script>
+window.onload = () => {
+   // (A1) ASK FOR PERMISSION
+   console.log('activateWebNotifications, status = '+Notification.permission);
+   if (Notification.permission === 'default') {
+    Notification.requestPermission().then(perm => {
+       if (Notification.permission === 'granted') {
+		  
+        regWorker().catch(err => console.error(err));
+       } else {
+        alert('Veuillez autoriser les notifications. ');
+       }
+    });
+   } 
+ 
+   // (A2) GRANTED
+   else if (Notification.permission === 'granted') {
+    regWorker().catch(err => console.error(err));
+   }
+
+   // (A3) DENIED
+   else { 
+   alert('Veuillez autoriser les notifications. ');
+   }
+};
+
+// (B) REGISTER SERVICE WORKER
+async function regWorker () {
+  // (B1) YOUR PUBLIC KEY - CHANGE TO YOUR OWN!
+  const publicKey = 'BBigodJeWfFF-2niqScq9YHznHI3W_LKmZFUPAatXeXkuxSDhN4ZX0hZVUibm4jUxvwEKC5PaDWoabcCYO99l8U';
+ 
+ console.log(window.location.href);
+ if ((window.location.href).includes('DEV')){
+	var scope1 = '/DEV/';
+ }
+ else{
+	var scope = '/';
+ }
+
+  // (B2) REGISTER SERVICE WORKER
+  navigator.serviceWorker.register("<?php echo $wo['config']['site_url']; ?>/service-worker.js", { scope: scope1 });
+
+  // (B3) SUBSCRIBE TO PUSH SERVER
+  navigator.serviceWorker.ready
+  .then(reg => {
+	  console.log('subscribe to notification server');
+    reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: publicKey
+    }).then(
+      // (B3-1) OK - TEST PUSH SUSBSCRIPTION TO SERVER 
+      sub => {
+        var data = new FormData();
+        data.append('sub', JSON.stringify(sub));
+		console.log('sub', sub);
+        fetch(Wo_Ajax_Requests_File() + '?f=web_push&s=save_subscription', { method: 'POST', body : data })
+        .then(res => res.text())
+        .then(txt => console.log(txt))
+        .catch(err => console.error(err));
+      },
+ 
+      // (B3-2) ERROR!
+      err => console.error(err)
+    );
+  });
+}
+
+
+	"use strict";
+
+		(function(window) {
+			function _SMColibri() {
+				var data = {
+					url: "<?php echo $wo['config']['site_url']; ?>"
+				};
+				var _smc = Object({
+					curr_pn: "<?php echo fetch_or_get($wo["pn"], "none"); ?>",
+					curr_url: "<?php echo fetch_or_get($wo["curr_url"], $wo["config"]["url"]); ?>",
+					PS: Object({}),
+					vue: Object({}),
+					is_logged_user: '<?php echo (($wo["logged"] == true) ? 1 : 0); ?>',
+					back_url: data.url,
+					timeout: false,
+					msb_upinterval: "<?php echo fetch_or_get($wo["config"]["page_update_interval"], "30"); ?>",
+					userlbox: {
+						interv: 0,
+						status: false,
+						lifetm: 1000,
+						curr_id: false,
+						curr_el: false,
+						pre_delay: false
+					}
+				});
+				
+				_smc.spa_load = function(url = "", push_state = true, reload = false, fullpage = false, panel_mode = 'management') {
+
+					if (_smc.curr_url == url && reload == false) {
+						return false;
+					}
+
+					_smc.curr_url = url;
+
+                    if (window.matchMedia("(max-width: 1025px)").matches) {
+                        $(".wrapper").removeClass("toggled");
+                    }
+
+	
+					var timeline      = $('[data-el="timeline-container-wrapper"]');
+					var preloader     = timeline.find('[data-el="spa-preloader"]');
+					var left_sidebar  = $('[data-app="left-sidebar"]');
+					var mobile_navbar = $('[data-app="mobile-navbar"]');
+
+					if (push_state) {
+						window.history.pushState({state: "new", back_url: url}, "", url);
+					}
+					if (fullpage) {
+						wo_panelswitchStart();
+					}
+					$.ajax({
+						url: url,
+						type: 'GET',
+						data: {spa_load: '1', fullpage: fullpage, panel_mode: panel_mode},
+						dataType: 'json',
+						async: true,
+						beforeSend: function() {
+							if (fullpage) {
+								wo_panelswitchStart();
+							}
+							$('#contnet').addClass('opacity_start');
+							wo_close_all_modals();
+							$('.search-container').removeClass('open');
+						}
+					}).done(function(data = {}) {
+						if (data.status == 200) {
+							$('#contnet').removeClass('opacity_start');
+							var prevapp   = _smc.curr_pn;
+							var json_data = data.json_data;
+							_smc.curr_pn  = json_data.pn;
+
+							$('title').html(json_data.page_title);
+							const regex = "/ct=";
+							const found = url.match(regex);
+							if (found) {
+								$(document).ready(function() {
+									Wo_Delay(function(){
+										const Ho9_PopSecs = document.getElementById("Ho9_PopSec");
+										Ho9_PopSecs.scrollIntoView({
+											block: "start",
+											behavior: "smooth"
+										});
+									}, 150);
+								});
+							} else {
+								$(document).ready(function() {
+									// alert('worked');
+								});
+							}
+							$("html, body").animate({ scrollTop: 0 }, 150);
+							if (json_data.pn == 'home') {
+							   $('body').addClass('istopbar');
+							   $('body').addClass('full_width_cont');
+							   $('body').addClass('home-anon');
+							   $('body').addClass('home-anon--new');
+							   $('#contnet').removeClass('row15');
+							 } else {
+							   $('body').removeClass('istopbar');
+							   $('body').removeClass('full_width_cont');
+							   $('body').removeClass('home-anon');
+							   $('body').removeClass('home-anon--new');
+							   $('#contnet').addClass('row15');
+							 }
+							 
+							if (fullpage) {
+								// Replace the HTML
+								$('body').html($(data.html));
+
+								// Reinitialize PerfectScrollbar
+								var targetElement = document.querySelector('.scrollable-element');
+								if (targetElement) {
+									new PerfectScrollbar(targetElement);
+								}
+
+								// Restart Pace.js
+								Pace.restart();
+
+							} else {
+								$('body').find('#contnet').html($(data.html));
+							}
+							wo_panelswitchEnd();
+						}
+						else if(data.status == 302) {
+							_smc.spa_load(data.redirect_url);
+						}
+
+						else {
+						}
+					}).always(function() {
+
+					});
+				}
+				_smc.spa_reload = function() {
+					if (window.location.href != undefined) {
+						_smc.spa_load(window.location.href, false, true);
+					}
+					else {
+						_smc.spa_load(data['url'], false, true);
+					}
+
+					return false;
+				}
+				_smc.go_back = function() {
+					history.back();
+				}
+
+				_smc.jump_back = function(step = 1) {
+					history.go(step);
+				}
+				_smc.init = function() {
+
+					if (cl_empty(window.history.state)) {
+						window.history.pushState({state: "new", back_url: window.location.href}, "", window.location.href);
+					}
+				}
+				return _smc;
+			} 
+
+			if (window.SMColibri === undefined) {
+				window.SMColibri = _SMColibri();
+			}
+		})(window);
+		$(document).ready(function($) {
+			$(document).on('click', 'a.brand.footer-brand', function(event) {
+				event.preventDefault();
+			});
+			$(document).on('click', '[data-anchor]', function(event) {
+				event.preventDefault();
+
+				if (window.SMColibri != undefined) {
+
+					var link = $(this).data('anchor');
+					SMColibri.spa_load(link);
+				}
+			});
+			$(document).on('click tap', 'a[data-spa]', function(event) {
+				event.preventDefault();
+				
+				var page_url_source = $(this).attr('href');
+				var reload_fullpage = $(this).data('fullpage') !== undefined;
+				var panel_mode = $(this).data('panelmode') || 'management';
+
+				SMColibri.spa_load(page_url_source, true, false, reload_fullpage, panel_mode);
+				
+				return false;
+			});
+
+			$(window).on("popstate", function () {
+
+				if (history.state) {
+					if ($.isEmptyObject(history.state.back_url) != true) {
+						SMColibri.spa_load(history.state.back_url, false);
+					}
+				}
+				return false;
+			});
+
+			$(document).ready(function($) {
+
+			SMColibri.init();
+
+			var page_height = $(document).height();
+
+
+
+			if (navigator.cookieEnabled == false) {
+				$('[data-app="announcement"]').html("<div class='announcement-danger'></div>");
+			}
+
+			$(document).on('click', 'div[data-app="lsb-back-drop"]', function(event) {
+				event.preventDefault();
+				SMColibri.toggleSB();
+			});
+
+			$(document).on('click tap', 'a[data-spa]', function(event) {
+				event.preventDefault();
+
+				var page_url_source = $(this).attr('href');
+
+				SMColibri.spa_load(page_url_source);	
+
+				return false;
+			});
+
+			$(window).on("popstate", function () {
+
+				if (history.state) {
+					if ($.isEmptyObject(history.state.back_url) != true) {
+						SMColibri.spa_load(history.state.back_url, false);
+					}
+				}
+
+				return false;
+			});
+
+			$(document).on('click tap', '[data-href]', function(event) {
+				event.preventDefault();
+				event.stopPropagation();
+
+				window.open($(this).data('href'), '_blank');
+
+				return false;
+			});
+
+
+		});
+		});
+	function cl_empty(value = '') {
+		if (value === '' || value === null || value === undefined || value == 0) {
+			return true
+		}
+		else {
+			return false
+		}
+	}
+	function wo_close_all_modals() {
+		$("div.modal").each(function(index, el) {
+			if ($(el).hasClass('show')) {
+				$(el).modal('hide');
+			}
+		});
+		$("div.modal-backdrop").remove();
+		$("body").removeClass('modal-open');
+	}
+</script>

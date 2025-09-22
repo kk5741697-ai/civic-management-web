@@ -1,0 +1,8 @@
+<?php
+    $notif_id = isset($_GET['notif_id']) ? $_GET['notif_id'] : null;
+    
+    if (!empty($notif_id) && is_numeric($notif_id) && $notif_id > 0) {
+        $user_id = $wo['user']['user_id'];
+        logUserNotificationView($user_id, $notif_id);
+    }
+?>

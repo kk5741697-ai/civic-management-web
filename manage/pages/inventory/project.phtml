@@ -1,0 +1,618 @@
+<?php
+// --- Config / sanitize inputs ---
+$project = isset($_GET['project']) ? trim($_GET['project']) : ''; //hill-town etc
+$project_title = ucwords(str_replace(['-', '_'], ' ', $project));
+
+$block_cookie = isset($_COOKIE['block']) ? json_decode($_COOKIE['block'], true) : [];
+$katha_cookie = isset($_COOKIE['katha']) ? json_decode($_COOKIE['katha'], true) : [];
+$plot_cookie  = isset($_COOKIE['plot']) ? json_decode($_COOKIE['plot'], true) : [];
+
+$blockValue = isset($block_cookie[$project]) ? $block_cookie[$project] : (isset($_GET['block']) ? $_GET['block'] : '');
+$kathaValue = isset($katha_cookie[$project]) ? $katha_cookie[$project] : (isset($_GET['katha']) ? $_GET['katha'] : '');
+$plotValue  = isset($plot_cookie[$project]) ? $plot_cookie[$project] : (isset($_GET['plot']) ? $_GET['plot'] : '');
+$file_num_filter = isset($_GET['file_num']) ? trim($_GET['file_num']) : '';
+
+// ensure global mapping exists (kept if you use elsewhere)
+global $project_mapping;
+$project_id = isset($project_mapping[$project]) ? $project_mapping[$project] : 0;
+
+// --- Build unique katha/road lists for the project ---
+$get_katha = $db->where('project', $project)->get(T_BOOKING, null, ['katha', 'road', 'file_num']);
+
+$katha_vals = [];
+$road_vals = [];
+if ($get_katha && is_array($get_katha)) {
+    foreach ($get_katha as $row) {
+        if (is_array($row)) {
+            $k = isset($row['katha']) ? $row['katha'] : '';
+            $r = isset($row['road']) ? $row['road'] : '';
+        } else { // object
+            $k = isset($row->katha) ? $row->katha : '';
+            $r = isset($row->road) ? $row->road : '';
+        }
+        if ($k !== '' && $k !== null) $katha_vals[] = $k;
+        if ($r !== '' && $r !== null) $road_vals[] = $r;
+    }
+}
+
+$unique_katha = array_values(array_unique($katha_vals));
+$unique_road  = array_values(array_unique($road_vals));
+
+$katha_array = [];
+foreach ($unique_katha as $value) {
+    $katha_array[$value] = (string)$value . ' Katha';
+}
+
+$road_array = [];
+foreach ($unique_road as $value) {
+    $road_array[$value] = (string)$value;
+}
+
+// --- Build dynamic WHERE for selecting latest bookings per client ---
+// NOTE: placeholders (?) in $subQuery must match count($params)
+$whereClauses = "b.project = ?";
+$params = [$project];
+
+if ($blockValue !== '') {
+    $whereClauses .= " AND b.block = ?";
+    $params[] = $blockValue;
+}
+if ($kathaValue !== '') {
+    $whereClauses .= " AND b.katha = ?";
+    $params[] = $kathaValue;
+}
+if ($plotValue !== '') {
+    $whereClauses .= " AND b.plot = ?";
+    $params[] = $plotValue;
+}
+if ($file_num_filter !== '') {
+    $whereClauses .= " AND b.file_num = ?";
+    $params[] = $file_num_filter;
+}
+
+$subQuery = "
+  SELECT bh.client_id, MAX(b.id) AS latest_booking_id
+  FROM " . T_BOOKING . " b
+  JOIN " . T_BOOKING_HELPER . " bh ON bh.booking_id = b.id
+  WHERE bh.status = '2' AND {$whereClauses}
+  GROUP BY bh.client_id
+";
+
+// IMPORTANT: Do NOT filter by c.project_id (doesn't exist). We already filtered bookings by project in subquery.
+// Join customers using latest.client_id casted to unsigned to match c.id (int).
+$mainSql = "
+  SELECT c.id AS client_id, c.name, c.phone, b.file_num
+  FROM ({$subQuery}) latest
+  JOIN " . T_BOOKING . " b ON b.id = latest.latest_booking_id
+  JOIN " . T_CUSTOMERS . " c ON c.id = CAST(latest.client_id AS UNSIGNED)
+  ORDER BY c.name ASC
+";
+
+// ------ DO NOT append extra params that don't have placeholders ------
+// previously we added $params[] = $project_id; <-- that caused the ArgumentCountError
+// so: do NOT add unused params here
+
+// Execute query
+$clients = $db->rawQuery($mainSql, $params);
+
+// --- Build contact_data for frontend ---
+$contact_data = [];
+if ($clients && is_array($clients)) {
+    foreach ($clients as $row) {
+        $cid = isset($row->client_id) ? $row->client_id : (isset($row->id) ? $row->id : null);
+        $name = isset($row->name) ? $row->name : '';
+        $phone = isset($row->phone) ? $row->phone : '';
+        $file_num = isset($row->file_num) ? $row->file_num : '';
+
+        if ($cid === null) continue;
+
+        $label = $name;
+        if ($file_num !== '' && $file_num !== null) {
+            $label .= ' #' . $file_num;
+        }
+
+        $contact_data[$cid] = [
+            'text'     => $label,
+            'phone'    => $phone,
+            'disabled' => false,
+        ];
+    }
+}
+
+$contactsDataJson = json_encode($contact_data, JSON_UNESCAPED_UNICODE);
+$uniqueKathaJson = json_encode($unique_katha, JSON_UNESCAPED_UNICODE);
+$uniqueRoadJson  = json_encode($unique_road, JSON_UNESCAPED_UNICODE);
+$kathaArrayJson  = json_encode($katha_array, JSON_UNESCAPED_UNICODE);
+$roadArrayJson   = json_encode($road_array, JSON_UNESCAPED_UNICODE);
+?>
+
+
+
+<style>
+#clientsTable_wrapper > .row:first-child {display: none;}
+#clientsTable_wrapper > .row tbody tr {cursor: pointer;}
+.inventory_item .helper_txt {
+    font-size: 14px !important;
+    font-weight: 500;
+}
+.inventory_item .style-one {
+    margin: 0.3rem 0 !important;
+}
+
+@media only screen and (max-width: 768px) {
+  .inventory_badges .badge:nth-child(n+4) {
+    display: none;
+  }
+}
+
+
+    </style>
+<div class="page-breadcrumb d-flex align-items-center mb-3">
+  <div class="breadcrumb-title pe-3"><?php echo $project_title . ' ' . $wo['title']; ?></div>
+</div>
+<div class="row">
+	<div class="container mt-2">
+		<div class="d-flex mb-4" style=" gap: 25px; ">
+		    <?php if ($project != 'moon-hill') { ?>
+			<select id="block" name="block" class="form-select" onchange="DataTableRefresh()">
+				<option selected>Select Block...</option>
+				<option value="a" <?= ($blockValue === 'a') ? 'selected' : '' ?>>Block A</option>
+				<option value="b" <?= ($blockValue === 'b') ? 'selected' : '' ?>>Block B</option>
+				<option value="c" <?= ($blockValue === 'c') ? 'selected' : '' ?>>Block C</option>
+			</select>
+		    <?php } ?>
+			<select id="katha" name="katha" class="form-select" onchange="DataTableRefresh()" style="width: 100%;">
+				<option selected>Select Katha...</option>
+				<?php foreach ($katha_array as $key => $value): ?>
+					<option value="<?= htmlspecialchars($key) ?>"  <?= ($kathaValue === $key) ? 'selected' : '' ?>><?= htmlspecialchars($value) ?></option>
+				<?php endforeach; ?>
+			</select>
+			
+            <input type="text" id="plot_num" name="plot_num" class="form-control mb-0" placeholder="Enter plot number" onkeyup="formatPlotNumber(this); delayedTrigger()">
+			<input type="hidden" id="project" name="project" class="d-none" value="<?php echo $project; ?>">
+		</div>
+		<a id="toggleFilters" class="d-flex mb-4" style="justify-content: space-between; cursor: pointer;">
+			<span style="align-content: center;">Not found any entry?</span>
+			<span class="btn btn-primary" style="zoom: .7;">Add New</span>
+		</a>
+
+		<div id="filterSection" class="d-flex mb-4" style="display: none !important; gap: 25px;margin-top: -11px;">
+			<select id="road" name="road" class="form-select" style="width: 100%;" onchange="DataTableRefresh()">
+				<option selected>Select Road...</option>
+				<?php foreach ($road_array as $key => $value): ?>
+					<option value="<?= htmlspecialchars($key) ?>"><?= htmlspecialchars($value) ?></option>
+				<?php endforeach; ?>
+			</select>
+			<select id="facing" name="facing" class="form-select" style="width: 100%;" onchange="DataTableRefresh()">
+				<option selected>Select Facing...</option>
+				<option value="east">East</option>
+				<option value="west">West</option>
+				<option value="north">North</option>
+				<option value="south">South</option>
+				<option value="north-east">North-East</option>
+				<option value="south-east">South-East</option>
+				<option value="south-west">South-West</option>
+				<option value="north-west">North-West</option>
+			</select>
+			
+			<select class="form-select" style="width: 100%; margin-bottom: 16px;" id="file_num">
+				<option disabled selected>Select Client...</option>
+			</select>
+			<span class="btn btn-primary" style="min-width: 100px;" onclick="submit_entry();">Add New</span>
+		</div>
+		
+		<!-- Your HTML code starts here -->
+		<div class="card radius-10 w-100 no_border">
+			<div class="card-body">
+				<div class="table-responsive mt-2">
+					<table id="clientsTable" class="table align-middle mb-0" style="width: 100%;">
+						<thead class="table-light">
+							<tr>
+							    
+                    		    <?php if ($project != 'moon-hill') { ?>
+								<th style="width: 100px;">Block</th>
+                    		    <?php } ?>
+								<th>Road</th>
+								<th style="width: 100px;">Katha</th>
+								<th style="width: 100px;">Plot</th>
+								<th>Facing</th>
+								<th>Status</th>
+								<th style="width: 100px;">File</th>
+							</tr>
+						</thead>
+						<tbody>
+						</tbody>
+					</table>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+<input type="hidden" id="contactsData" value='<?php echo htmlspecialchars($contactsDataJson, ENT_QUOTES, 'UTF-8'); ?>'>
+
+<script>
+function formatPlotNumber(input) {
+    let value = input.value.toUpperCase();
+    
+    // Match numbers followed by a single letter (e.g., "3A" → "3/A")
+    value = value.replace(/^(\d+)([A-Z])$/, "$1/$2");
+
+    input.value = value.toUpperCase();
+}
+
+function edit_entry_modal(id) {
+    if (id == null) {
+        return false;
+    }
+		var project = $('#project').val();
+		
+    $.ajax({
+        type: "POST",
+        url: Wo_Ajax_Requests_File() + '?f=manage_inventory&s=edit_modal',
+        data: {
+            id: id,
+            project: project
+        },
+        success: function (response) {
+            if (response['status'] == 200) {
+				$("#contnet").append(response['result']);
+				$("#editInventory-modal").modal('show');
+            }
+        }
+    });
+}
+
+$(document).ready(function() {
+    // Parse the contacts data from the hidden input element
+    const contactsDataRaw = $('#contactsData').val();
+    const contactsData = JSON.parse(contactsDataRaw);
+    
+    // Transforming contactsData to the desired format for a library (if needed)
+    const formattedContactsData = Object.keys(contactsData).map(key => ({
+        id: key,
+        text: contactsData[key].text,
+        disabled: contactsData[key].disabled,
+    }));
+
+
+    // Initialize Select2 if needed
+    function initializeSelect2() {
+        $("#file_num").select2({
+            data: formattedContactsData,
+            placeholder: 'Select Client...',
+            theme: 'bootstrap-5',
+        });
+    
+        $("#katha").select2({
+            placeholder: 'Select Katha...',
+            theme: 'bootstrap-5',
+            tags: true, // Enables adding new options
+            createTag: function(params) {
+                var term = $.trim(params.term);
+                if (!/^\d+(\.\d{1,2})?$/.test(term)) {
+                    return null; // Only allow numbers with up to two decimal places
+                }
+                return {
+                    id: term,
+                    text: term,
+                    newTag: true // Marks it as a new tag
+                };
+            }
+        });
+        
+        $("#road").select2({
+            placeholder: 'Select Road...',
+            theme: 'bootstrap-5',
+            tags: true, // Enables adding new options
+            createTag: function(params) {
+                var term = $.trim(params.term);
+        
+                // Define unique names that should remain unchanged
+                var uniqueRoads = ["Avenue Road 01", "Main Road"];
+        
+                // Check if the input matches a unique road name
+                if (uniqueRoads.includes(term)) {
+                    return {
+                        id: term,
+                        text: term,
+                        newTag: true
+                    };
+                }
+        
+                // Normalize the input
+                var normalizedTerm = term
+                    .toLowerCase()
+                    .replace(/_/g, ' ') // Replace underscores with spaces
+                    .replace(/-/g, ' ') // Replace dashes with spaces
+                    .replace(/\broad\b/i, 'Road') // Ensure "Road" has correct casing
+                    .replace(/^(\d+)([a-zA-Z])$/, 'Road $1/$2') // Convert "5a" → "Road 5/A"
+                    .replace(/^(\d+)\/([a-zA-Z]+)$/, 'Road $1/$2') // Convert "5/a" → "Road 5/A"
+                    .replace(/^(\d+)$/, 'Road $1') // Prefix standalone numbers with "Road"
+                    .replace(/\s+/g, ' ') // Remove extra spaces
+                    .trim();
+        
+                // Capitalize the first letter of each word
+                normalizedTerm = normalizedTerm.replace(/\b\w/g, function(l) {
+                    return l.toUpperCase();
+                });
+        
+                return {
+                    id: normalizedTerm,
+                    text: normalizedTerm,
+                    newTag: true
+                };
+            }
+        });
+
+        
+
+        $("#facing").select2({
+            placeholder: 'Select Road...',
+            theme: 'bootstrap-5'
+        });
+        
+         // Manually set the selected option after Select2 initialization
+        var selectedValue = "<?= htmlspecialchars($kathaValue) ?>"; // Ensure this is PHP variable
+        if (selectedValue) {
+            $('#katha').val(selectedValue).trigger('change');
+        }
+        
+        // Ensure the input field is focused when the dropdown opens
+        $("#file_num").on("select2:open", function() {
+            requestAnimationFrame(() => {
+                let searchField = document.querySelector(".select2-container--open .select2-search__field");
+                if (searchField) {
+                    searchField.focus();
+                }
+            });
+        });
+        // Ensure the input field is focused when the dropdown opens
+        $("#katha").on("select2:open", function() {
+            requestAnimationFrame(() => {
+                let searchField = document.querySelector(".select2-container--open .select2-search__field");
+                if (searchField) {
+                    searchField.focus();
+                }
+            });
+        });
+    }
+    
+	initializeSelect2();
+});
+
+function submit_entry(event = null) {
+    var submit = false;
+
+    // Check if Enter key is pressed
+    if (event && (event.key === "Enter" || event.keyCode === 13)) { 
+        submit = true;
+    }
+
+    // Check if the function was called without an event (e.g., button click)
+    if (!event) {
+        submit = true;
+    }
+
+    // If submission is triggered, validate fields before proceeding
+	   if (submit) {
+		var project = $('#project').val();
+		
+	    <?php if ($project != 'moon-hill') { ?>
+		var block = $('#block').val();
+	    <?php } ?>
+		var katha = $('#katha').val();
+		var plot_num = $('#plot_num').val();
+		var facing = $('#facing').val();
+		var road = $('#road').val();
+		var file_num = $('#file_num').val();
+
+		// Validate that all fields are filled
+		<?php if ($project == 'moon-hill') { ?>
+		if (!project || !katha || !plot_num || !facing || !road) {
+	    <?php } else { ?>
+		if (!project || !block || !katha || !plot_num || !facing || !road) {
+	    <?php } ?>
+			alert("Please fill in all required fields before submitting.");
+			return; // Stop submission if any field is empty
+		}
+
+		// Confirm before submitting
+		if (confirm("Are you sure you want to submit?")) {
+			$.ajax({
+				type: "POST",
+				url: Wo_Ajax_Requests_File() + '?f=manage_inventory&s=submit', // Your AJAX endpoint
+				data: {
+					project: project,
+					<?php if ($project != 'moon-hill') { ?>
+					block: block,
+	                <?php } ?>
+					katha: katha,
+					plot_num: plot_num,
+					facing: facing,
+					road: road,
+					file_num: file_num
+				},
+				dataType: "json",
+				success: function (data) {
+					if (data.status == 200) {
+						pos5_success_noti(data.message);
+						DataTableRefresh();
+
+						// Reset only file_num input and road select
+						$('#file_num').val('');  // Clear file_num input
+					} else {
+						pos4_error_noti(data.message);
+					}
+				},
+				error: function () {
+					alert("An error occurred while submitting. Please try again.");
+				}
+			});
+		}
+	}
+}
+
+
+$(document).ready(function() {
+    // Initialize DataTable without buttons
+    var table = $('#clientsTable').DataTable({
+        "processing": true,
+        "serverSide": true,
+        "pageLength": 25,  // Set the default number of entries per page
+        "ajax": {
+            "url": Wo_Ajax_Requests_File() + '?f=manage_inventory&s=fetch',
+            "type": "POST",
+            "beforeSend": function(xhr) {
+                $('#clientsTable').css('opacity', .5);
+            },
+            "data": function (d) {
+                // Include additional parameters for the AJAX request
+                d.project = $('#project').val();
+                <?php if ($project != 'moon-hill') { ?>
+                d.block = $('#block').val();
+        	    <?php } ?>
+                d.katha = $('#katha').val();
+                d.facing = $('#facing').val();
+                d.road = $('#road').val();
+                d.plot_num = $('#plot_num').val();
+            },
+            "complete": function(xhr) {
+                $('#clientsTable').css('opacity', 1);
+            }
+        },
+        "columns": [
+            <?php if ($project != 'moon-hill') { ?>
+            { "data": "block", "orderable": false, "className": "text-center" },
+	        <?php } ?>
+            { "data": "road", "orderable": false },
+            { "data": "katha", "orderable": false, "className": "text-center" },
+            { "data": "plot", "orderable": true },
+            { "data": "facing", "orderable": false, "className": "text-center" },
+            { "data": "status", "orderable": false, "className": "text-center" },
+            { "data": "file_num", "orderable": false, "className": "text-center" },
+            { "data": "id", "visible": false }  // Hidden column for 'id'
+        ],
+        "order": [],
+        "language": {
+            "emptyTable": "No data available in the table",
+            "infoEmpty": "Showing 0 to 0 of 0 entries",
+            "infoFiltered": "(filtered from _MAX_ total entries)",
+            "zeroRecords": "No matching records found"
+        },
+        "createdRow": function( row, data, dataIndex ) {
+            // Dynamically add the data-id attribute to the row
+            $(row).attr('data-id', data.id);
+        }
+    });
+
+    // Add event listener for row click to trigger the edit_entry_modal(id) function
+    $('#clientsTable tbody').on('click', 'tr', function() {
+        var id = $(this).data('id'); // Access the id from the data-id attribute of the clicked row
+        if (id) {
+            edit_entry_modal(id); // Call the modal function with the ID from the row data
+        }
+    });
+
+    // Add button functionality to refresh the table data
+    window.DataTableRefresh = function() {
+        table.ajax.reload();
+    };
+        
+    // Ensure the input field is focused when the dropdown opens
+    $("#file_num").on("select2:open", function() {
+        requestAnimationFrame(() => {
+            let searchField = document.querySelector(".select2-container--open .select2-search__field");
+            if (searchField) {
+                searchField.focus();
+            }
+        });
+    });
+    // Ensure the input field is focused when the dropdown opens
+    $("#katha").on("select2:open", function() {
+        requestAnimationFrame(() => {
+            let searchField = document.querySelector(".select2-container--open .select2-search__field");
+            if (searchField) {
+                searchField.focus();
+            }
+        });
+    });
+    $("#road").on("select2:open", function() {
+        requestAnimationFrame(() => {
+            let searchField = document.querySelector(".select2-container--open .select2-search__field");
+            if (searchField) {
+                searchField.focus();
+            }
+        });
+    });
+    $("#facing").on("select2:open", function() {
+        requestAnimationFrame(() => {
+            let searchField = document.querySelector(".select2-container--open .select2-search__field");
+            if (searchField) {
+                searchField.focus();
+            }
+        });
+    });
+
+	new $.fn.dataTable.Buttons(table, {
+		buttons: [
+			{ 
+				extend: 'copy',
+				text: '<i class="fadeIn animated bx bx-copy"></i>',
+				titleAttr: 'Copy to clipboard',
+				exportOptions: {
+					columns: ':not(:last-child)'
+				}
+			},
+			{ 
+				extend: 'excel',
+				text: '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="18" viewBox="0 0 18 24"><path fill="currentColor" d="M20.34,4.59,16.41.66A2.28,2.28,0,0,0,14.82,0H5.25A2.25,2.25,0,0,0,3,2.25v19.5A2.25,2.25,0,0,0,5.25,24h13.5A2.25,2.25,0,0,0,21,21.75V6.19A2.27,2.27,0,0,0,20.34,4.59ZM18.57,6H15V2.44ZM5.25,21.75V2.25h7.5V7.13a1.12,1.12,0,0,0,1.12,1.12h4.88v13.5ZM15.19,10.5H13.84a.55.55,0,0,0-.49.3A24.54,24.54,0,0,0,12,13.5c-.65-1.36-.32-.81-1.34-2.7a.56.56,0,0,0-.49-.3H8.81a.56.56,0,0,0-.48.85L10.5,15,8.33,18.66a.56.56,0,0,0,.48.84h1.36a.56.56,0,0,0,.49-.29A23.15,23.15,0,0,0,12,16.5c.7,1.42.28.75,1.34,2.71a.57.57,0,0,0,.5.29h1.35a.56.56,0,0,0,.48-.84L13.5,15c0-.05,1.42-2.36,2.17-3.65A.56.56,0,0,0,15.19,10.5Z" transform="translate(-3)"/></svg>', // Font Awesome Excel icon
+				titleAttr: 'Export to Excel',
+				exportOptions: {
+					columns: ':not(:last-child)'
+				}
+			},
+			{ 
+				extend: 'pdf',
+				text: '<i class="fadeIn animated bx bxs-file-pdf"></i>',
+				titleAttr: 'Export to PDF',
+				exportOptions: {
+					columns: ':not(:last-child)'
+				}
+			},
+			{ 
+				extend: 'print',
+				text: '<i class="fadeIn animated bx bx-printer"></i>',
+				titleAttr: 'Print',
+				exportOptions: {
+					columns: ':not(:last-child)'
+				}
+			}
+		]
+	}).container().appendTo('#dataSheet_download');
+	
+	window.DataTableRefresh = function() {
+		table.ajax.reload();
+	};
+});
+
+// Declare delayTimer globally to avoid redeclaration
+var delayTimer;
+
+function delayedTrigger() {
+    clearTimeout(delayTimer); // Clear any previous timer
+    delayTimer = setTimeout(function() {
+        DataTableRefresh();
+    }, 350);
+}
+
+
+$(document).on("click", "#toggleFilters", function() {
+    $(this).fadeOut(0, function() {
+        $(this).removeClass("d-flex").css("display", "none !important");
+    });
+    $("#filterSection").fadeIn(300, function() {
+        $(this).css("display", "flex !important");
+    });
+});
+
+</script>
