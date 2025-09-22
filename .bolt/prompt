@@ -1,6 +1,9 @@
 use the raw php, no .tsx or other things.
 
 /themes folder is the website's front end
-/manage folder is the management or admin-panel  - we are currently working on this
+/manage folder is the management or admin-panel or crm or erp or hr management - we are currently working on this
 /xhr folder are the ajax endpoint files
 /ajax-request.php are endpoint url
+
+
+our mission is build a clean, optimized, modern, feature rich crm +
