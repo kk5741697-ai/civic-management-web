@@ -120,8 +120,8 @@ body { overflow: hidden; }
 }
 .builder-area {
     position: relative;
-      width: 8.5in;
-      height: 14in;
+    width: 8.5in;
+    height: 11in;
     background: #f9f9f9 url('/manage/pages/clients/<?= htmlspecialchars($project['slug']) ?>.jpg') no-repeat center;
     background-size: cover;
     border: 2px dashed #999;
@@ -348,7 +348,6 @@ function save() {
                 top: el.style.top,
                 left: el.style.left,
                 width: el.style.width,
-                height: el.style.height,
                 fontSize: el.style.fontSize,
                 letterSpacing: el.style.letterSpacing,
                 textAlign: el.style.textAlign
@@ -356,7 +355,7 @@ function save() {
         });
     });
 
-    fetch(Wo_Ajax_Requests_File() + '?f=builder', {
+    fetch(Wo_Ajax_Requests_File() + '?f=builder&s=save_positions', {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -366,7 +365,11 @@ function save() {
     })
     .then(res => res.json())
     .then(data => {
-        alert(data.message || "Saved successfully");
+        if (data.success) {
+            alert("Field positions saved successfully");
+        } else {
+            alert("Error: " + (data.message || "Save failed"));
+        }
     })
     .catch(err => {
         alert("Save error: " + err.message);
