@@ -5,5 +5,7 @@ use the raw php, no .tsx or other things.
 /xhr folder are the ajax endpoint files
 /ajax-request.php are endpoint url
 
+currently we are working on
+/xhr and /manage/pages/*
 
 our mission is build a clean, optimized, modern, feature rich crm + erp + hr management.
