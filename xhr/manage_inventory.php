@@ -743,6 +743,156 @@ if ($f == "manage_inventory") {
         exit;
     }
 
+    // Get purchase details for booking form
+    if ($s == 'get_purchase_details') {
+        $purchase_id = isset($_POST['purchase_id']) ? (int)$_POST['purchase_id'] : 0;
+        if (!$purchase_id) {
+            echo json_encode(['status' => 400, 'message' => 'Invalid purchase ID']);
+            exit;
+        }
+
+        $helper = $db->where('id', $purchase_id)->getOne(T_BOOKING_HELPER);
+        if (!$helper) {
+            echo json_encode(['status' => 404, 'message' => 'Purchase not found']);
+            exit;
+        }
+
+        $booking = $db->where('id', $helper->booking_id)->getOne(T_BOOKING);
+        $project = $db->where('slug', $booking->project)->getOne(T_PROJECTS);
+        $client = GetCustomerById($helper->client_id);
+        $additional = GetAddiData_cId($helper->client_id);
+        $nominees = get_nominees_by_customer_id($helper->client_id);
+        
+        // Get reference user
+        $reference_user = null;
+        if (!empty($additional['reference'])) {
+            $reference_user = Wo_UserData($additional['reference']);
+        }
+
+        echo json_encode([
+            'status' => 200,
+            'data' => [
+                'client' => $client,
+                'booking' => [
+                    'project' => $booking->project,
+                    'block' => $booking->block,
+                    'plot' => $booking->plot,
+                    'katha' => $booking->katha,
+                    'road' => $booking->road,
+                    'facing' => $booking->facing,
+                    'file_num' => $booking->file_num
+                ],
+                'project' => [
+                    'id' => $project->id,
+                    'name' => $project->name,
+                    'slug' => $project->slug
+                ],
+                'additional' => $additional,
+                'nominees' => $nominees,
+                'reference_user' => $reference_user,
+                'helper' => [
+                    'per_katha' => $helper->per_katha,
+                    'down_payment' => $helper->down_payment,
+                    'booking_money' => $helper->booking_money
+                ]
+            ]
+        ]);
+        exit;
+    }
+
+    // Cancel all inventory (updated action)
+    if ($s == 'cancel_all_inventory') {
+        $inventory_id = isset($_POST['id']) ? (int)$_POST['id'] : 0;
+        $project = isset($_POST['project']) ? trim($_POST['project']) : '';
+        $client_id = isset($_POST['file_id']) ? (int)$_POST['file_id'] : 0;
+        $cancel_date = isset($_POST['date']) ? $_POST['date'] : date('Y-m-d');
+
+        if (!$inventory_id) {
+            echo json_encode(['status' => 400, 'message' => 'Invalid inventory ID']);
+            exit;
+        }
+
+        $booking = $db->where('id', $inventory_id)->getOne(T_BOOKING);
+        if (!$booking) {
+            echo json_encode(['status' => 404, 'message' => 'Inventory not found']);
+            exit;
+        }
+
+        $db->startTransaction();
+
+        // Cancel all active booking helpers for this inventory
+        $helpers = $db->where('booking_id', $inventory_id)->where('status', '2')->get(T_BOOKING_HELPER);
+        
+        foreach ($helpers as $helper) {
+            $db->where('id', $helper->id)->update(T_BOOKING_HELPER, [
+                'status' => '4',
+                'cancel_date' => strtotime($cancel_date),
+                'cancelled_by' => $wo['user']['user_id']
+            ]);
+        }
+
+        // Update booking status back to available
+        $updated_booking = $db->where('id', $inventory_id)->update(T_BOOKING, [
+            'status' => '1',
+            'file_num' => null
+        ]);
+
+        if ($updated_booking) {
+            $db->commit();
+            
+            logActivity('inventory', 'cancel_all', "Cancelled all bookings for inventory {$inventory_id}");
+            
+            echo json_encode(['status' => 200, 'message' => 'Inventory cancelled successfully']);
+        } else {
+            $db->rollback();
+            echo json_encode(['status' => 500, 'message' => 'Failed to cancel inventory']);
+        }
+        exit;
+    }
+
+    // Edit inventory details
+    if ($s == 'edit_inventory') {
+        $inventory_id = isset($_POST['id']) ? (int)$_POST['id'] : 0;
+        $project = isset($_POST['project']) ? trim($_POST['project']) : '';
+        $block = isset($_POST['block']) ? trim($_POST['block']) : '';
+        $facing = isset($_POST['facing']) ? trim($_POST['facing']) : '';
+        $katha = isset($_POST['katha']) ? trim($_POST['katha']) : '';
+        $road = isset($_POST['road']) ? trim($_POST['road']) : '';
+        $plot_num = isset($_POST['plot_num']) ? trim($_POST['plot_num']) : '';
+
+        if (!$inventory_id || !$project) {
+            echo json_encode(['status' => 400, 'message' => 'Missing required fields']);
+            exit;
+        }
+
+        $booking = $db->where('id', $inventory_id)->getOne(T_BOOKING);
+        if (!$booking) {
+            echo json_encode(['status' => 404, 'message' => 'Inventory not found']);
+            exit;
+        }
+
+        $update_data = [];
+        if ($block) $update_data['block'] = $block;
+        if ($facing) $update_data['facing'] = $facing;
+        if ($katha) $update_data['katha'] = $katha;
+        if ($road) $update_data['road'] = $road;
+        if ($plot_num) $update_data['plot'] = $plot_num;
+
+        if (!empty($update_data)) {
+            $updated = $db->where('id', $inventory_id)->update(T_BOOKING, $update_data);
+            
+            if ($updated) {
+                logActivity('inventory', 'edit', "Updated inventory {$inventory_id}: " . json_encode($update_data));
+                echo json_encode(['status' => 200, 'message' => 'Inventory updated successfully']);
+            } else {
+                echo json_encode(['status' => 500, 'message' => 'Failed to update inventory']);
+            }
+        } else {
+            echo json_encode(['status' => 400, 'message' => 'No data to update']);
+        }
+        exit;
+    }
+
     // Default response for unhandled actions
     echo json_encode(['status' => 404, 'message' => 'Action not found']);
     exit;

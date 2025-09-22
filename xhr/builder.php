@@ -60,3 +60,36 @@ foreach ($fields as $f) {
 }
 
 echo json_encode(['success' => true, 'message' => 'Field positions saved successfully']);
+
+// Get field positions for a project
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['s']) && $_POST['s'] === 'get_positions') {
+    $project_id = isset($_POST['project_id']) ? (int)$_POST['project_id'] : 0;
+    $project_slug = isset($_POST['project_slug']) ? trim($_POST['project_slug']) : '';
+    
+    if ($project_id) {
+        $positions = $db->where('project_id', $project_id)->get('field_positions');
+    } elseif ($project_slug) {
+        // Get project ID from slug
+        $project = $db->where('slug', $project_slug)->getOne(T_PROJECTS);
+        if ($project) {
+            $positions = $db->where('project_id', $project->id)->get('field_positions');
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Project not found']);
+            exit;
+        }
+    } else {
+        echo json_encode(['success' => false, 'message' => 'Project ID or slug required']);
+        exit;
+    }
+    
+    $result = [];
+    foreach ($positions as $pos) {
+        $result[] = [
+            'name' => $pos->field_name,
+            'style' => json_decode($pos->style_json, true)
+        ];
+    }
+    
+    echo json_encode(['success' => true, 'positions' => $result]);
+    exit;
+}
