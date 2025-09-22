@@ -426,6 +426,108 @@ if ($f == "manage_inventory") {
         exit;
     }
 
+    // Check plot booking conflicts
+    if ($s == 'check_plot_booking') {
+        $project_id = isset($_POST['project_id']) ? trim($_POST['project_id']) : '';
+        $purchase_id = isset($_POST['purchase_id']) ? (int)$_POST['purchase_id'] : 0;
+        $file_num = isset($_POST['file_num']) ? trim($_POST['file_num']) : '';
+        
+        if (!$project_id || !$purchase_id) {
+            echo json_encode(['status' => 400, 'message' => 'Missing parameters']);
+            exit;
+        }
+        
+        // Check if plot is available
+        $booking = $db->where('id', $purchase_id)->getOne(T_BOOKING);
+        if (!$booking) {
+            echo json_encode(['status' => 404, 'message' => 'Plot not found']);
+            exit;
+        }
+        
+        // Check for conflicts
+        $conflicts = [];
+        if ($booking->status != '1') {
+            $existing_helpers = $db->where('booking_id', $purchase_id)->where('status', '2')->get(T_BOOKING_HELPER);
+            foreach ($existing_helpers as $helper) {
+                $conflicts[] = [
+                    'booking_id' => $helper->booking_id,
+                    'file_id' => $helper->file_num,
+                    'status' => $helper->status
+                ];
+            }
+        }
+        
+        // Check file number conflicts
+        if ($file_num) {
+            $file_conflicts = $db->where('file_num', $file_num)->where('status', '2')->get(T_BOOKING_HELPER);
+            foreach ($file_conflicts as $fc) {
+                $conflicts[] = [
+                    'booking_id' => $fc->booking_id,
+                    'file_id' => $fc->file_num,
+                    'status' => $fc->status
+                ];
+            }
+        }
+        
+        $available = ($booking->status == '1' && empty($conflicts));
+        $message = $available ? 'Plot is available' : 'Plot has active bookings or conflicts';
+        
+        echo json_encode([
+            'status' => 200,
+            'available' => $available,
+            'message' => $message,
+            'conflicts' => $conflicts
+        ]);
+        exit;
+    }
+
+    // Get purchase details for installment modal
+    if ($s == 'get_purchase_details') {
+        $purchase_id = isset($_GET['purchase_id']) ? (int)$_GET['purchase_id'] : 0;
+        if (!$purchase_id) {
+            echo json_encode(['status' => 400, 'message' => 'Invalid purchase ID']);
+            exit;
+        }
+
+        $helper = $db->where('id', $purchase_id)->getOne(T_BOOKING_HELPER);
+        if (!$helper) {
+            echo json_encode(['status' => 404, 'message' => 'Purchase not found']);
+            exit;
+        }
+
+        $booking = $db->where('id', $helper->booking_id)->getOne(T_BOOKING);
+        $project = $db->where('slug', $booking->project)->getOne(T_PROJECTS);
+
+        // Load saved schedule (if any)
+        $scheduleRows = $db->where('purchase_id', $purchase_id)->orderBy('due_date','ASC')->get('installments');
+        $schedule = [];
+        foreach ($scheduleRows as $r) {
+            $schedule[] = [
+                'date' => date('Y-m-d', strtotime($r->due_date)),
+                'amount' => (float)$r->amount,
+                'adjustment' => (int)$r->adjustment,
+                'status' => $r->status ?? 'unpaid'
+            ];
+        }
+
+        $total_price = ($helper->per_katha * $booking->katha);
+
+        echo json_encode([
+            'status' => 200,
+            'purchase_id' => $helper->id,
+            'project_name' => $project->name ?? '',
+            'project_slug' => $project->slug ?? '',
+            'total_price' => $total_price,
+            'booking_money' => (float)$helper->booking_money,
+            'down_payment' => (float)$helper->down_payment,
+            'default_installments' => $helper->installment ?? 12,
+            'default_start_date' => date('Y-m-d', $helper->time ?? time()),
+            'file_number' => $helper->file_num,
+            'schedule' => $schedule
+        ]);
+        exit;
+    }
+
     // Generate purchase report
     if ($s == 'generate_purchase_report') {
         $purchase_id = isset($_POST['purchase_id']) ? (int)$_POST['purchase_id'] : 0;
