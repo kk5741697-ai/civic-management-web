@@ -1,0 +1,6 @@
+use the raw php, no .tsx or other things.
+
+/themes folder is the website's front end
+/manage folder is the management or admin-panel  - we are currently working on this
+/xhr folder are the ajax endpoint files
+/ajax-request.php are endpoint url
