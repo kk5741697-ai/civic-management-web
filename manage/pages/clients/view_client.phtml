@@ -171,6 +171,11 @@ $get_nominees = $db->where('customer_id', $clientId)->orderBy('name', 'ASC')->ge
                                 <i class="lni lni-file-text me-2 text-info"></i> Print Payment Schedule
                               </a>
                             </li>
+                            <li>
+                              <a class="dropdown-item" href="javascript:;" onclick="openPaymentSchedule(<?= (int)$p['id'] ?>)">
+                                <i class="lni lni-calendar me-2 text-primary"></i> Manage Schedule
+                              </a>
+                            </li>
                             <li><hr class="dropdown-divider"></li>
                             <li>
                               <h6 class="dropdown-header"><i class="lni lni-layers me-1"></i> Management</h6>

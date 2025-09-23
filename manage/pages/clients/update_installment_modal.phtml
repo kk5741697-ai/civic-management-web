@@ -6,7 +6,12 @@
         <h5 class="modal-title mb-0">
           <i class="lni lni-dollar me-2"></i>Payment Schedule Management
         </h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        <div class="d-flex gap-2">
+          <button type="button" class="btn btn-outline-light btn-sm" id="refresh_schedule_btn" title="Refresh Schedule">
+            <i class="lni lni-reload"></i>
+          </button>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
       </div>
 
       <div class="modal-body">
@@ -78,6 +83,7 @@
                 <select id="payment_type" class="form-control">
                   <option value="monthly">Monthly Installments</option>
                   <option value="quarterly">Quarterly Installments</option>
+                  <option value="yearly">Yearly Installments</option>
                   <option value="custom">Custom Schedule</option>
                 </select>
               </div>
@@ -91,16 +97,20 @@
               </div>
             </div>
             <div class="row g-3 mt-2">
-              <div class="col-md-6">
+              <div class="col-md-4">
                 <label class="form-label fw-medium">Amount Per Installment</label>
                 <div class="input-group">
                   <span class="input-group-text">৳</span>
-                  <input type="number" id="installment_amount" class="form-control" step="0.01" placeholder="Auto calculated">
+                  <input type="number" id="installment_amount" class="form-control" step="0.01" placeholder="Auto calculated" readonly>
                 </div>
               </div>
-              <div class="col-md-6">
+              <div class="col-md-4">
                 <label class="form-label fw-medium">Interest Rate (Annual %)</label>
                 <input type="number" id="interest_rate" class="form-control" step="0.01" value="0" min="0" max="50">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label fw-medium">Grace Period (Days)</label>
+                <input type="number" id="grace_period" class="form-control" value="7" min="0" max="90">
               </div>
             </div>
             <div class="mt-3">
@@ -109,6 +119,9 @@
               </button>
               <button type="button" id="reset_schedule_btn" class="btn btn-outline-secondary ms-2">
                 <i class="lni lni-trash me-1"></i>Reset
+              </button>
+              <button type="button" id="import_schedule_btn" class="btn btn-outline-info ms-2">
+                <i class="lni lni-upload me-1"></i>Import CSV
               </button>
             </div>
           </div>
@@ -124,6 +137,9 @@
               <div>
                 <button type="button" id="add_payment_btn" class="btn btn-success btn-sm">
                   <i class="lni lni-plus me-1"></i>Add Payment
+                </button>
+                <button type="button" id="export_schedule_btn" class="btn btn-outline-primary btn-sm">
+                  <i class="lni lni-download me-1"></i>Export
                 </button>
               </div>
             </div>
@@ -160,9 +176,11 @@
           <div class="d-flex align-items-start">
             <i class="lni lni-information text-info me-2" style="font-size: 20px; margin-top: 2px;"></i>
             <div>
-              <strong>Note:</strong> Payment schedules help track installment payments. 
-              You can modify individual payment amounts and dates as needed. 
-              All changes are automatically saved.
+              <strong>Keyboard Shortcuts:</strong> 
+              <kbd>Ctrl+G</kbd> Generate Schedule, 
+              <kbd>Ctrl+S</kbd> Save Schedule, 
+              <kbd>Ctrl+R</kbd> Reset, 
+              <kbd>Esc</kbd> Close Modal
             </div>
           </div>
         </div>
@@ -209,9 +227,14 @@
             <option value="cash">Cash</option>
             <option value="bank_transfer">Bank Transfer</option>
             <option value="check">Check</option>
-            <option value="mobile_banking">Mobile Banking</option>
+            <option value="mobile_banking">Mobile Banking (bKash/Nagad)</option>
+            <option value="card">Credit/Debit Card</option>
             <option value="other">Other</option>
           </select>
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-medium">Transaction Reference (Optional)</label>
+          <input type="text" id="payment_reference" class="form-control" placeholder="Transaction ID, Check number, etc.">
         </div>
         <div class="mb-3">
           <label class="form-label fw-medium">Notes (Optional)</label>
@@ -228,12 +251,48 @@
   </div>
 </div>
 
+<!-- Import Schedule Modal -->
+<div class="modal fade" id="importScheduleModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-md modal-dialog-centered">
+    <div class="modal-content border-0 shadow-lg">
+      <div class="modal-header bg-info text-white border-0">
+        <h5 class="modal-title mb-0">
+          <i class="lni lni-upload me-2"></i>Import Payment Schedule
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label fw-medium">Upload CSV File</label>
+          <input type="file" id="schedule_csv_file" class="form-control" accept=".csv">
+          <small class="form-text text-muted">CSV format: due_date, amount, notes (optional)</small>
+        </div>
+        <div class="mb-3">
+          <div class="alert alert-info">
+            <strong>CSV Format Example:</strong><br>
+            2025-02-01, 50000, First installment<br>
+            2025-03-01, 50000, Second installment<br>
+            2025-04-01, 50000, Final payment
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer border-0 bg-light">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" id="import_csv_btn" class="btn btn-info">
+          <i class="lni lni-upload me-1"></i>Import Schedule
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 jQuery(function($){
   'use strict';
 
   var currentPurchaseId = null;
   var currentScheduleData = [];
+  var scheduleDataTable = null;
 
   // Utility functions
   function formatMoney(amount) {
@@ -249,6 +308,57 @@ jQuery(function($){
     return parseFloat(String(str).replace(/[৳,]/g, '')) || 0;
   }
 
+  function formatDate(dateStr) {
+    if (!dateStr) return '-';
+    var date = new Date(dateStr);
+    return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+  }
+
+  function calculateInstallmentAmount() {
+    var totalDue = parseMoney($('#schedule_due_amount').text());
+    var installmentCount = parseInt($('#installment_count').val()) || 12;
+    var interestRate = parseFloat($('#interest_rate').val()) || 0;
+    
+    if (totalDue > 0 && installmentCount > 0) {
+      var amount;
+      if (interestRate > 0) {
+        var monthlyRate = interestRate / 100 / 12;
+        var factor = Math.pow(1 + monthlyRate, installmentCount);
+        amount = (totalDue * monthlyRate * factor) / (factor - 1);
+      } else {
+        amount = totalDue / installmentCount;
+      }
+      $('#installment_amount').val(amount.toFixed(2));
+    }
+  }
+
+  function getStatusBadge(status) {
+    switch (status) {
+      case 'paid':
+        return '<span class="badge bg-success">Paid</span>';
+      case 'partial':
+        return '<span class="badge bg-warning">Partial</span>';
+      case 'overdue':
+        return '<span class="badge bg-danger">Overdue</span>';
+      case 'pending':
+      default:
+        return '<span class="badge bg-secondary">Pending</span>';
+    }
+  }
+
+  function getActionButtons(item) {
+    var buttons = '';
+    if (item.status === 'paid') {
+      buttons += '<button class="btn btn-sm btn-outline-info view-payment-btn me-1" data-id="' + item.id + '" title="View Payment Details"><i class="lni lni-eye"></i></button>';
+      buttons += '<button class="btn btn-sm btn-outline-warning edit-payment-btn" data-id="' + item.id + '" title="Edit Payment"><i class="lni lni-pencil"></i></button>';
+    } else {
+      buttons += '<button class="btn btn-sm btn-success mark-payment-btn me-1" data-id="' + item.id + '" data-amount="' + item.amount + '" title="Mark as Paid"><i class="lni lni-dollar"></i></button>';
+      buttons += '<button class="btn btn-sm btn-outline-secondary edit-installment-btn me-1" data-id="' + item.id + '" title="Edit Installment"><i class="lni lni-pencil"></i></button>';
+      buttons += '<button class="btn btn-sm btn-outline-danger delete-installment-btn" data-id="' + item.id + '" title="Delete Installment"><i class="lni lni-trash"></i></button>';
+    }
+    return buttons;
+  }
+
   // Initialize payment schedule functionality
   function initUpdateInstallment() {
     // Global function to open payment schedule modal
@@ -256,7 +366,7 @@ jQuery(function($){
       currentPurchaseId = purchaseId;
       $('#installment_purchase_id').val(purchaseId);
       
-      // Load purchase details
+      // Load purchase details and payment schedule
       loadPurchaseDetails(purchaseId);
       loadPaymentSchedule(purchaseId);
       
@@ -294,6 +404,21 @@ jQuery(function($){
       addCustomPayment();
     });
 
+    // Import schedule handler
+    $('#import_schedule_btn').off('click').on('click', function(){
+      $('#importScheduleModal').modal('show');
+    });
+
+    // Export schedule handler
+    $('#export_schedule_btn').off('click').on('click', function(){
+      exportPaymentSchedule();
+    });
+
+    // Import CSV handler
+    $('#import_csv_btn').off('click').on('click', function(){
+      importScheduleFromCSV();
+    });
+
     // Mark payment handler
     $(document).off('click.markPayment', '.mark-payment-btn').on('click.markPayment', '.mark-payment-btn', function(){
       var scheduleId = $(this).data('id');
@@ -303,6 +428,7 @@ jQuery(function($){
       $('#payment_amount').val(amount);
       $('#payment_date').val(new Date().toISOString().slice(0, 10));
       $('#payment_method').val('cash');
+      $('#payment_reference').val('');
       $('#payment_notes').val('');
       
       $('#markPaymentModal').modal('show');
@@ -316,6 +442,31 @@ jQuery(function($){
     // Auto-calculate installment amount
     $('#installment_count, #interest_rate').off('input').on('input', function(){
       calculateInstallmentAmount();
+    });
+
+    // Keyboard shortcuts
+    $(document).off('keydown.installmentModal').on('keydown.installmentModal', function(e){
+      if ($('#updateInstallmentModal').hasClass('show')) {
+        if (e.ctrlKey) {
+          switch(e.key.toLowerCase()) {
+            case 'g':
+              e.preventDefault();
+              $('#generate_schedule_btn').click();
+              break;
+            case 's':
+              e.preventDefault();
+              $('#save_schedule_btn').click();
+              break;
+            case 'r':
+              e.preventDefault();
+              $('#reset_schedule_btn').click();
+              break;
+          }
+        }
+        if (e.key === 'Escape') {
+          $('#updateInstallmentModal').modal('hide');
+        }
+      }
     });
   }
 
@@ -332,6 +483,9 @@ jQuery(function($){
           $('#schedule_total_amount').text(formatMoney(purchase.total_amount || 0));
           $('#schedule_paid_amount').text(formatMoney(purchase.paid_amount || 0));
           $('#schedule_due_amount').text(formatMoney((purchase.total_amount || 0) - (purchase.paid_amount || 0)));
+          
+          // Auto-calculate installment amount
+          calculateInstallmentAmount();
         }
       })
       .fail(function(){
@@ -351,6 +505,8 @@ jQuery(function($){
       })
       .fail(function(){
         console.warn('Failed to load payment schedule');
+        currentScheduleData = [];
+        renderScheduleTable();
       });
   }
 
@@ -396,6 +552,11 @@ jQuery(function($){
         dueDate.setMonth(dueDate.getMonth() + i);
       } else if (paymentType === 'quarterly') {
         dueDate.setMonth(dueDate.getMonth() + (i * 3));
+      } else if (paymentType === 'yearly') {
+        dueDate.setFullYear(dueDate.getFullYear() + i);
+      } else {
+        // Custom - just add months for now
+        dueDate.setMonth(dueDate.getMonth() + i);
       }
       
       currentScheduleData.push({
@@ -406,7 +567,9 @@ jQuery(function($){
         status: 'pending',
         paid_date: null,
         paid_amount: 0,
-        notes: ''
+        notes: '',
+        payment_method: '',
+        reference: ''
       });
     }
 
@@ -426,10 +589,12 @@ jQuery(function($){
     currentScheduleData.forEach(function(item, index) {
       var statusBadge = getStatusBadge(item.status);
       var actionButtons = getActionButtons(item);
+      var isOverdue = item.status === 'pending' && new Date(item.due_date) < new Date();
+      var rowClass = isOverdue ? 'table-warning' : '';
       
-      var row = '<tr>' +
+      var row = '<tr class="' + rowClass + '">' +
         '<td class="fw-medium">' + item.installment_number + '</td>' +
-        '<td>' + formatDate(item.due_date) + '</td>' +
+        '<td>' + formatDate(item.due_date) + (isOverdue ? ' <small class="text-danger">(Overdue)</small>' : '') + '</td>' +
         '<td class="fw-medium">' + formatMoney(item.amount) + '</td>' +
         '<td>' + statusBadge + '</td>' +
         '<td>' + (item.paid_date ? formatDate(item.paid_date) : '-') + '</td>' +
@@ -440,52 +605,6 @@ jQuery(function($){
       
       $tbody.append(row);
     });
-  }
-
-  function getStatusBadge(status) {
-    switch (status) {
-      case 'paid':
-        return '<span class="badge bg-success">Paid</span>';
-      case 'partial':
-        return '<span class="badge bg-warning">Partial</span>';
-      case 'overdue':
-        return '<span class="badge bg-danger">Overdue</span>';
-      default:
-        return '<span class="badge bg-secondary">Pending</span>';
-    }
-  }
-
-  function getActionButtons(item) {
-    if (item.status === 'paid') {
-      return '<button class="btn btn-sm btn-outline-info view-payment-btn" data-id="' + item.id + '" title="View Payment"><i class="lni lni-eye"></i></button>';
-    } else {
-      return '<button class="btn btn-sm btn-success mark-payment-btn" data-id="' + item.id + '" data-amount="' + item.amount + '" title="Mark as Paid"><i class="lni lni-dollar"></i></button> ' +
-             '<button class="btn btn-sm btn-outline-secondary edit-installment-btn" data-id="' + item.id + '" title="Edit"><i class="lni lni-pencil"></i></button>';
-    }
-  }
-
-  function formatDate(dateStr) {
-    if (!dateStr) return '-';
-    var date = new Date(dateStr);
-    return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
-  }
-
-  function calculateInstallmentAmount() {
-    var totalDue = parseMoney($('#schedule_due_amount').text());
-    var installmentCount = parseInt($('#installment_count').val()) || 12;
-    var interestRate = parseFloat($('#interest_rate').val()) || 0;
-    
-    if (totalDue > 0 && installmentCount > 0) {
-      var amount;
-      if (interestRate > 0) {
-        var monthlyRate = interestRate / 100 / 12;
-        var factor = Math.pow(1 + monthlyRate, installmentCount);
-        amount = (totalDue * monthlyRate * factor) / (factor - 1);
-      } else {
-        amount = totalDue / installmentCount;
-      }
-      $('#installment_amount').val(amount.toFixed(2));
-    }
   }
 
   function savePaymentSchedule() {
@@ -527,6 +646,7 @@ jQuery(function($){
     var amount = parseFloat($('#payment_amount').val()) || 0;
     var paymentDate = $('#payment_date').val();
     var method = $('#payment_method').val();
+    var reference = $('#payment_reference').val().trim();
     var notes = $('#payment_notes').val().trim();
 
     if (amount <= 0) {
@@ -548,6 +668,7 @@ jQuery(function($){
       amount: amount,
       payment_date: paymentDate,
       method: method,
+      reference: reference,
       notes: notes
     };
 
@@ -578,11 +699,11 @@ jQuery(function($){
     $('#installment_count').val(12);
     $('#installment_amount').val('');
     $('#interest_rate').val(0);
+    $('#grace_period').val(7);
     $('#first_payment_date').val(new Date(Date.now() + 30*24*60*60*1000).toISOString().slice(0, 10));
   }
 
   function addCustomPayment() {
-    // Simple implementation for adding custom payment entry
     var installmentNumber = currentScheduleData.length + 1;
     var newPayment = {
       id: 'temp_' + Date.now(),
@@ -592,12 +713,133 @@ jQuery(function($){
       status: 'pending',
       paid_date: null,
       paid_amount: 0,
-      notes: 'Custom payment'
+      notes: 'Custom payment',
+      payment_method: '',
+      reference: ''
     };
     
     currentScheduleData.push(newPayment);
     renderScheduleTable();
   }
+
+  function exportPaymentSchedule() {
+    if (!currentScheduleData.length) {
+      alert('No payment schedule to export.');
+      return;
+    }
+
+    var csvContent = "data:text/csv;charset=utf-8,";
+    csvContent += "Installment,Due Date,Amount,Status,Paid Date,Paid Amount,Notes\n";
+    
+    currentScheduleData.forEach(function(item) {
+      var row = [
+        item.installment_number,
+        item.due_date,
+        item.amount,
+        item.status,
+        item.paid_date || '',
+        item.paid_amount || 0,
+        (item.notes || '').replace(/,/g, ';') // Replace commas to avoid CSV issues
+      ].join(',');
+      csvContent += row + "\n";
+    });
+
+    var encodedUri = encodeURI(csvContent);
+    var link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "payment_schedule_" + currentPurchaseId + ".csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  function importScheduleFromCSV() {
+    var fileInput = document.getElementById('schedule_csv_file');
+    var file = fileInput.files[0];
+    
+    if (!file) {
+      alert('Please select a CSV file.');
+      return;
+    }
+
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      var csv = e.target.result;
+      var lines = csv.split('\n');
+      var newSchedule = [];
+      
+      // Skip header row
+      for (var i = 1; i < lines.length; i++) {
+        var line = lines[i].trim();
+        if (!line) continue;
+        
+        var columns = line.split(',');
+        if (columns.length >= 2) {
+          var dueDate = columns[0].trim();
+          var amount = parseFloat(columns[1].trim()) || 0;
+          var notes = columns[2] ? columns[2].trim() : '';
+          
+          if (dueDate && amount > 0) {
+            newSchedule.push({
+              id: 'temp_' + Date.now() + '_' + i,
+              installment_number: i,
+              due_date: dueDate,
+              amount: amount,
+              status: 'pending',
+              paid_date: null,
+              paid_amount: 0,
+              notes: notes,
+              payment_method: '',
+              reference: ''
+            });
+          }
+        }
+      }
+      
+      if (newSchedule.length > 0) {
+        currentScheduleData = newSchedule;
+        renderScheduleTable();
+        $('#importScheduleModal').modal('hide');
+        alert('Schedule imported successfully! ' + newSchedule.length + ' payments added.');
+      } else {
+        alert('No valid payment data found in CSV file.');
+      }
+    };
+    
+    reader.readAsText(file);
+  }
+
+  // Enhanced date picker initialization
+  function initDatePickers() {
+    try {
+      if (typeof flatpickr !== 'undefined') {
+        flatpickr('#first_payment_date', {
+          dateFormat: 'Y-m-d',
+          minDate: new Date(),
+          defaultDate: new Date(Date.now() + 30*24*60*60*1000),
+          locale: {
+            firstDayOfWeek: 1
+          }
+        });
+
+        flatpickr('#payment_date', {
+          dateFormat: 'Y-m-d',
+          maxDate: new Date(),
+          defaultDate: new Date(),
+          locale: {
+            firstDayOfWeek: 1
+          }
+        });
+      }
+    } catch(e) {
+      // Flatpickr not available, use native date inputs
+    }
+  }
+
+  // Initialize when modal is shown
+  $('#updateInstallmentModal').on('shown.bs.modal', function(){
+    initDatePickers();
+  });
 
   // Add to global initialization
   if (typeof window.initViewClientComponents !== 'function') {
@@ -618,6 +860,7 @@ jQuery(function($){
     currentScheduleData = [];
     $(document).off('.updateInstallment');
     $(document).off('.markPayment');
+    $(document).off('keydown.installmentModal');
   });
 
 });

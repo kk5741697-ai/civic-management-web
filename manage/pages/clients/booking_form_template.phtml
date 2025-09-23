@@ -8,7 +8,8 @@ elseif ($booking['project'] === 'hill-town') $bg_url = "/manage/pages/clients/hi
 <section class="print_area d-none"
          id="print_area_<?= (int)$p['id'] ?>"
          data-purchase-id="<?= (int)$p['id'] ?>"
-         style="background: url('<?= $bg_url ?>') no-repeat center center; background-size: cover;">
+         style="background: url('<?= $bg_url ?>') no-repeat center center; background-size: cover;"
+         data-bg-url="<?= $bg_url ?>">
   <div class="invoice-layout">
     <div class="changable-content" id="changable_modal_content_<?= $index ?>">
       <?php
@@ -69,8 +70,13 @@ elseif ($booking['project'] === 'hill-town') $bg_url = "/manage/pages/clients/hi
   height: 297mm;
   margin: 0 auto;
   background-color: white;
+  /* Ensure background image loads properly */
+  background-attachment: scroll;
+  background-repeat: no-repeat;
+  background-position: center center;
 }
 
+/* Enhanced print styles with better image handling */
 @media print {
   .print_area {
     width: 100% !important;
@@ -78,10 +84,19 @@ elseif ($booking['project'] === 'hill-town') $bg_url = "/manage/pages/clients/hi
     margin: 0 !important;
     box-shadow: none !important;
     page-break-inside: avoid;
+    /* Force background images to print */
+    -webkit-print-color-adjust: exact !important;
+    color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
   
   .invoice-layout {
     height: 100vh !important;
+  }
+  
+  /* Ensure all elements are visible in print */
+  .print_area * {
+    visibility: visible !important;
   }
 }
 
@@ -90,6 +105,8 @@ elseif ($booking['project'] === 'hill-town') $bg_url = "/manage/pages/clients/hi
   font-family: Arial, sans-serif;
   color: #000;
   font-weight: 600;
+  /* Ensure text is visible over background */
+  text-shadow: 0 0 2px rgba(255,255,255,0.8);
 }
 
 .changable-content .client_id {
@@ -110,5 +127,20 @@ elseif ($booking['project'] === 'hill-town') $bg_url = "/manage/pages/clients/hi
 .changable-content .date {
   color: #8e44ad;
   font-family: monospace;
+}
+
+/* Loading state for background images */
+.print_area.loading {
+  background-color: #f8f9fa;
+}
+
+.print_area.loading::before {
+  content: 'Loading...';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #6c757d;
+  font-size: 14px;
 }
 </style>

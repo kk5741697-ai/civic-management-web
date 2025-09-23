@@ -232,6 +232,16 @@ if (isset($is_builder) && ($is_builder == 'moon-hill' || $is_builder == 'hill-to
         ?>
       </select>
     </div>
+    
+    <!-- Enhanced Search -->
+    <div class="ms-3">
+      <div class="input-group input-group-sm">
+        <input type="text" class="form-control quick-search" placeholder="Quick search..." data-target="#clientsTable">
+        <button class="btn btn-outline-secondary" type="button" onclick="showShortcutsHelp()">
+          <i class="lni lni-question-circle"></i>
+        </button>
+      </div>
+    </div>
   </div>
 
   <!-- Right-side action button if permitted -->
@@ -245,6 +255,47 @@ if (isset($is_builder) && ($is_builder == 'moon-hill' || $is_builder == 'hill-to
 <!--end breadcrumb-->
 <div class="mb-3">
 	<div class="row row-cols-auto g-3">
+		<!-- Bulk Operations Panel -->
+		<div id="bulk_actions" class="col-12" style="display:none;">
+		  <div class="alert alert-info d-flex align-items-center justify-content-between">
+		    <div>
+		      <i class="lni lni-checkmark-circle me-2"></i>
+		      <span id="selected_count">0</span> clients selected
+		    </div>
+		    <div class="btn-group btn-group-sm">
+		      <button type="button" class="btn btn-primary" id="bulk_print">
+		        <i class="lni lni-printer me-1"></i>Print Selected
+		      </button>
+		      <button type="button" class="btn btn-success" id="bulk_export">
+		        <i class="lni lni-download me-1"></i>Export Selected
+		      </button>
+		    </div>
+		  </div>
+		</div>
+		
+		<!-- Settings Panel -->
+		<div class="col-12">
+		  <div class="card border-0 shadow-sm">
+		    <div class="card-body py-2">
+		      <div class="d-flex align-items-center justify-content-between">
+		        <div class="d-flex align-items-center gap-3">
+		          <div class="form-check form-switch">
+		            <input class="form-check-input" type="checkbox" id="auto_refresh_toggle">
+		            <label class="form-check-label" for="auto_refresh_toggle">Auto Refresh</label>
+		          </div>
+		          <div class="form-check form-switch">
+		            <input class="form-check-input" type="checkbox" id="compact_mode_toggle">
+		            <label class="form-check-label" for="compact_mode_toggle">Compact Mode</label>
+		          </div>
+		        </div>
+		        <div class="text-muted small">
+		          <i class="lni lni-information me-1"></i>
+		          Press <kbd>Ctrl+?</kbd> for shortcuts
+		        </div>
+		      </div>
+		    </div>
+		  </div>
+		</div>
 		<div class="col">
 		</div>
 	</div>
@@ -257,6 +308,11 @@ if (isset($is_builder) && ($is_builder == 'moon-hill' || $is_builder == 'hill-to
             <table id="clientsTable" class="table align-middle mb-0" style="width: 100%;">
                 <thead class="table-light">
                     <tr>
+                        <th style="width: 30px;">
+                          <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="select_all_purchases">
+                          </div>
+                        </th>
                         <th style="width: 50px;">#ID</th>
                         <th>Name</th>
                         <th>Project Name</th>
@@ -274,6 +330,9 @@ if (isset($is_builder) && ($is_builder == 'moon-hill' || $is_builder == 'hill-to
         </div>
     </div>
 </div>
+
+<!-- Load enhanced features -->
+<?= Wo_LoadManagePage('clients/enhanced_features') ?>
 
 <script>
 function editClient(client_id) {
@@ -375,6 +434,7 @@ $(document).ready(function() {
             }
         },
         "columns": [
+            { "data": "checkbox", "orderable": false, "width": "30px" },
             { "data": "file_nums", "orderable": false },
             { "data": "customer_name", "orderable": false },
             { "data": "project_name", "orderable": false },
@@ -392,6 +452,12 @@ $(document).ready(function() {
             "infoFiltered": "(filtered from _MAX_ total entries)",
             "zeroRecords": "No matching records found"
         },
+        "drawCallback": function(settings) {
+            // Initialize enhanced features after each draw
+            if (typeof initAllEnhancedFeatures === 'function') {
+                initAllEnhancedFeatures();
+            }
+        }
     });
 
     new $.fn.dataTable.Buttons(table, {
