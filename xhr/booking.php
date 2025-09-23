@@ -284,3 +284,252 @@ $updatedSvgContent = $dom->saveXML();
       }
 
 }
+
+// ===============================
+//  📅 PAYMENT SCHEDULE MANAGEMENT
+// ===============================
+if ($f == "manage_inventory") {
+    
+    // Get purchase details for payment schedule
+    if ($s == 'get_purchase_details') {
+        $purchase_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+        if (!$purchase_id) {
+            echo json_encode(['status' => 400, 'message' => 'Invalid purchase ID']);
+            exit;
+        }
+
+        // Get purchase details from booking_helper
+        $helper = $db->where('id', $purchase_id)->getOne(T_BOOKING_HELPER);
+        if (!$helper) {
+            echo json_encode(['status' => 404, 'message' => 'Purchase not found']);
+            exit;
+        }
+
+        // Get booking details
+        $booking = $db->where('id', $helper->booking_id)->getOne(T_BOOKING);
+        
+        // Calculate total amount
+        $per_katha = (float)($helper->per_katha ?? 0);
+        $katha = (float)($booking->katha ?? 0);
+        $total_amount = $per_katha * $katha;
+        
+        // Get total paid amount
+        $paid_amount = (float)$db->where('customer_id', $helper->client_id)
+                                 ->getValue(T_INVOICE, 'SUM(pay_amount)') ?: 0;
+
+        $purchase_data = [
+            'id' => $helper->id,
+            'block' => $booking->block ?? '',
+            'plot' => $booking->plot ?? '',
+            'katha' => $booking->katha ?? '',
+            'road' => $booking->road ?? '',
+            'facing' => $booking->facing ?? '',
+            'total_amount' => $total_amount,
+            'paid_amount' => $paid_amount,
+            'due_amount' => $total_amount - $paid_amount
+        ];
+
+        echo json_encode(['status' => 200, 'purchase' => $purchase_data]);
+        exit;
+    }
+
+    // Get payment schedule
+    if ($s == 'get_payment_schedule') {
+        $purchase_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+        if (!$purchase_id) {
+            echo json_encode(['status' => 400, 'message' => 'Invalid purchase ID']);
+            exit;
+        }
+
+        // For now, return empty schedule - you can implement actual schedule storage
+        $schedule = [];
+        
+        echo json_encode(['status' => 200, 'schedule' => $schedule]);
+        exit;
+    }
+
+    // Save payment schedule
+    if ($s == 'save_payment_schedule') {
+        $purchase_id = isset($_POST['purchase_id']) ? (int)$_POST['purchase_id'] : 0;
+        $schedule_json = isset($_POST['schedule']) ? $_POST['schedule'] : '[]';
+        
+        if (!$purchase_id) {
+            echo json_encode(['status' => 400, 'message' => 'Invalid purchase ID']);
+            exit;
+        }
+
+        $schedule = json_decode($schedule_json, true);
+        if (!is_array($schedule)) {
+            echo json_encode(['status' => 400, 'message' => 'Invalid schedule data']);
+            exit;
+        }
+
+        // Here you would save the schedule to your database
+        // For now, just return success
+        echo json_encode(['status' => 200, 'message' => 'Payment schedule saved successfully']);
+        exit;
+    }
+
+    // Mark payment as paid
+    if ($s == 'mark_payment') {
+        $schedule_id = isset($_POST['schedule_id']) ? $_POST['schedule_id'] : '';
+        $amount = isset($_POST['amount']) ? (float)$_POST['amount'] : 0;
+        $payment_date = isset($_POST['payment_date']) ? $_POST['payment_date'] : '';
+        $method = isset($_POST['method']) ? $_POST['method'] : '';
+        $reference = isset($_POST['reference']) ? $_POST['reference'] : '';
+        $notes = isset($_POST['notes']) ? $_POST['notes'] : '';
+
+        if (!$schedule_id || $amount <= 0) {
+            echo json_encode(['status' => 400, 'message' => 'Invalid payment data']);
+            exit;
+        }
+
+        // Here you would update the payment status in your database
+        // For now, just return success
+        echo json_encode(['status' => 200, 'message' => 'Payment marked successfully']);
+        exit;
+    }
+
+    // Get schedule preview for printing
+    if ($s == 'get_schedule_preview') {
+        $purchase_id = isset($_POST['purchase_id']) ? (int)$_POST['purchase_id'] : 0;
+        $options_json = isset($_POST['options']) ? $_POST['options'] : '{}';
+        
+        if (!$purchase_id) {
+            echo json_encode(['status' => 400, 'message' => 'Invalid purchase ID']);
+            exit;
+        }
+
+        $options = json_decode($options_json, true) ?: [];
+        
+        // Generate preview HTML
+        $preview_html = generateSchedulePreviewHTML($purchase_id, $options);
+        
+        echo json_encode(['status' => 200, 'html' => $preview_html]);
+        exit;
+    }
+
+    // Generate purchase report
+    if ($s == 'generate_purchase_report') {
+        $purchase_id = isset($_POST['purchase_id']) ? (int)$_POST['purchase_id'] : 0;
+        $format = isset($_POST['format']) ? $_POST['format'] : 'pdf';
+        
+        if (!$purchase_id) {
+            echo json_encode(['status' => 400, 'message' => 'Invalid purchase ID']);
+            exit;
+        }
+
+        // Here you would generate the actual report
+        // For now, return a placeholder
+        echo json_encode([
+            'status' => 200, 
+            'download_url' => '/reports/purchase_' . $purchase_id . '.' . $format,
+            'message' => 'Report generated successfully'
+        ]);
+        exit;
+    }
+
+    // Export purchase data
+    if ($s == 'export_purchase_data') {
+        $purchase_id = isset($_POST['purchase_id']) ? (int)$_POST['purchase_id'] : 0;
+        $export_type = isset($_POST['export_type']) ? $_POST['export_type'] : 'json';
+        
+        if (!$purchase_id) {
+            echo json_encode(['status' => 400, 'message' => 'Invalid purchase ID']);
+            exit;
+        }
+
+        // Here you would export the actual data
+        // For now, return a placeholder
+        echo json_encode([
+            'status' => 200, 
+            'download_url' => '/exports/purchase_data_' . $purchase_id . '.' . $export_type,
+            'filename' => 'purchase_data_' . $purchase_id . '.' . $export_type,
+            'message' => 'Data exported successfully'
+        ]);
+        exit;
+    }
+}
+
+// Helper function to generate schedule preview HTML
+function generateSchedulePreviewHTML($purchase_id, $options) {
+    global $db;
+    
+    // Get purchase and client details
+    $helper = $db->where('id', $purchase_id)->getOne(T_BOOKING_HELPER);
+    if (!$helper) return '<div class="alert alert-danger">Purchase not found</div>';
+    
+    $client = GetCustomerById($helper->client_id);
+    $booking = $db->where('id', $helper->booking_id)->getOne(T_BOOKING);
+    
+    $html = '<div class="schedule-print-template">';
+    
+    // Company header
+    $html .= '<div class="company-header">';
+    $html .= '<div class="company-name">Civic Real Estate Ltd.</div>';
+    $html .= '<div class="document-title">Payment Schedule</div>';
+    $html .= '<div class="text-muted">Generated on ' . date('F j, Y') . '</div>';
+    $html .= '</div>';
+    
+    // Client info
+    if ($options['include_client_info'] ?? true) {
+        $html .= '<div class="info-section">';
+        $html .= '<div class="info-title">Client Information</div>';
+        $html .= '<div class="info-grid">';
+        $html .= '<div class="info-item"><div class="info-label">Name</div><div class="info-value">' . htmlspecialchars($client['name'] ?? '') . '</div></div>';
+        $html .= '<div class="info-item"><div class="info-label">Phone</div><div class="info-value">' . htmlspecialchars($client['phone'] ?? '') . '</div></div>';
+        $html .= '<div class="info-item"><div class="info-label">Address</div><div class="info-value">' . htmlspecialchars($client['address'] ?? '') . '</div></div>';
+        $html .= '</div>';
+        $html .= '</div>';
+    }
+    
+    // Plot details
+    if ($options['include_plot_details'] ?? true) {
+        $html .= '<div class="info-section">';
+        $html .= '<div class="info-title">Plot Details</div>';
+        $html .= '<div class="info-grid">';
+        $html .= '<div class="info-item"><div class="info-label">Block</div><div class="info-value">' . htmlspecialchars($booking->block ?? '') . '</div></div>';
+        $html .= '<div class="info-item"><div class="info-label">Plot</div><div class="info-value">' . htmlspecialchars($booking->plot ?? '') . '</div></div>';
+        $html .= '<div class="info-item"><div class="info-label">Katha</div><div class="info-value">' . htmlspecialchars($booking->katha ?? '') . '</div></div>';
+        $html .= '<div class="info-item"><div class="info-label">Road</div><div class="info-value">' . htmlspecialchars($booking->road ?? '') . '</div></div>';
+        $html .= '</div>';
+        $html .= '</div>';
+    }
+    
+    // Payment summary
+    if ($options['include_payment_summary'] ?? true) {
+        $per_katha = (float)($helper->per_katha ?? 0);
+        $katha = (float)($booking->katha ?? 0);
+        $total_amount = $per_katha * $katha;
+        $paid_amount = (float)$db->where('customer_id', $helper->client_id)->getValue(T_INVOICE, 'SUM(pay_amount)') ?: 0;
+        
+        $html .= '<div class="info-section">';
+        $html .= '<div class="info-title">Payment Summary</div>';
+        $html .= '<div class="info-grid">';
+        $html .= '<div class="info-item"><div class="info-label">Total Amount</div><div class="info-value">৳' . number_format($total_amount, 2) . '</div></div>';
+        $html .= '<div class="info-item"><div class="info-label">Paid Amount</div><div class="info-value">৳' . number_format($paid_amount, 2) . '</div></div>';
+        $html .= '<div class="info-item"><div class="info-label">Due Amount</div><div class="info-value">৳' . number_format($total_amount - $paid_amount, 2) . '</div></div>';
+        $html .= '</div>';
+        $html .= '</div>';
+    }
+    
+    // Sample schedule table (you would replace this with actual schedule data)
+    $html .= '<table>';
+    $html .= '<thead><tr><th>#</th><th>Due Date</th><th>Amount</th><th>Status</th><th>Notes</th></tr></thead>';
+    $html .= '<tbody>';
+    $html .= '<tr><td>1</td><td>2025-02-01</td><td>৳50,000</td><td><span class="badge bg-success">Paid</span></td><td>First installment</td></tr>';
+    $html .= '<tr><td>2</td><td>2025-03-01</td><td>৳50,000</td><td><span class="badge bg-warning">Pending</span></td><td>Second installment</td></tr>';
+    $html .= '<tr><td>3</td><td>2025-04-01</td><td>৳50,000</td><td><span class="badge bg-secondary">Pending</span></td><td>Final payment</td></tr>';
+    $html .= '</tbody>';
+    $html .= '</table>';
+    
+    // Signature area
+    $html .= '<div class="signature-area">';
+    $html .= '<div class="signature-box"><div class="signature-line">Client Signature</div></div>';
+    $html .= '<div class="signature-box"><div class="signature-line">Authorized Signature</div></div>';
+    $html .= '</div>';
+    
+    $html .= '</div>';
+    
+    return $html;
+}

@@ -1,0 +1,946 @@
+<!-- Enhanced Client Management Features -->
+<script>
+jQuery(function($){
+  'use strict';
+
+  // ===============================
+  //  🎯 ENHANCED SEARCH & FILTERING
+  // ===============================
+  
+  // Global search functionality
+  window.initEnhancedSearch = function() {
+    // Quick search in modals
+    $(document).off('keyup.quickSearch', '.quick-search').on('keyup.quickSearch', '.quick-search', function(){
+      var searchTerm = $(this).val().toLowerCase();
+      var targetTable = $(this).data('target') || '#purchaseTable';
+      
+      $(targetTable + ' tbody tr').each(function(){
+        var rowText = $(this).text().toLowerCase();
+        if (rowText.indexOf(searchTerm) === -1) {
+          $(this).hide();
+        } else {
+          $(this).show();
+        }
+      });
+    });
+
+    // Advanced filter toggle
+    $('.advanced-filter-toggle').off('click').on('click', function(){
+      $('.advanced-filters').slideToggle();
+    });
+  };
+
+  // ===============================
+  //  📱 MOBILE OPTIMIZATIONS
+  // ===============================
+  
+  window.initMobileOptimizations = function() {
+    // Touch-friendly interactions
+    if ('ontouchstart' in window) {
+      $('.dropdown-item').addClass('touch-friendly');
+      $('.btn-sm').addClass('touch-friendly');
+    }
+
+    // Responsive table handling
+    function handleResponsiveTables() {
+      if ($(window).width() < 768) {
+        $('.table-responsive').addClass('mobile-scroll');
+        // Convert table to cards on mobile
+        convertTableToCards();
+      } else {
+        $('.table-responsive').removeClass('mobile-scroll');
+        restoreTableFromCards();
+      }
+    }
+
+    $(window).on('resize', handleResponsiveTables);
+    handleResponsiveTables();
+  };
+
+  function convertTableToCards() {
+    // Implementation for mobile card view
+    $('.table-responsive table').each(function(){
+      if (!$(this).hasClass('converted-to-cards')) {
+        $(this).addClass('converted-to-cards');
+        // Add mobile-friendly styling
+      }
+    });
+  }
+
+  function restoreTableFromCards() {
+    $('.table-responsive table').removeClass('converted-to-cards');
+  }
+
+  // ===============================
+  //  🔄 AUTO-REFRESH & REAL-TIME UPDATES
+  // ===============================
+  
+  window.initAutoRefresh = function() {
+    var refreshInterval = null;
+    
+    // Auto-refresh toggle
+    $('#auto_refresh_toggle').off('change').on('change', function(){
+      if ($(this).prop('checked')) {
+        startAutoRefresh();
+      } else {
+        stopAutoRefresh();
+      }
+    });
+
+    function startAutoRefresh() {
+      refreshInterval = setInterval(function(){
+        if (typeof DataTableRefresh === 'function') {
+          DataTableRefresh();
+        }
+      }, 30000); // 30 seconds
+    }
+
+    function stopAutoRefresh() {
+      if (refreshInterval) {
+        clearInterval(refreshInterval);
+        refreshInterval = null;
+      }
+    }
+
+    // Stop auto-refresh when user is inactive
+    var inactivityTimer = null;
+    $(document).on('mousemove keypress', function(){
+      clearTimeout(inactivityTimer);
+      inactivityTimer = setTimeout(stopAutoRefresh, 300000); // 5 minutes
+    });
+  };
+
+  // ===============================
+  //  💾 DATA PERSISTENCE & CACHING
+  // ===============================
+  
+  window.initDataPersistence = function() {
+    // Save form data to localStorage
+    function saveFormData(formId, data) {
+      try {
+        localStorage.setItem('form_' + formId, JSON.stringify(data));
+      } catch(e) {
+        console.warn('Failed to save form data:', e);
+      }
+    }
+
+    // Restore form data from localStorage
+    function restoreFormData(formId) {
+      try {
+        var saved = localStorage.getItem('form_' + formId);
+        return saved ? JSON.parse(saved) : null;
+      } catch(e) {
+        console.warn('Failed to restore form data:', e);
+        return null;
+      }
+    }
+
+    // Auto-save form data
+    $('form').on('input change', 'input, select, textarea', function(){
+      var $form = $(this).closest('form');
+      var formId = $form.attr('id');
+      if (formId) {
+        var formData = $form.serializeArray();
+        saveFormData(formId, formData);
+      }
+    });
+
+    // Restore form data on modal show
+    $('.modal').on('shown.bs.modal', function(){
+      var $form = $(this).find('form');
+      var formId = $form.attr('id');
+      if (formId) {
+        var savedData = restoreFormData(formId);
+        if (savedData) {
+          savedData.forEach(function(field){
+            $form.find('[name="' + field.name + '"]').val(field.value);
+          });
+        }
+      }
+    });
+
+    // Clear saved data on successful submission
+    $('form').on('submit', function(){
+      var formId = $(this).attr('id');
+      if (formId) {
+        localStorage.removeItem('form_' + formId);
+      }
+    });
+  };
+
+  // ===============================
+  //  🎨 THEME & CUSTOMIZATION
+  // ===============================
+  
+  window.initThemeCustomization = function() {
+    // Dark mode toggle
+    $('#dark_mode_toggle').off('change').on('change', function(){
+      if ($(this).prop('checked')) {
+        $('body').addClass('dark-theme');
+        localStorage.setItem('theme', 'dark');
+      } else {
+        $('body').removeClass('dark-theme');
+        localStorage.setItem('theme', 'light');
+      }
+    });
+
+    // Restore theme preference
+    var savedTheme = localStorage.getItem('theme');
+    if (savedTheme === 'dark') {
+      $('body').addClass('dark-theme');
+      $('#dark_mode_toggle').prop('checked', true);
+    }
+
+    // Compact mode toggle
+    $('#compact_mode_toggle').off('change').on('change', function(){
+      if ($(this).prop('checked')) {
+        $('body').addClass('compact-mode');
+        localStorage.setItem('layout', 'compact');
+      } else {
+        $('body').removeClass('compact-mode');
+        localStorage.setItem('layout', 'normal');
+      }
+    });
+
+    // Restore layout preference
+    var savedLayout = localStorage.getItem('layout');
+    if (savedLayout === 'compact') {
+      $('body').addClass('compact-mode');
+      $('#compact_mode_toggle').prop('checked', true);
+    }
+  };
+
+  // ===============================
+  //  📊 ENHANCED ANALYTICS & REPORTING
+  // ===============================
+  
+  window.initAnalytics = function() {
+    // Track user interactions
+    function trackInteraction(action, details) {
+      $.post(Wo_Ajax_Requests_File() + '?f=analytics&s=track', {
+        action: action,
+        details: JSON.stringify(details),
+        timestamp: Date.now()
+      }).fail(function(){
+        // Silent fail for analytics
+      });
+    }
+
+    // Track modal opens
+    $('.modal').on('shown.bs.modal', function(){
+      var modalId = $(this).attr('id');
+      trackInteraction('modal_open', { modal: modalId });
+    });
+
+    // Track button clicks
+    $('button[data-track]').off('click.analytics').on('click.analytics', function(){
+      var action = $(this).data('track');
+      trackInteraction('button_click', { action: action });
+    });
+
+    // Track form submissions
+    $('form').on('submit', function(){
+      var formId = $(this).attr('id');
+      trackInteraction('form_submit', { form: formId });
+    });
+  };
+
+  // ===============================
+  //  🔔 NOTIFICATION SYSTEM
+  // ===============================
+  
+  window.initNotificationSystem = function() {
+    // Enhanced notification display
+    window.showNotification = function(message, type, duration) {
+      type = type || 'info';
+      duration = duration || 5000;
+      
+      var iconClass = {
+        'success': 'lni-checkmark-circle',
+        'error': 'lni-cross-circle',
+        'warning': 'lni-warning',
+        'info': 'lni-information'
+      }[type] || 'lni-information';
+
+      var bgClass = {
+        'success': 'bg-success',
+        'error': 'bg-danger',
+        'warning': 'bg-warning',
+        'info': 'bg-info'
+      }[type] || 'bg-info';
+
+      var $notification = $(`
+        <div class="toast align-items-center text-white ${bgClass} border-0" role="alert" style="position: fixed; top: 20px; right: 20px; z-index: 9999;">
+          <div class="d-flex">
+            <div class="toast-body">
+              <i class="lni ${iconClass} me-2"></i>
+              ${message}
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+          </div>
+        </div>
+      `);
+
+      $('body').append($notification);
+      
+      var toast = new bootstrap.Toast($notification[0], {
+        autohide: true,
+        delay: duration
+      });
+      
+      toast.show();
+      
+      // Remove from DOM after hiding
+      $notification.on('hidden.bs.toast', function(){
+        $(this).remove();
+      });
+    };
+
+    // Progress notifications for long operations
+    window.showProgressNotification = function(message, progress) {
+      var $existing = $('#progress-notification');
+      if (!$existing.length) {
+        $existing = $(`
+          <div id="progress-notification" class="toast align-items-center text-white bg-primary border-0" style="position: fixed; top: 20px; right: 20px; z-index: 9999;">
+            <div class="toast-body">
+              <div class="d-flex align-items-center">
+                <div class="flex-grow-1">
+                  <div id="progress-message">${message}</div>
+                  <div class="progress mt-2" style="height: 4px;">
+                    <div id="progress-bar" class="progress-bar bg-light" style="width: ${progress}%"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        `);
+        $('body').append($existing);
+        
+        var toast = new bootstrap.Toast($existing[0], {
+          autohide: false
+        });
+        toast.show();
+      } else {
+        $('#progress-message').text(message);
+        $('#progress-bar').css('width', progress + '%');
+      }
+      
+      if (progress >= 100) {
+        setTimeout(function(){
+          $existing.remove();
+        }, 1000);
+      }
+    };
+  };
+
+  // ===============================
+  //  ⌨️ ENHANCED KEYBOARD SHORTCUTS
+  // ===============================
+  
+  window.initKeyboardShortcuts = function() {
+    var shortcuts = {
+      'ctrl+n': function() { $('#addPurchaseBtn').click(); },
+      'ctrl+p': function() { $('#printButton').click(); },
+      'ctrl+f': function() { $('.quick-search').focus(); },
+      'ctrl+r': function() { if(typeof DataTableRefresh === 'function') DataTableRefresh(); },
+      'f3': function() { $('.quick-search').focus(); },
+      'escape': function() { 
+        // Close topmost modal
+        var $topModal = $('.modal.show').last();
+        if ($topModal.length) {
+          $topModal.modal('hide');
+        }
+      }
+    };
+
+    $(document).off('keydown.shortcuts').on('keydown.shortcuts', function(e){
+      var key = '';
+      if (e.ctrlKey) key += 'ctrl+';
+      if (e.altKey) key += 'alt+';
+      if (e.shiftKey) key += 'shift+';
+      
+      if (e.key === 'Escape') key += 'escape';
+      else if (e.key === 'F3') key += 'f3';
+      else key += e.key.toLowerCase();
+
+      if (shortcuts[key]) {
+        e.preventDefault();
+        shortcuts[key]();
+      }
+    });
+
+    // Show shortcuts help
+    window.showShortcutsHelp = function() {
+      var helpContent = `
+        <div class="shortcuts-help">
+          <h6>Keyboard Shortcuts</h6>
+          <div class="row g-2">
+            <div class="col-6"><kbd>Ctrl+N</kbd> Add Purchase</div>
+            <div class="col-6"><kbd>Ctrl+P</kbd> Print</div>
+            <div class="col-6"><kbd>Ctrl+F</kbd> Search</div>
+            <div class="col-6"><kbd>Ctrl+R</kbd> Refresh</div>
+            <div class="col-6"><kbd>F3</kbd> Quick Search</div>
+            <div class="col-6"><kbd>Esc</kbd> Close Modal</div>
+          </div>
+        </div>
+      `;
+      
+      showNotification(helpContent, 'info', 8000);
+    };
+  };
+
+  // ===============================
+  //  🔍 ADVANCED VALIDATION
+  // ===============================
+  
+  window.initAdvancedValidation = function() {
+    // Real-time validation
+    $('input[type="email"]').on('blur', function(){
+      var email = $(this).val();
+      if (email && !isValidEmail(email)) {
+        $(this).addClass('is-invalid');
+        showFieldError($(this), 'Please enter a valid email address');
+      } else {
+        $(this).removeClass('is-invalid');
+        hideFieldError($(this));
+      }
+    });
+
+    $('input[type="tel"]').on('blur', function(){
+      var phone = $(this).val();
+      if (phone && !isValidPhone(phone)) {
+        $(this).addClass('is-invalid');
+        showFieldError($(this), 'Please enter a valid phone number');
+      } else {
+        $(this).removeClass('is-invalid');
+        hideFieldError($(this));
+      }
+    });
+
+    // NID validation
+    $('input[name*="nid"]').on('blur', function(){
+      var nid = $(this).val();
+      if (nid && !isValidNID(nid)) {
+        $(this).addClass('is-invalid');
+        showFieldError($(this), 'Please enter a valid National ID');
+      } else {
+        $(this).removeClass('is-invalid');
+        hideFieldError($(this));
+      }
+    });
+
+    function isValidEmail(email) {
+      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    }
+
+    function isValidPhone(phone) {
+      return /^(\+8801|8801|01)[3-9]\d{8}$/.test(phone.replace(/\s/g, ''));
+    }
+
+    function isValidNID(nid) {
+      return /^\d{10}$|^\d{13}$|^\d{17}$/.test(nid);
+    }
+
+    function showFieldError($field, message) {
+      hideFieldError($field);
+      var $error = $('<div class="invalid-feedback">' + message + '</div>');
+      $field.after($error);
+    }
+
+    function hideFieldError($field) {
+      $field.siblings('.invalid-feedback').remove();
+    }
+  };
+
+  // ===============================
+  //  📄 BULK OPERATIONS
+  // ===============================
+  
+  window.initBulkOperations = function() {
+    // Bulk selection
+    $('#select_all_purchases').off('change').on('change', function(){
+      var checked = $(this).prop('checked');
+      $('.purchase-checkbox').prop('checked', checked);
+      updateBulkActions();
+    });
+
+    $('.purchase-checkbox').off('change').on('change', function(){
+      updateBulkActions();
+    });
+
+    function updateBulkActions() {
+      var selectedCount = $('.purchase-checkbox:checked').length;
+      if (selectedCount > 0) {
+        $('#bulk_actions').show();
+        $('#selected_count').text(selectedCount);
+      } else {
+        $('#bulk_actions').hide();
+      }
+    }
+
+    // Bulk operations
+    $('#bulk_print').off('click').on('click', function(){
+      var selectedIds = $('.purchase-checkbox:checked').map(function(){
+        return $(this).val();
+      }).get();
+      
+      if (selectedIds.length > 0) {
+        printBookingFormsByIds(selectedIds);
+      }
+    });
+
+    $('#bulk_export').off('click').on('click', function(){
+      var selectedIds = $('.purchase-checkbox:checked').map(function(){
+        return $(this).val();
+      }).get();
+      
+      if (selectedIds.length > 0) {
+        exportBulkData(selectedIds);
+      }
+    });
+
+    function exportBulkData(ids) {
+      $.post(Wo_Ajax_Requests_File() + '?f=manage_inventory&s=bulk_export', {
+        purchase_ids: JSON.stringify(ids),
+        format: 'excel'
+      })
+        .done(function(response){
+          var data = typeof response === 'string' ? JSON.parse(response) : response;
+          
+          if (data && data.status === 200 && data.download_url) {
+            window.open(data.download_url, '_blank');
+          } else {
+            alert(data.message || 'Failed to export data');
+          }
+        })
+        .fail(function(){
+          alert('Server error while exporting data');
+        });
+    }
+  };
+
+  // ===============================
+  //  🎯 SMART SUGGESTIONS
+  // ===============================
+  
+  window.initSmartSuggestions = function() {
+    // Auto-complete for client names
+    $('input[name*="name"]').on('input', function(){
+      var query = $(this).val();
+      if (query.length >= 2) {
+        showNameSuggestions($(this), query);
+      } else {
+        hideNameSuggestions($(this));
+      }
+    });
+
+    function showNameSuggestions($input, query) {
+      $.get(Wo_Ajax_Requests_File() + '?f=suggestions&s=client_names&q=' + encodeURIComponent(query))
+        .done(function(response){
+          var suggestions = Array.isArray(response) ? response : [];
+          if (suggestions.length > 0) {
+            displaySuggestions($input, suggestions);
+          }
+        });
+    }
+
+    function displaySuggestions($input, suggestions) {
+      hideNameSuggestions($input);
+      
+      var $dropdown = $('<div class="suggestions-dropdown"></div>');
+      suggestions.forEach(function(suggestion){
+        var $item = $('<div class="suggestion-item">' + suggestion.name + '</div>');
+        $item.on('click', function(){
+          $input.val(suggestion.name);
+          hideNameSuggestions($input);
+        });
+        $dropdown.append($item);
+      });
+      
+      $input.after($dropdown);
+    }
+
+    function hideNameSuggestions($input) {
+      $input.siblings('.suggestions-dropdown').remove();
+    }
+  };
+
+  // ===============================
+  //  🔐 SECURITY ENHANCEMENTS
+  // ===============================
+  
+  window.initSecurityEnhancements = function() {
+    // Session timeout warning
+    var sessionTimeout = 30 * 60 * 1000; // 30 minutes
+    var warningTimeout = 25 * 60 * 1000; // 25 minutes
+    
+    setTimeout(function(){
+      if (confirm('Your session will expire in 5 minutes. Do you want to extend it?')) {
+        $.post(Wo_Ajax_Requests_File() + '?f=session&s=extend')
+          .done(function(){
+            showNotification('Session extended successfully', 'success');
+          });
+      }
+    }, warningTimeout);
+
+    // Prevent multiple form submissions
+    $('form').on('submit', function(){
+      var $submitBtn = $(this).find('button[type="submit"]');
+      $submitBtn.prop('disabled', true);
+      
+      setTimeout(function(){
+        $submitBtn.prop('disabled', false);
+      }, 3000);
+    });
+
+    // Secure data handling
+    function sanitizeInput(input) {
+      return input.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+    }
+
+    $('input, textarea').on('blur', function(){
+      var sanitized = sanitizeInput($(this).val());
+      if (sanitized !== $(this).val()) {
+        $(this).val(sanitized);
+        showNotification('Input has been sanitized for security', 'warning');
+      }
+    });
+  };
+
+  // ===============================
+  //  🚀 PERFORMANCE OPTIMIZATIONS
+  // ===============================
+  
+  window.initPerformanceOptimizations = function() {
+    // Lazy loading for images
+    $('img[data-src]').each(function(){
+      var $img = $(this);
+      var observer = new IntersectionObserver(function(entries){
+        entries.forEach(function(entry){
+          if (entry.isIntersecting) {
+            var $target = $(entry.target);
+            $target.attr('src', $target.data('src'));
+            $target.removeAttr('data-src');
+            observer.unobserve(entry.target);
+          }
+        });
+      });
+      observer.observe(this);
+    });
+
+    // Debounced search
+    function debounce(func, wait) {
+      var timeout;
+      return function executedFunction(...args) {
+        var later = function() {
+          clearTimeout(timeout);
+          func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+      };
+    }
+
+    var debouncedSearch = debounce(function(query) {
+      // Perform search
+      if (typeof DataTableRefresh === 'function') {
+        DataTableRefresh();
+      }
+    }, 300);
+
+    $('.search-input').on('input', function(){
+      debouncedSearch($(this).val());
+    });
+
+    // Virtual scrolling for large lists
+    function initVirtualScrolling($container) {
+      var itemHeight = 50;
+      var visibleItems = Math.ceil($container.height() / itemHeight);
+      var totalItems = $container.find('.list-item').length;
+      
+      if (totalItems > visibleItems * 2) {
+        // Implement virtual scrolling
+        implementVirtualScrolling($container, itemHeight, visibleItems, totalItems);
+      }
+    }
+
+    function implementVirtualScrolling($container, itemHeight, visibleItems, totalItems) {
+      // Virtual scrolling implementation
+      var $viewport = $('<div class="virtual-viewport"></div>');
+      var $content = $('<div class="virtual-content"></div>');
+      
+      $viewport.css({
+        height: visibleItems * itemHeight,
+        overflow: 'auto'
+      });
+      
+      $content.css({
+        height: totalItems * itemHeight
+      });
+      
+      $viewport.append($content);
+      $container.replaceWith($viewport);
+      
+      $viewport.on('scroll', function(){
+        var scrollTop = $(this).scrollTop();
+        var startIndex = Math.floor(scrollTop / itemHeight);
+        var endIndex = Math.min(startIndex + visibleItems, totalItems);
+        
+        // Render visible items
+        renderVisibleItems($content, startIndex, endIndex, itemHeight);
+      });
+    }
+
+    function renderVisibleItems($content, startIndex, endIndex, itemHeight) {
+      $content.empty();
+      
+      for (var i = startIndex; i < endIndex; i++) {
+        var $item = $('<div class="virtual-item"></div>');
+        $item.css({
+          position: 'absolute',
+          top: i * itemHeight,
+          height: itemHeight,
+          width: '100%'
+        });
+        $item.text('Item ' + (i + 1));
+        $content.append($item);
+      }
+    }
+  };
+
+  // ===============================
+  //  🎮 INITIALIZE ALL FEATURES
+  // ===============================
+  
+  // Master initialization function
+  window.initAllEnhancedFeatures = function() {
+    initEnhancedSearch();
+    initMobileOptimizations();
+    initAutoRefresh();
+    initDataPersistence();
+    initThemeCustomization();
+    initAnalytics();
+    initNotificationSystem();
+    initKeyboardShortcuts();
+    initPerformanceOptimizations();
+    
+    // Show welcome message with shortcuts
+    setTimeout(function(){
+      showNotification('Press <kbd>Ctrl+?</kbd> for keyboard shortcuts', 'info', 3000);
+    }, 1000);
+  };
+
+  // Auto-initialize when document is ready
+  $(document).ready(function(){
+    initAllEnhancedFeatures();
+  });
+
+});
+</script>
+
+<style>
+/* Enhanced styles for new features */
+.touch-friendly {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+.mobile-scroll {
+  -webkit-overflow-scrolling: touch;
+}
+
+.suggestions-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: white;
+  border: 1px solid #ddd;
+  border-top: none;
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 1000;
+}
+
+.suggestion-item {
+  padding: 8px 12px;
+  cursor: pointer;
+  border-bottom: 1px solid #eee;
+}
+
+.suggestion-item:hover {
+  background-color: #f8f9fa;
+}
+
+.shortcuts-help kbd {
+  background-color: #e9ecef;
+  border: 1px solid #adb5bd;
+  border-radius: 3px;
+  padding: 2px 4px;
+  font-size: 0.875em;
+}
+
+.compact-mode .card-body {
+  padding: 0.75rem;
+}
+
+.compact-mode .table td,
+.compact-mode .table th {
+  padding: 0.5rem;
+}
+
+.year_item.overused {
+  color: #dc3545;
+}
+
+.year_item.overused h4 {
+  color: #dc3545;
+}
+
+/* Enhanced loading states */
+.loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+/* Better focus states */
+.form-control:focus,
+.form-select:focus {
+  border-color: #667eea;
+  box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+}
+
+/* Enhanced button states */
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn.loading {
+  position: relative;
+  color: transparent;
+}
+
+.btn.loading::after {
+  content: '';
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  top: 50%;
+  left: 50%;
+  margin-left: -8px;
+  margin-top: -8px;
+  border: 2px solid transparent;
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Enhanced modal animations */
+.modal.fade .modal-dialog {
+  transform: scale(0.8) translateY(-50px);
+  transition: transform 0.3s ease-out, opacity 0.3s ease-out;
+}
+
+.modal.show .modal-dialog {
+  transform: scale(1) translateY(0);
+}
+
+/* Better print styles */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  
+  .print-only {
+    display: block !important;
+  }
+  
+  .page-break {
+    page-break-after: always;
+  }
+  
+  .avoid-break {
+    page-break-inside: avoid;
+  }
+}
+
+/* Enhanced accessibility */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Better error states */
+.is-invalid {
+  border-color: #dc3545;
+}
+
+.invalid-feedback {
+  display: block;
+  width: 100%;
+  margin-top: 0.25rem;
+  font-size: 0.875em;
+  color: #dc3545;
+}
+
+/* Enhanced tooltips */
+.tooltip {
+  font-size: 0.875rem;
+}
+
+.tooltip-inner {
+  max-width: 300px;
+  text-align: left;
+}
+
+/* Better responsive design */
+@media (max-width: 576px) {
+  .modal-dialog {
+    margin: 0.5rem;
+  }
+  
+  .table-responsive {
+    font-size: 0.875rem;
+  }
+  
+  .btn-group .btn {
+    padding: 0.25rem 0.5rem;
+  }
+}
+
+/* Enhanced dark theme support */
+.dark-theme .suggestions-dropdown {
+  background: #2c3e50;
+  border-color: #34495e;
+  color: white;
+}
+
+.dark-theme .suggestion-item:hover {
+  background-color: #34495e;
+}
+
+.dark-theme .loading-overlay {
+  background: rgba(44, 62, 80, 0.8);
+}
+</style>
