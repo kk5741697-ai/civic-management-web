@@ -1,0 +1,291 @@
+<!-- Print Schedule Template Component -->
+<div class="modal fade" id="printScheduleModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content border-0 shadow-lg">
+      <div class="modal-header bg-gradient-primary text-white border-0">
+        <h5 class="modal-title mb-0">
+          <i class="lni lni-printer me-2"></i>Print Payment Schedule
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+
+      <div class="modal-body">
+        <input type="hidden" id="print_schedule_purchase_id" value="">
+        
+        <!-- Print Options -->
+        <div class="card border-0 bg-light mb-4">
+          <div class="card-body">
+            <h6 class="fw-semibold mb-3">Print Options</h6>
+            <div class="row g-3">
+              <div class="col-md-4">
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" id="include_client_info" checked>
+                  <label class="form-check-label" for="include_client_info">
+                    Include Client Information
+                  </label>
+                </div>
+              </div>
+              <div class="col-md-4">
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" id="include_plot_details" checked>
+                  <label class="form-check-label" for="include_plot_details">
+                    Include Plot Details
+                  </label>
+                </div>
+              </div>
+              <div class="col-md-4">
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" id="include_payment_summary" checked>
+                  <label class="form-check-label" for="include_payment_summary">
+                    Include Payment Summary
+                  </label>
+                </div>
+              </div>
+            </div>
+            <div class="row g-3 mt-2">
+              <div class="col-md-6">
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" id="show_paid_only">
+                  <label class="form-check-label" for="show_paid_only">
+                    Show Paid Installments Only
+                  </label>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" id="show_pending_only">
+                  <label class="form-check-label" for="show_pending_only">
+                    Show Pending Installments Only
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Print Preview -->
+        <div class="card border-0 shadow-sm">
+          <div class="card-header bg-light border-0 py-3">
+            <h6 class="mb-0 fw-semibold">
+              <i class="lni lni-eye me-2"></i>Print Preview
+            </h6>
+          </div>
+          <div class="card-body">
+            <div id="schedule_print_preview" class="schedule-print-template">
+              <div class="text-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                  <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mt-3 text-muted">Loading schedule preview...</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer border-0 bg-light">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+          <i class="lni lni-close me-1"></i>Cancel
+        </button>
+        <button type="button" id="preview_schedule_btn" class="btn btn-info">
+          <i class="lni lni-eye me-1"></i>Update Preview
+        </button>
+        <button type="button" id="print_schedule_btn" class="btn btn-primary">
+          <i class="lni lni-printer me-1"></i>Print Schedule
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+jQuery(function($){
+  'use strict';
+
+  // Initialize print schedule functionality
+  function initPrintSchedule() {
+    // Global function to open print schedule modal
+    window.printPaymentSchedule = function(purchaseId) {
+      $('#print_schedule_purchase_id').val(purchaseId);
+      loadSchedulePreview(purchaseId);
+      $('#printScheduleModal').modal('show');
+    };
+
+    // Make printPaymentSchedule available for dropdown menu
+    $(document).off('click.printSchedule', '.print_payment_schedule').on('click.printSchedule', '.print_payment_schedule', function(e){
+      e.preventDefault();
+      var purchaseId = $(this).data('id');
+      if (purchaseId) {
+        printPaymentSchedule(purchaseId);
+      }
+    });
+
+    // Preview update handler
+    $('#preview_schedule_btn').off('click').on('click', function(){
+      var purchaseId = $('#print_schedule_purchase_id').val();
+      if (purchaseId) {
+        loadSchedulePreview(purchaseId);
+      }
+    });
+
+    // Print handler
+    $('#print_schedule_btn').off('click').on('click', function(){
+      printScheduleDocument();
+    });
+
+    // Filter change handlers
+    $('#show_paid_only, #show_pending_only').off('change').on('change', function(){
+      if ($(this).prop('checked')) {
+        // Uncheck the other filter
+        var otherId = $(this).attr('id') === 'show_paid_only' ? '#show_pending_only' : '#show_paid_only';
+        $(otherId).prop('checked', false);
+      }
+      
+      var purchaseId = $('#print_schedule_purchase_id').val();
+      if (purchaseId) {
+        loadSchedulePreview(purchaseId);
+      }
+    });
+
+    $('#include_client_info, #include_plot_details, #include_payment_summary').off('change').on('change', function(){
+      var purchaseId = $('#print_schedule_purchase_id').val();
+      if (purchaseId) {
+        loadSchedulePreview(purchaseId);
+      }
+    });
+  }
+
+  function loadSchedulePreview(purchaseId) {
+    $('#schedule_print_preview').html(`
+      <div class="text-center py-4">
+        <div class="spinner-border text-primary" role="status">
+          <span class="visually-hidden">Loading...</span>
+        </div>
+        <p class="mt-3">Loading schedule preview...</p>
+      </div>
+    `);
+
+    var options = {
+      include_client_info: $('#include_client_info').prop('checked'),
+      include_plot_details: $('#include_plot_details').prop('checked'),
+      include_payment_summary: $('#include_payment_summary').prop('checked'),
+      show_paid_only: $('#show_paid_only').prop('checked'),
+      show_pending_only: $('#show_pending_only').prop('checked')
+    };
+
+    $.post(Wo_Ajax_Requests_File() + '?f=manage_inventory&s=get_schedule_preview', {
+      purchase_id: purchaseId,
+      options: JSON.stringify(options)
+    })
+      .done(function(response){
+        var data = typeof response === 'string' ? JSON.parse(response) : response;
+        
+        if (data && data.status === 200) {
+          $('#schedule_print_preview').html(data.html);
+        } else {
+          showPreviewError('Failed to load schedule preview: ' + (data.message || 'Unknown error'));
+        }
+      })
+      .fail(function(){
+        showPreviewError('Server error occurred while loading preview.');
+      });
+  }
+
+  function showPreviewError(message) {
+    $('#schedule_print_preview').html(`
+      <div class="alert alert-danger">
+        <i class="lni lni-warning me-2"></i>
+        ${message}
+      </div>
+    `);
+  }
+
+  function printScheduleDocument() {
+    var printContent = document.getElementById('schedule_print_preview').innerHTML;
+    
+    if (!printContent || printContent.includes('spinner-border')) {
+      alert('Please wait for the preview to load before printing.');
+      return;
+    }
+
+    var printWindow = window.open('', '_blank', 'width=800,height=600');
+    if (!printWindow) {
+      alert('Please allow popups to print the schedule.');
+      return;
+    }
+
+    var printDocument = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Payment Schedule</title>
+        <style>
+          body { font-family: Arial, sans-serif; margin: 20px; color: #333; }
+          .schedule-print-template { background: white; }
+          .company-header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #007bff; padding-bottom: 20px; }
+          .company-name { font-size: 24px; font-weight: bold; color: #007bff; margin-bottom: 5px; }
+          .document-title { font-size: 18px; color: #666; margin-bottom: 20px; }
+          .info-section { margin-bottom: 20px; }
+          .info-title { font-weight: bold; color: #333; margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+          .info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+          .info-item { padding: 8px; background: #f8f9fa; border-radius: 4px; }
+          .info-label { font-weight: 600; color: #666; font-size: 12px; }
+          .info-value { color: #333; }
+          table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+          th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+          th { background-color: #f8f9fa; font-weight: 600; }
+          .text-center { text-align: center; }
+          .text-end { text-align: right; }
+          .badge { padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+          .bg-success { background-color: #28a745; color: white; }
+          .bg-warning { background-color: #ffc107; color: #212529; }
+          .bg-danger { background-color: #dc3545; color: white; }
+          .bg-secondary { background-color: #6c757d; color: white; }
+          .signature-area { margin-top: 50px; display: flex; justify-content: space-between; }
+          .signature-box { text-align: center; width: 200px; }
+          .signature-line { border-top: 1px solid #333; margin-top: 50px; padding-top: 5px; }
+          @media print {
+            body { margin: 0; }
+            .no-print { display: none !important; }
+          }
+        </style>
+      </head>
+      <body>
+        ${printContent}
+      </body>
+      </html>
+    `;
+
+    printWindow.document.write(printDocument);
+    printWindow.document.close();
+    
+    // Wait for content to load then print
+    setTimeout(function(){
+      printWindow.focus();
+      printWindow.print();
+      setTimeout(function(){
+        printWindow.close();
+      }, 1000);
+    }, 500);
+  }
+
+  // Add to global initialization
+  if (typeof window.initViewClientComponents !== 'function') {
+    window.initViewClientComponents = function() {
+      initPrintSchedule();
+    };
+  } else {
+    var originalInit = window.initViewClientComponents;
+    window.initViewClientComponents = function() {
+      originalInit();
+      initPrintSchedule();
+    };
+  }
+
+  // Cleanup
+  $('#viewClient-modal').on('hidden.bs.modal.printSchedule', function(){
+    $(document).off('.printSchedule');
+  });
+
+});
+</script>

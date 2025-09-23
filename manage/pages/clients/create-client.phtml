@@ -1,0 +1,425 @@
+<!-- SINGLE DROP-IN BLOCK: Clean modal + safe global JS (idempotent, safe to re-insert) -->
+<!-- Paste this where you need the modal fragment. If you fetch it multiple times, the script is safe (it guards against double-bootstrap). -->
+
+<!-- Styles (you can keep here for a single-file paste; move to global CSS for production) -->
+<style>
+  #dataSheet_download button.btn { border: 2px solid transparent; padding: 6px 2px; width: 40px; border-radius: 8px; }
+  #dataSheet_download button.btn:hover { background: white; border: 2px solid #6c757d; color: #6c757d; }
+
+  /* small modal-specific helpers (safe to repeat) */
+  .with_sign { display: flex; align-items: center; }
+  .with_sign sign { padding: 6.5px 8px; background: #dee2e6; margin-right: -28px; border: 1px solid #dee2e6; z-index: 9; border-radius: 5px; }
+  .with_sign input.form-control { padding-left: 35px; }
+  .manupulate .select2-container--bootstrap-5 .select2-selection { height: 39px; }
+  .manupulate .select2-search textarea { opacity: 0; }
+  .manupulate .select2-search__field[aria-controls=select2-select-client-results] { opacity: 1; }
+  .manupulate .select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__rendered .select2-selection__choice { width: 100%; padding: 0; border: none; }
+  .manupulate .select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__rendered .select2-selection__choice .select2-selection__choice__remove { margin-right: 8px; }
+</style>
+
+<div class="ms-auto button_flex_middle">
+  <div id="dataSheet_download" style="margin-right: 10px;"></div>
+
+  <!-- Button trigger modal -->
+  <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#create_invoiceModal">Create Client</button>
+
+  <!-- Modal (fragment) -->
+  <div class="modal fade full_screen" id="create_invoiceModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-body">
+          <h5 class="mb-1 text-center create_invoice_title">Create Client</h5>
+          <hr>
+
+          <form id="create-client" class="row g-3" novalidate>
+            <div class="col-6">
+              <label class="form-label">Client's Name</label>
+              <input type="text" name="name" class="form-control" placeholder="Client's Name" required>
+            </div>
+
+            <div class="col-6">
+              <label class="form-label">Spouse Name (Optional)</label>
+              <input type="text" name="additional[spouse_name]" id="spouse_name" placeholder="Spouse Name" class="form-control">
+            </div>
+
+            <div class="col-6">
+              <label class="form-label">Father's Name</label>
+              <input type="text" name="additional[fathers_name]" placeholder="Father's Name" class="form-control">
+            </div>
+
+            <div class="col-6">
+              <label class="form-label">Mother's Name</label>
+              <input type="text" name="additional[mothers_name]" placeholder="Mother's Name" class="form-control">
+            </div>
+
+            <div class="col-12">
+              <label class="form-label">Present Address</label>
+              <input type="text" name="address" id="presentAddress" class="form-control" placeholder="Present Address" required>
+            </div>
+
+            <div class="col-12">
+              <label class="form-label">Permanent Address</label>
+              <input type="text" name="additional[permanent_addr]" id="permanentAddress" class="form-control" placeholder="Permanent Address" required>
+            </div>
+
+            <div class="col-6">
+              <label class="form-label">Reference</label>
+              <select id="select-reference" name="additional[reference]" class="form-select" required>
+                <?php
+                  $get_users = $db->orderBy('serial', 'ASC')->get(T_USERS);
+                  foreach ($get_users as $userlist) {
+                    $first_name = cleanName($userlist->first_name);
+                    echo "<option value='".htmlspecialchars($userlist->user_id, ENT_QUOTES)."'>{$first_name} {$userlist->last_name}</option>";
+                  }
+                ?>
+              </select>
+            </div>
+
+            <div class="col-12 d-none">
+              <label class="form-label">Profession</label>
+              <input type="text" name="additional[profession]" class="form-control" placeholder="Profession">
+            </div>
+
+            <div class="col-6">
+              <label class="form-label">Email (Optional)</label>
+              <input type="email" name="additional[email]" class="form-control" placeholder="Email">
+            </div>
+
+            <div class="col-6">
+              <label class="form-label">Phone</label>
+              <input type="tel" name="phone" class="form-control" placeholder="Phone" required>
+            </div>
+
+            <div class="col-6">
+              <label class="form-label">Nationality</label>
+              <select id="select-nationality" name="additional[nationality]" class="form-select" required>
+                <option value="Bangladeshi">Bangladeshi</option>
+              </select>
+            </div>
+
+            <div class="col-6">
+              <label class="form-label">Date of Birth</label>
+              <input type="date" name="additional[birthday]" class="form-control" placeholder="Date of Birth" required>
+            </div>
+
+            <div class="col-6">
+              <label class="form-label">Religion</label>
+              <select id="select-religion" name="additional[religion]" class="form-select" required>
+                <option value="Muslim" selected>Muslim</option>
+                <option value="Hindu">Hindu</option>
+              </select>
+            </div>
+
+            <div class="col-6">
+              <label class="form-label">National ID</label>
+              <input type="text" name="additional[nid]" class="form-control" placeholder="National ID" required>
+            </div>
+
+            <div class="col-6">
+              <label class="form-label">Passport No (Optional)</label>
+              <input type="text" name="additional[passport]" class="form-control" placeholder="Passport No">
+            </div>
+
+            <hr>
+
+            <!-- Nominees -->
+            <div class="col-12">
+              <div class="row mb-2">
+                <div class="col-md-9"><label class="form-label">Nominees</label></div>
+                <div class="col-md-3 text-md-end"><strong>Total Share: <span id="total-share">0%</span></strong></div>
+              </div>
+
+              <div id="nominees-container">
+                <div class="nominee-block row g-2 mb-2" data-index="0">
+                  <div class="col-md-3">
+                    <input type="text" name="nominees[0][name]" class="form-control nominee-name" placeholder="Nominee Name">
+                  </div>
+                  <div class="col-md-2">
+                    <select name="nominees[0][relation]" class="form-select nominee-relation">
+                      <option value="">Relation</option>
+                      <option>Husband</option>
+                      <option>Wife</option>
+                      <option>Daughter</option>
+                      <option>Son</option>
+                      <option>Sister</option>
+                      <option>Brother</option>
+                      <option>Mother</option>
+                    </select>
+                  </div>
+                  <div class="col-md-2">
+                    <input type="number" min="0" max="100" name="nominees[0][share_parcent]" class="form-control share-input" step="0.01" placeholder="Share(%)">
+                  </div>
+                  <div class="col-md-2">
+                    <input type="tel" name="nominees[0][phone]" class="form-control nominee-phone" placeholder="Phone">
+                  </div>
+                  <div class="col-md-2">
+                    <input type="date" name="nominees[0][birthday]" class="form-control nominee-birthday" placeholder="Birthday">
+                  </div>
+                  <div class="col-md-1 d-flex align-items-center">
+                    <button type="button" class="btn btn-sm btn-danger remove-nominee" title="Remove" style="display:none;">&times;</button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="mt-2">
+                <button type="button" id="add-nominee" class="btn btn-sm btn-outline-primary">+ Add nominee</button>
+              </div>
+            </div>
+
+            <div class="d-flex col-12">
+              <div class="ms-auto">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="submit" class="btn btn-primary create_btn">Create</button>
+              </div>
+            </div>
+          </form>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Safe global JS: include once (script is idempotent; if inserted multiple times it won't re-register global bootstrap) -->
+<script>
+(function (window, document, $) {
+  // Guard so we don't re-bootstrap global handlers multiple times.
+  if (!window.__CLIENT_MODAL_BOOTSTRAPPED) window.__CLIENT_MODAL_BOOTSTRAPPED = 0;
+  // allow multiple inserts but run global init only once
+  if (window.__CLIENT_MODAL_BOOTSTRAPPED >= 1) {
+    // still initialize any modal in DOM that hasn't been initialized yet
+    $(document).trigger('client-modal-init-scan');
+  } else {
+    window.__CLIENT_MODAL_BOOTSTRAPPED = 1;
+
+    // Helpers
+    function safeSelect2Init($el, opts) {
+      if (!$el || !$el.length) return;
+      try {
+        if ($el.hasClass('select2-hidden-accessible')) $el.select2('destroy');
+      } catch (e) {}
+      try { $el.select2($.extend({}, opts || {})); } catch (e) {}
+    }
+    function safeSelect2Destroy($modal) {
+      if (!$modal || !$modal.length) return;
+      $modal.find('select').each(function () {
+        var $s = $(this);
+        try { if ($s.hasClass('select2-hidden-accessible')) $s.select2('destroy'); } catch (e) {}
+      });
+    }
+
+    // Per-modal nominee initializer
+    function initNominees(modal) {
+      var $modal = $(modal);
+      var $container = $modal.find('#nominees-container').first();
+      if (!$container.length) return;
+
+      if (!$modal.data('nominee-template')) {
+        var $first = $container.find('.nominee-block').first();
+        // store the first block's outerHTML as template
+        $modal.data('nominee-template', $first.prop('outerHTML'));
+      }
+      var templateHtml = $modal.data('nominee-template');
+
+      function updateIndexes() {
+        $container.find('.nominee-block').each(function (i, block) {
+          var $b = $(block);
+          $b.attr('data-index', i);
+          $b.find('input, select').each(function () {
+            var name = $(this).attr('name');
+            if (!name) return;
+            var newName = name.replace(/nominees\[\d+\]/, 'nominees[' + i + ']');
+            $(this).attr('name', newName);
+          });
+          $b.find('.remove-nominee').toggle(i !== 0);
+        });
+      }
+      function updateTotalShare() {
+        var total = 0;
+        $container.find('.share-input').each(function () {
+          var v = parseFloat($(this).val());
+          if (isNaN(v)) v = 0;
+          total += v;
+        });
+        var $totalEl = $modal.find('#total-share');
+        if ($totalEl.length) {
+          $totalEl.text(total + '%');
+          if (total > 100) $totalEl.css('color', 'red');
+          else if (Math.abs(total - 100) < 0.0001) $totalEl.css('color', 'green');
+          else $totalEl.css('color', 'orange');
+        }
+      }
+
+      // bind modal-scoped add/remove/share events using namespaced events so they can be removed
+      $modal.off('click.clientAdd', '#add-nominee').on('click.clientAdd', '#add-nominee', function (ev) {
+        ev.preventDefault();
+        var $new = $(templateHtml);
+        $new.find('input').val('');
+        $new.find('.share-input').val('0');
+        $new.find('select').prop('selectedIndex', 0);
+        $container.append($new);
+        updateIndexes();
+        updateTotalShare();
+      });
+
+      $modal.off('click.clientRemove', '.remove-nominee').on('click.clientRemove', '.remove-nominee', function (ev) {
+        ev.preventDefault();
+        $(this).closest('.nominee-block').remove();
+        updateIndexes();
+        updateTotalShare();
+      });
+
+      $modal.off('input.clientShare', '.share-input').on('input.clientShare', '.share-input', function () {
+        var val = parseFloat($(this).val());
+        if (isNaN(val)) val = 0;
+        if (val < 0) $(this).val(0);
+        if (val > 100) $(this).val(100);
+        updateTotalShare();
+      });
+
+      // initial update
+      updateIndexes();
+      updateTotalShare();
+    }
+
+    // Per-modal init (idempotent per modal)
+    function initClientModal(modal) {
+      var $modal = $(modal);
+      if ($modal.data('client-init')) return;
+      $modal.data('client-init', 1);
+
+      // Initialize Select2 instances inside modal (if Select2 is present)
+      safeSelect2Init($modal.find('#select-nationality'), { width: '100%', dropdownParent: $modal.find('.modal-content'), theme: 'bootstrap-5', allowClear: true });
+      safeSelect2Init($modal.find('#select-religion'), { width: '100%', dropdownParent: $modal.find('.modal-content'), theme: 'bootstrap-5', allowClear: true });
+      safeSelect2Init($modal.find('#select-reference'), { width: '100%', dropdownParent: $modal.find('.modal-content'), theme: 'bootstrap-5', allowClear: true });
+
+      // Nominees
+      initNominees(modal);
+
+      // presentAddress -> permanentAddress copy
+      var $present = $modal.find('#presentAddress');
+      var $permanent = $modal.find('#permanentAddress');
+      if ($present.length && $permanent.length) {
+        $present.off('input.clientPresentCopy').on('input.clientPresentCopy', function () {
+          $permanent.val(this.value);
+        });
+      }
+
+      // Clean up on hide
+      $modal.on('hidden.bs.modal.client', function () {
+        safeSelect2Destroy($modal);
+        $modal.off('.client'); // remove namespaced modal handlers
+        // optionally remove modal from DOM if your fetch flow always re-creates it:
+        // $modal.remove();
+      });
+    }
+
+    // Scan & init any uninitialized modals currently in DOM (useful if script ran after fetch)
+    $(document).on('client-modal-init-scan', function () {
+      $('.modal').each(function () {
+        var $m = $(this);
+        if ($m.find('#create-client').length && !$m.data('client-init')) initClientModal(this);
+      });
+    });
+
+    // When any modal is shown, initialize it if it's our form
+    $(document).on('shown.bs.modal', function (e) {
+      try {
+        var modal = e.target;
+        var $modal = $(modal);
+        if ($modal.find('#create-client').length) initClientModal(modal);
+      } catch (err) { console.error('initClientModal error', err); }
+    });
+
+    // Delegated submit handler for create-client (single global handler; prevents double-binding)
+    $(document).off('submit.createClient').on('submit.createClient', '#create-client', function (ev) {
+      ev.preventDefault();
+      var $form = $(this);
+      var $modal = $form.closest('.modal');
+
+      // client-side nominee validation: name, relation, share required (share may be '0')
+      var errors = [];
+      var totalShare = 0;
+      $modal.find('#nominees-container .nominee-block').each(function (i, block) {
+        var $b = $(block);
+        var name = $.trim($b.find('.nominee-name').val() || '');
+        var relation = $.trim($b.find('.nominee-relation').val() || '');
+        var shareVal = $b.find('.share-input').val();
+
+        if (name === '') errors.push('Nominee #' + (i + 1) + ': name is required.');
+        if (relation === '') errors.push('Nominee #' + (i + 1) + ': relation is required.');
+        if (shareVal === null || shareVal === undefined || $.trim(shareVal) === '') {
+          errors.push('Nominee #' + (i + 1) + ': share (%) is required (use 0 if zero).');
+        } else {
+          var sv = parseFloat(shareVal);
+          if (isNaN(sv) || sv < 0 || sv > 100) errors.push('Nominee #' + (i + 1) + ': share must be between 0 and 100.');
+          else totalShare += sv;
+        }
+      });
+
+      if (errors.length) {
+        try { pos4_error_noti(errors.join(' ')); } catch (e) { alert(errors.join('\n')); }
+        return false;
+      }
+
+      // Non-blocking warning if total share != 100
+      if (Math.abs(totalShare - 100) > 0.0001) {
+        try { pos5_success_noti('Warning: total nominee share is ' + totalShare + '%.'); } catch (e) {}
+        // If you want to enforce 100% exactly, uncomment below:
+        // pos4_error_noti('Total nominee share must equal 100%'); return false;
+      }
+
+      // disable submit to prevent double submit
+      var $btn = $form.find('button[type="submit"]');
+      $btn.prop('disabled', true);
+
+      var formData = new FormData(this);
+
+      // AJAX submit (keeps your existing endpoint)
+      $.ajax({
+        url: Wo_Ajax_Requests_File() + '?f=manage_clients&s=create_client',
+        data: formData,
+        type: 'POST',
+        processData: false,
+        contentType: false,
+        success: function (data) {
+          $btn.prop('disabled', false);
+          if (data && data.status == 200) {
+            try { pos5_success_noti(data.message); } catch (e) {}
+            try { clear_forms2(); } catch (e) {}
+            try { DataTableRefresh(); } catch (e) {}
+            try { if (window.SMColibri && SMColibri.spa_reload) SMColibri.spa_reload(); } catch (e) {}
+          } else if (data && data.message) {
+            try { pos4_error_noti(data.message); } catch (e) {}
+          } else {
+            try { pos4_error_noti('Server error'); } catch (e) {}
+          }
+        },
+        error: function (xhr) {
+          $btn.prop('disabled', false);
+          try { pos4_error_noti('Request failed'); } catch (e) {}
+          console.error(xhr);
+        }
+      });
+
+      return false;
+    });
+
+    // Provide safe clear_forms2 if not present
+    if (!window.clear_forms2) {
+      window.clear_forms2 = function () {
+        $('input[name="name"]').val('');
+        $('input[name="address"]').val('');
+        $('input[name="additional[permanent_addr]"]').val('');
+        $('input[name="phone"]').val('');
+        $('#create-client').removeClass('was-validated');
+        $('.error-message').remove();
+        $('#create_invoiceModal').modal('hide');
+      };
+    }
+
+    // Trigger an initial scan (in case modal fragment is already in DOM)
+    $(document).trigger('client-modal-init-scan');
+  } // end else (first-time bootstrap)
+})(window, document, jQuery);
+</script>

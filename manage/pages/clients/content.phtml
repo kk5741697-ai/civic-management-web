@@ -1,0 +1,439 @@
+<?php
+if (check_permission('clients') || check_permission('manage-clients') || Wo_IsAdmin() || Wo_IsModerator()) {
+
+$is_builder = $_GET['builder'];
+if (isset($is_builder) && ($is_builder == 'moon-hill' || $is_builder == 'hill-town')) {
+  echo Wo_LoadManagePage('clients/builder');
+  exit();
+}
+
+?>
+<!-- ===== Custom modal styles (drop into page head or here) ===== -->
+<style>
+/* Modal backdrop blur and darker tint */
+.modal-backdrop.show {
+  background-color: rgba(18, 24, 31, 0.55); /* slightly darker */
+}
+.modal.fade .modal-dialog {
+  transform: translateY(8px);
+  transition: transform .3s ease, opacity .2s ease;
+}
+.modal.show .modal-dialog {
+  transform: translateY(0);
+}
+
+/* Larger, centered dialog with rounded corners and soft shadow */
+.modal-dialog.modal-lg {
+  max-width: 1024px;
+}
+.modal-dialog {
+  margin: 1.75rem auto;
+}
+.modal-content {
+  border: 0;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(17, 24, 39, 0.2);
+}
+
+/* Header style */
+.modal-content .modal-header {
+  /*background: linear-gradient(90deg, rgba(255,255,255,0.98), rgba(248,249,250,0.98));*/
+  border-bottom: 0;
+  padding: 18px 22px;
+  align-items: center;
+}
+.modal-content .modal-header h3 {
+  margin: 0;
+  font-weight: 600;
+  font-size: 1.25rem;
+  letter-spacing: -0.2px;
+}
+
+/* Action buttons area */
+.modal-content .modal-header .btn {
+  min-width: 44px;
+  height: 36px;
+  padding: 0 10px;
+  border-radius: 8px;
+}
+
+/* Body spacing */
+.view-container.form-toggle {
+  padding: 14px 18px 22px;
+  background: #fff;
+}
+
+/* Card tiles look */
+.card.radius-10 {
+  border-radius: 12px;
+  box-shadow: 0 6px 18px rgba(17, 24, 39, 0.06);
+}
+
+/* Table improvements */
+.table.align-middle {
+  font-size: 0.95rem;
+}
+.table thead th {
+  font-weight: 600;
+  color: #24304a;
+}
+
+/* Small control tweaks */
+#addPurchaseForm .form-control[readonly] {
+  background-color: #f8fafc;
+  color: #172033;
+}
+
+/* Print area (keep hidden in normal view) */
+.print_area {
+  background-position: center;
+  background-size: cover;
+  padding: 26px;
+}
+
+/* Cancel modal custom */
+#cancelPurchaseModal .modal-content {
+  border-radius: 12px;
+  overflow: hidden;
+}
+#cancelPurchaseModal .modal-header {
+  background: linear-gradient(90deg, #fff5f5, #fff);
+  border-bottom: 1px solid rgba(0,0,0,0.04);
+}
+#cancelPurchaseModal .modal-title {
+  color: #b91c1c;
+  font-weight: 600;
+}
+
+/* Buttons */
+.btn-close {
+  border: 0;
+  background: transparent;
+  color: #6b7280;
+}
+
+/* Responsive tweaks */
+@media (max-width: 768px) {
+  .modal-dialog.modal-lg { max-width: 92vw; margin: 0.8rem; }
+  .modal-content .modal-header { padding: 14px; }
+  .view-container.form-toggle { padding: 12px; }
+}
+
+/* Accessibility: focus outline for keyboard users */
+.modal .btn:focus, .modal .form-control:focus {
+  outline: 3px solid rgba(59,130,246,0.15);
+  outline-offset: 2px;
+}
+
+/* subtle hover on table rows */
+#purchaseTable tbody tr:hover {
+  background: rgba(15, 23, 42, 0.03);
+}
+
+/* ensure cancel button red is a bit softer */
+.btn-danger {
+  background-color: #e11d48;
+  border-color: #e11d48;
+}
+</style>
+
+<!-- Print Styles -->
+<style>
+#viewClient-modal .select2-container .select2-selection--single,
+#viewClient-modal .select2-container--bootstrap-5 .select2-selection--single,
+#viewClient-modal .select2-container .select2-selection--multiple,
+#viewClient-modal .select2-container--bootstrap-5 .select2-selection--multiple {
+    height: 36px !important;
+    min-height: 36px !important;
+}
+
+#viewClient-modal .select2-container .select2-selection--single .select2-selection__rendered {
+  display: flex !important;
+  align-items: center !important;
+  line-height: 36px !important;
+  padding: 0 8px !important;
+}
+
+#viewClient-modal .select2-container.select2-nominee-exclude .select2-selection__rendered,
+#viewClient-modal .select2-container.select2-nominee-exclude .select2-selection--multiple .select2-selection__rendered,
+#viewClient-modal .select2-container.select2-nominee-exclude .select2-selection--single .select2-selection__rendered {
+  align-items: normal !important;
+  line-height: 1.5 !important;
+  padding: 0 8px !important;
+}
+
+.select2-result-badge {
+    display: flex;
+    height: 21px;
+    vertical-align: middle;
+    font-size: 0.6rem;
+    line-height: 1.2;
+    padding: 3px 6px;
+    margin-left: 8px;
+    border-radius: 999px;
+    font-weight: 600;
+    text-transform: none;
+    white-space: nowrap;
+    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.06);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    align-items: center;
+}
+
+.select2-result-badge.available { background: #18bb6b; color: #fff; border-color: rgba(0,0,0,0.08); }
+.select2-result-badge.sold { background: #dc3545; color: #fff; border-color: rgba(0,0,0,0.08); }
+.select2-result-badge.cancelled { background: #6c757d; color: #fff; border-color: rgba(0,0,0,0.08); }
+.select2-result-badge.completed { background: #0d6efd; color: #fff; border-color: rgba(0,0,0,0.08); }
+
+.select2-selection-item .select2-result-badge,
+.select2-container--open .select2-selection-item .select2-result-badge {
+  font-size: 0.65rem;
+  padding: 1px 5px;
+  margin-left: 6px;
+  opacity: 0.95;
+}
+
+.select2-result--disabled .select2-result-badge {
+  opacity: 0.45;
+  filter: grayscale(10%);
+}
+
+.select2-result-item .select2-result-badge { margin-left: 10px; }
+
+#viewClient-modal .select2-container .select2-selection__arrow { height:36px !important; top:0 !important; }
+.select2-container--open { z-index: 2100 !important; }
+
+.print_area{font-weight:700;width:8.5in;height:14in;background-size:cover;}
+.print_area .changable-content{position:absolute;top:4px;left:0;right:0;bottom:0;z-index:1000;}
+.invoice-layout{width:100%;height:100%;position:relative;}
+@media print{
+  body *{visibility:hidden;}
+  .print_area,.print_area *{visibility:visible;}
+  .print_area{display:block;page-break-after:always;position:fixed;left:0;top:0;width:100%;height:100%;}
+  @page{size:8.5in 14in;margin:0;}
+}
+</style>
+
+<!--start breadcrumb-->
+<div class="page-breadcrumb d-flex align-items-center justify-content-between mb-3">
+  <div class="d-flex align-items-center">
+    <div class="breadcrumb-title pe-3"><?php echo $wo['title']; ?></div>
+
+    <!-- Project Filter Dropdown -->
+    <div class="ms-3">
+      <select id="projectFilter" class="form-select form-select-sm" onchange="DataTableRefresh()">
+        <option value="">All Projects</option>
+        <option value="not-assigned">Newly Created</option>
+        <?php
+          $projects = $db->orderBy('id', 'ASC')->get(T_PROJECTS);
+          foreach ($projects as $project) {
+            echo '<option value="' . $project->slug . '">' . htmlspecialchars($project->name) . '</option>';
+          }
+        ?>
+      </select>
+    </div>
+  </div>
+
+  <!-- Right-side action button if permitted -->
+  <?php
+    if (check_permission('manage-clients') || Wo_IsAdmin() || Wo_IsModerator()) {
+      echo Wo_LoadManagePage('clients/create-client');
+    }
+  ?>
+</div>
+
+<!--end breadcrumb-->
+<div class="mb-3">
+	<div class="row row-cols-auto g-3">
+		<div class="col">
+		</div>
+	</div>
+</div>
+
+<!-- Your HTML code starts here -->
+<div class="card radius-10 w-100">
+    <div class="card-body">
+        <div class="table-responsive mt-2">
+            <table id="clientsTable" class="table align-middle mb-0" style="width: 100%;">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width: 50px;">#ID</th>
+                        <th>Name</th>
+                        <th>Project Name</th>
+                        <th style="width: 50px;">Plots</th>
+                        <th>NID</th>
+                        <th>Birthday</th>
+                        <th>Phone</th>
+                        <th>Email</th>
+                        <th style="width: 50px;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+function editClient(client_id) {
+    if (!client_id) {
+        console.error("Client id can't be empty!");
+        return;
+    }
+    $.ajax({
+        url: Wo_Ajax_Requests_File() + '?f=manage_clients&s=editClient_modal',
+        type: 'POST',
+        data: { client_id: client_id },
+        success: function (response) {
+            if (response && response.status == 200 && response.result) {
+                // remove any existing modal with same id to avoid duplicates
+                $('#edit_clientModal').remove();
+                // append to body (always exists)
+                $('#contnet').append(response.result);
+                // show modal
+                $('#edit_clientModal').modal('show');
+            } else {
+                console.warn('No modal returned', response);
+            }
+        },
+        error: function(xhr, status, err) {
+            console.error('AJAX error', err);
+        }
+    });
+}
+
+function viewClient(client_id) {
+    if (!client_id) return;
+    $.ajax({
+        url: Wo_Ajax_Requests_File() + '?f=manage_clients&s=view_client_modal',
+        type: 'POST',
+        data: { client_id: client_id },
+        success: function (response) {
+            if (response && response.status == 200 && response.result) {
+                $('#viewClient-modal').remove();
+                $('#contnet').append(response.result);
+                $('#viewClient-modal').modal('show');
+            } else {
+                console.warn('No modal returned', response);
+            }
+        },
+        error: function(xhr, status, err) {
+            console.error('AJAX error', err);
+        }
+    });
+}
+
+function deleteClient(client_id) {
+    if (client_id == null) {
+        return false;
+    }
+
+    // Open delete confirmation modal (You need to implement this part)
+
+    // Assuming you have a confirmation from the user (e.g., using a modal)
+    var confirmed = confirm("Are you sure you want to delete this client?");
+
+    if (confirmed) {
+        // Trigger Ajax request
+        $.ajax({
+            url: Wo_Ajax_Requests_File() + '?f=manage_clients&s=delete_client',
+            type: 'POST',
+            data: { client_id: client_id },
+            success: function(response) {
+				if (response['status'] == 200) {
+					pos5_success_noti(response['message']);
+					DataTableRefresh();
+				} else if (response['message']) {
+					pos4_error_noti(response['message']);
+				}
+            },
+            error: function(xhr, status, error) {
+                // Handle errors
+                console.error(error);
+            }
+        });
+    }
+}
+$(document).ready(function() {
+    // Initialize DataTables without buttons
+    var table = $('#clientsTable').DataTable({
+        "processing": true,
+		"serverSide": true,
+        "pageLength": 25,  // Set the default number of entries per page
+        "ajax": {
+            "url": Wo_Ajax_Requests_File() + '?f=manage_clients&s=fetch_clients',
+            "type": "POST",
+            "data": function(d) {
+                d.project_id = $('#projectFilter').val(); // Send selected project ID
+            },
+            "beforeSend": function(xhr) {
+                $('#clientsTable').css('opacity', .5);
+            },
+            "complete": function(xhr) {
+                $('#clientsTable').css('opacity', 1);
+            }
+        },
+        "columns": [
+            { "data": "file_nums", "orderable": false },
+            { "data": "customer_name", "orderable": false },
+            { "data": "project_name", "orderable": false },
+            { "data": "plots", "orderable": false },
+            { "data": "nid", "orderable": false },
+            { "data": "birthday", "orderable": false },
+            { "data": "phone", "orderable": false },
+            { "data": "email", "orderable": false },
+            { "data": "actions", "orderable": false }
+        ],
+        "order": [],
+        "language": {
+            "emptyTable": "No data available in the table",
+            "infoEmpty": "Showing 0 to 0 of 0 entries",
+            "infoFiltered": "(filtered from _MAX_ total entries)",
+            "zeroRecords": "No matching records found"
+        },
+    });
+
+    new $.fn.dataTable.Buttons(table, {
+        buttons: [
+            { 
+                extend: 'copy',
+                text: '<i class="fadeIn animated bx bx-copy"></i>',
+                titleAttr: 'Copy to clipboard',
+                exportOptions: {
+                    columns: ':not(:last-child)'
+                }
+            },
+            { 
+                extend: 'excel',
+                text: '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="18" viewBox="0 0 18 24"><path fill="currentColor" d="M20.34,4.59,16.41.66A2.28,2.28,0,0,0,14.82,0H5.25A2.25,2.25,0,0,0,3,2.25v19.5A2.25,2.25,0,0,0,5.25,24h13.5A2.25,2.25,0,0,0,21,21.75V6.19A2.27,2.27,0,0,0,20.34,4.59ZM18.57,6H15V2.44ZM5.25,21.75V2.25h7.5V7.13a1.12,1.12,0,0,0,1.12,1.12h4.88v13.5ZM15.19,10.5H13.84a.55.55,0,0,0-.49.3A24.54,24.54,0,0,0,12,13.5c-.65-1.36-.32-.81-1.34-2.7a.56.56,0,0,0-.49-.3H8.81a.56.56,0,0,0-.48.85L10.5,15,8.33,18.66a.56.56,0,0,0,.48.84h1.36a.56.56,0,0,0,.49-.29A23.15,23.15,0,0,0,12,16.5c.7,1.42.28.75,1.34,2.71a.57.57,0,0,0,.5.29h1.35a.56.56,0,0,0,.48-.84L13.5,15c0-.05,1.42-2.36,2.17-3.65A.56.56,0,0,0,15.19,10.5Z" transform="translate(-3)"/></svg>', // Font Awesome Excel icon
+                titleAttr: 'Export to Excel',
+                exportOptions: {
+                    columns: ':not(:last-child)'
+                }
+            },
+            { 
+                extend: 'pdf',
+                text: '<i class="fadeIn animated bx bxs-file-pdf"></i>',
+                titleAttr: 'Export to PDF',
+                exportOptions: {
+                    columns: ':not(:last-child)'
+                }
+            },
+            { 
+                extend: 'print',
+                text: '<i class="fadeIn animated bx bx-printer"></i>',
+                titleAttr: 'Print',
+                exportOptions: {
+                    columns: ':not(:last-child)'
+                }
+            }
+        ]
+    }).container().appendTo('#dataSheet_download');
+
+	window.DataTableRefresh = function() {
+		table.ajax.reload();
+	};
+});
+</script>
+<?php } else { echo Wo_LoadManagePage('permission-required/content'); } ?>

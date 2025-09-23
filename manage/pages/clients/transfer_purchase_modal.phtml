@@ -1,0 +1,237 @@
+<!-- Transfer Purchase Modal Component -->
+<div class="modal fade" id="transferPurchaseModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-md modal-dialog-centered">
+    <div class="modal-content border-0 shadow-lg">
+      <div class="modal-header bg-gradient-info text-white border-0">
+        <h5 class="modal-title mb-0">
+          <i class="lni lni-users me-2"></i>Transfer Purchase
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+
+      <div class="modal-body py-4">
+        <div class="text-center mb-4">
+          <div class="bg-info bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center" style="width: 64px; height: 64px;">
+            <i class="lni lni-users text-info" style="font-size: 24px;"></i>
+          </div>
+        </div>
+
+        <input type="hidden" id="transfer_purchase_id" value="">
+        
+        <div class="mb-3">
+          <label class="form-label fw-medium">
+            <i class="lni lni-user me-1"></i>Select Target Client
+          </label>
+          <select id="transfer_client_select" class="form-control">
+            <option value="">Choose client to transfer to...</option>
+          </select>
+          <small class="form-text text-muted">The purchase will be transferred to the selected client.</small>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label fw-medium">
+            <i class="lni lni-calendar me-1"></i>Transfer Date
+          </label>
+          <input type="date" id="transfer_date" class="form-control" value="<?= date('Y-m-d') ?>">
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label fw-medium">
+            <i class="lni lni-pencil me-1"></i>Transfer Reason
+          </label>
+          <textarea id="transfer_reason" class="form-control" rows="3" placeholder="Enter the reason for transferring this purchase..."></textarea>
+          <small class="form-text text-muted">Provide a clear reason for audit trail.</small>
+        </div>
+
+        <div class="alert alert-warning">
+          <div class="d-flex align-items-start">
+            <i class="lni lni-warning text-warning me-2" style="font-size: 20px; margin-top: 2px;"></i>
+            <div>
+              <strong>Important:</strong> This will permanently transfer the purchase to the selected client. 
+              All payment schedules and history will be moved. This action cannot be undone.
+            </div>
+          </div>
+        </div>
+
+        <div class="alert alert-danger d-none" id="transfer_error" role="alert"></div>
+      </div>
+
+      <div class="modal-footer border-0 bg-light">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+          <i class="lni lni-close me-1"></i>Cancel
+        </button>
+        <button id="transfer_purchase_save" class="btn btn-info text-white">
+          <i class="lni lni-users me-1"></i>Transfer Purchase
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+jQuery(function($){
+  'use strict';
+
+  // Initialize transfer purchase functionality
+  function initTransferPurchase() {
+    // Global transfer function
+    window.transferPurchase = function(purchaseId) {
+      $('#transfer_purchase_id').val(purchaseId);
+      $('#transfer_error').addClass('d-none').text('');
+      $('#transfer_reason').val('');
+      
+      // Load clients for transfer with enhanced search
+      var $clientSelect = $('#transfer_client_select');
+      $clientSelect.html('<option value="">Loading clients...</option>');
+      
+      $.get(Wo_Ajax_Requests_File() + '?f=manage_clients&s=get_all_clients')
+        .done(function(response){
+          var clients = Array.isArray(response) ? response : [];
+          try {
+            if (typeof response === 'string') {
+              clients = JSON.parse(response);
+            }
+          } catch(e) {
+            clients = [];
+          }
+          
+          $clientSelect.empty().append('<option value="">Choose client to transfer to...</option>');
+          
+          if (Array.isArray(clients) && clients.length > 0) {
+            clients.forEach(function(client){
+              var displayText = client.name + ' (' + (client.phone || 'No phone') + ')';
+              if (client.email) displayText += ' - ' + client.email;
+              $clientSelect.append('<option value="' + client.id + '">' + displayText + '</option>');
+            });
+          } else {
+            $clientSelect.append('<option value="" disabled>No clients available</option>');
+          }
+          
+          // Initialize Select2 for better search
+          try {
+            $clientSelect.select2({
+              dropdownParent: $('#transferPurchaseModal'),
+              placeholder: 'Search and select client...',
+              allowClear: true,
+              width: '100%'
+            });
+          } catch(e) {
+            // Fallback if Select2 not available
+          }
+          
+          $('#transferPurchaseModal').modal('show');
+        })
+        .fail(function(){
+          $clientSelect.html('<option value="" disabled>Failed to load clients</option>');
+          alert('Failed to load client list. Please try again.');
+        });
+    };
+
+    // Transfer save handler
+    $('#transfer_purchase_save').off('click').on('click', function(){
+      var $btn = $(this);
+      var purchaseId = $('#transfer_purchase_id').val();
+      var targetClientId = $('#transfer_client_select').val();
+      var transferDate = $('#transfer_date').val();
+      var reason = $('#transfer_reason').val().trim();
+      
+      // Validation
+      var errors = [];
+      if (!targetClientId) errors.push('Please select a target client.');
+      if (!transferDate) errors.push('Please select a transfer date.');
+      if (!reason) errors.push('Please provide a reason for the transfer.');
+      if (reason && reason.length < 10) errors.push('Transfer reason must be at least 10 characters long.');
+      
+      if (errors.length > 0) {
+        $('#transfer_error').removeClass('d-none').html(errors.join('<br>'));
+        return;
+      }
+      
+      $btn.prop('disabled', true).html('<i class="spinner-border spinner-border-sm me-1"></i>Transferring...');
+      
+      var payload = {
+        s: 'transfer_purchase',
+        purchase_id: purchaseId,
+        target_client_id: targetClientId,
+        transfer_date: transferDate,
+        reason: reason
+      };
+      
+      $.post(Wo_Ajax_Requests_File() + '?f=manage_inventory', payload)
+        .done(function(response){
+          var data = typeof response === 'string' ? JSON.parse(response) : response;
+          
+          if (data && (data.status === 200 || data.status === '200')) {
+            $('#transferPurchaseModal').modal('hide');
+            
+            // Show success message
+            var clientName = $('#transfer_client_select option:selected').text();
+            var $alert = $('<div class="alert alert-success alert-dismissible fade show" role="alert">' +
+              '<i class="lni lni-checkmark me-2"></i>Purchase successfully transferred to ' + clientName + '.' +
+              '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>' +
+              '</div>');
+            
+            $('#client_details').prepend($alert);
+            
+            setTimeout(function(){
+              location.reload(); // Refresh to show updated data
+            }, 2000);
+            
+          } else {
+            var errorMsg = (data && data.message) ? data.message : 'Failed to transfer purchase';
+            $('#transfer_error').removeClass('d-none').text(errorMsg);
+          }
+        })
+        .fail(function(){
+          $('#transfer_error').removeClass('d-none').text('Server error occurred. Please try again.');
+        })
+        .always(function(){
+          $btn.prop('disabled', false).html('<i class="lni lni-users me-1"></i>Transfer Purchase');
+        });
+    });
+
+    // Enhanced date picker
+    try {
+      if (typeof flatpickr !== 'undefined') {
+        flatpickr('#transfer_date', {
+          dateFormat: 'Y-m-d',
+          defaultDate: new Date(),
+          locale: {
+            firstDayOfWeek: 1
+          }
+        });
+      }
+    } catch(e) {
+      // Flatpickr not available
+    }
+
+    // Auto-resize textarea
+    $('#transfer_reason').on('input', function(){
+      this.style.height = 'auto';
+      this.style.height = (this.scrollHeight) + 'px';
+    });
+  }
+
+  // Add to global initialization
+  if (typeof window.initViewClientComponents !== 'function') {
+    window.initViewClientComponents = function() {
+      initTransferPurchase();
+    };
+  } else {
+    var originalInit = window.initViewClientComponents;
+    window.initViewClientComponents = function() {
+      originalInit();
+      initTransferPurchase();
+    };
+  }
+
+  // Cleanup
+  $('#viewClient-modal').on('hidden.bs.modal.transferPurchase', function(){
+    try {
+      $('#transfer_client_select').select2('destroy');
+    } catch(e) {}
+    $(document).off('.transferPurchase');
+  });
+
+});
+</script>

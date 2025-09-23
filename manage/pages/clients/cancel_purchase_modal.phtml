@@ -1,0 +1,191 @@
+<!-- Cancel Purchase Modal Component -->
+<div class="modal fade" id="cancelPurchaseModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-sm modal-dialog-centered">
+    <div class="modal-content border-0 shadow-lg">
+      <div class="modal-header border-0 bg-danger text-white">
+        <h5 class="modal-title mb-0">
+          <i class="lni lni-close me-2"></i>Cancel Purchase
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body py-4">
+        <div class="text-center mb-3">
+          <div class="bg-danger bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center" style="width: 64px; height: 64px;">
+            <i class="lni lni-warning text-danger" style="font-size: 24px;"></i>
+          </div>
+        </div>
+        <p class="text-center text-muted mb-3">Select the cancellation date for this purchase. This action cannot be undone.</p>
+        <div class="mb-3">
+          <label for="cancel_purchase_date" class="form-label fw-medium">Cancellation Date</label>
+          <input type="date" id="cancel_purchase_date" class="form-control" value="<?= date('Y-m-d') ?>">
+        </div>
+        <input type="hidden" id="cancel_purchase_id" value="">
+        <div id="cancelPurchaseError" class="alert alert-danger mt-3" style="display:none;"></div>
+      </div>
+      <div class="modal-footer border-0 bg-light">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+          <i class="lni lni-arrow-left me-1"></i>Keep Purchase
+        </button>
+        <button type="button" id="confirmCancelPurchaseBtn" class="btn btn-danger">
+          <i class="lni lni-trash me-1"></i>Confirm Cancellation
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+jQuery(function($){
+  'use strict';
+
+  var bsCancelModal = null;
+
+  // Initialize cancel purchase functionality
+  function initCancelPurchase() {
+    // Initialize Bootstrap modal
+    try {
+      var modalEl = document.getElementById('cancelPurchaseModal');
+      if (modalEl) {
+        bsCancelModal = new bootstrap.Modal(modalEl, { backdrop: 'static' });
+      }
+    } catch(e) {
+      console.warn('Bootstrap modal initialization failed:', e);
+    }
+
+    // Open cancel modal
+    $(document).off('click.cancelPurchase', '.cancel-purchase').on('click.cancelPurchase', '.cancel-purchase', function(e){
+      e.preventDefault();
+      var purchaseId = $(this).data('id');
+      
+      if (!purchaseId) {
+        alert('Purchase ID is missing');
+        return;
+      }
+
+      // Set values
+      $('#cancel_purchase_id').val(purchaseId);
+      $('#cancel_purchase_date').val(new Date().toISOString().slice(0, 10));
+      $('#cancelPurchaseError').hide().text('');
+
+      // Show modal
+      if (bsCancelModal) {
+        bsCancelModal.show();
+      } else {
+        $('#cancelPurchaseModal').modal('show');
+      }
+    });
+
+    // Confirm cancellation
+    $('#confirmCancelPurchaseBtn').off('click').on('click', function(){
+      var $btn = $(this);
+      var purchaseId = $('#cancel_purchase_id').val();
+      var cancelDate = $('#cancel_purchase_date').val();
+
+      if (!purchaseId) {
+        $('#cancelPurchaseError').show().text('Missing purchase ID.');
+        return;
+      }
+
+      if (!cancelDate) {
+        $('#cancelPurchaseError').show().text('Please select a cancellation date.');
+        return;
+      }
+
+      $btn.prop('disabled', true).html('<i class="spinner-border spinner-border-sm me-1"></i>Cancelling...');
+
+      var payload = {
+        s: 'cancel_purchase',
+        booking_helper_id: purchaseId,
+        cancel_date: cancelDate
+      };
+
+      $.post(Wo_Ajax_Requests_File() + '?f=manage_inventory', payload)
+        .done(function(response){
+          var data = typeof response === 'string' ? JSON.parse(response) : response;
+          
+          if (data && data.status === 200) {
+            // Success - remove row and hide modal
+            $('#purchaseRow_' + purchaseId).fadeOut(300, function(){
+              $(this).remove();
+            });
+            
+            if (bsCancelModal) {
+              bsCancelModal.hide();
+            } else {
+              $('#cancelPurchaseModal').modal('hide');
+            }
+
+            // Show success message
+            var $alert = $('<div class="alert alert-success alert-dismissible fade show" role="alert">' +
+              '<i class="lni lni-checkmark me-2"></i>Purchase cancelled successfully.' +
+              '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>' +
+              '</div>');
+            
+            $('#client_details').prepend($alert);
+            
+            setTimeout(function(){
+              $alert.fadeOut();
+            }, 5000);
+            
+          } else {
+            var errorMsg = (data && data.message) ? data.message : 'Failed to cancel purchase';
+            $('#cancelPurchaseError').show().text(errorMsg);
+          }
+        })
+        .fail(function(xhr){
+          var errorMsg = 'Server error occurred';
+          try {
+            var json = JSON.parse(xhr.responseText);
+            if (json && json.message) errorMsg = json.message;
+          } catch(e) {}
+          
+          $('#cancelPurchaseError').show().text(errorMsg);
+        })
+        .always(function(){
+          $btn.prop('disabled', false).html('<i class="lni lni-trash me-1"></i>Confirm Cancellation');
+        });
+    });
+
+    // Enhanced date picker
+    try {
+      if (typeof flatpickr !== 'undefined') {
+        flatpickr('#cancel_purchase_date', {
+          dateFormat: 'Y-m-d',
+          maxDate: new Date(),
+          defaultDate: new Date(),
+          locale: {
+            firstDayOfWeek: 1
+          }
+        });
+      }
+    } catch(e) {
+      // Flatpickr not available, use native date input
+    }
+  }
+
+  // Add to global initialization
+  if (typeof window.initViewClientComponents !== 'function') {
+    window.initViewClientComponents = function() {
+      initCancelPurchase();
+    };
+  } else {
+    var originalInit = window.initViewClientComponents;
+    window.initViewClientComponents = function() {
+      originalInit();
+      initCancelPurchase();
+    };
+  }
+
+  // Cleanup function
+  $('#viewClient-modal').on('hidden.bs.modal.cancelPurchase', function(){
+    if (bsCancelModal) {
+      try {
+        bsCancelModal.dispose();
+        bsCancelModal = null;
+      } catch(e) {}
+    }
+    $(document).off('.cancelPurchase');
+  });
+
+});
+</script>
