@@ -99,7 +99,7 @@ jQuery(function($){
         cancel_date: cancelDate
       };
 
-      $.post(Wo_Ajax_Requests_File() + '?f=manage_inventory', payload)
+      $.post(Wo_Ajax_Requests_File() + '?f=manage_inventory&s=cancel_purchase', payload)
         .done(function(response){
           var data = typeof response === 'string' ? JSON.parse(response) : response;
           

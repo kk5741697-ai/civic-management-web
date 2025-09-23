@@ -44,7 +44,7 @@ $get_nominees = $db->where('customer_id', $clientId)->orderBy('name', 'ASC')->ge
 ?>
 
 <div class="modal fade full_screen" id="viewClient-modal" tabindex="-1" role="dialog" aria-hidden="true">
-  <div class="modal-dialog modal-lg" role="document">
+  <div class="modal-dialog modal-xl" role="document">
     <div class="modal-content border-0 shadow-lg">
 
       <!-- Header with modern styling -->
@@ -154,21 +154,13 @@ $get_nominees = $db->where('customer_id', $clientId)->orderBy('name', 'ASC')->ge
                           </button>
                           <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="dropdownMenuButton<?= (int)$p['id'] ?>">
                             <li>
-                              <h6 class="dropdown-header"><i class="lni lni-cog me-1"></i> Purchase Actions</h6>
-                            </li>
-                            <li>
                               <a class="dropdown-item print-booking-form" href="javascript:;" data-id="<?= (int)$p['id'] ?>">
                                 <i class="lni lni-printer me-2 text-primary"></i> Print Booking Form
                               </a>
                             </li>
                             <li>
-                              <a class="dropdown-item update_installment" href="javascript:;" data-id="<?= (int)$p['id'] ?>">
-                                <i class="lni lni-dollar me-2 text-success"></i> Payment Schedule
-                              </a>
-                            </li>
-                            <li>
                               <a class="dropdown-item print_payment_schedule" href="javascript:;" data-id="<?= (int)$p['id'] ?>">
-                                <i class="lni lni-file-text me-2 text-info"></i> Print Payment Schedule
+                                <i class="lni lni-printer me-2 text-info"></i> Print Payment Schedule
                               </a>
                             </li>
                             <li>
@@ -176,48 +168,12 @@ $get_nominees = $db->where('customer_id', $clientId)->orderBy('name', 'ASC')->ge
                                 <i class="lni lni-calendar me-2 text-primary"></i> Manage Schedule
                               </a>
                             </li>
-                            <li><hr class="dropdown-divider"></li>
-                            <li>
-                              <h6 class="dropdown-header"><i class="lni lni-layers me-1"></i> Management</h6>
-                            </li>
                             <li>
                               <a class="dropdown-item change_plot_btn" href="javascript:;" data-id="<?= (int)$p['id'] ?>">
                                 <i class="lni lni-shuffle me-2 text-warning"></i> Change Plot
                               </a>
                             </li>
-                            <li>
-                              <a class="dropdown-item" href="javascript:;" onclick="transferPurchase(<?= (int)$p['id'] ?>)">
-                                <i class="lni lni-users me-2 text-info"></i> Transfer Purchase
-                              </a>
-                            </li>
                             <li><hr class="dropdown-divider"></li>
-                            <li>
-                              <h6 class="dropdown-header"><i class="lni lni-files me-1"></i> Reports & History</h6>
-                            </li>
-                            <li>
-                              <a class="dropdown-item" href="javascript:;" onclick="viewPurchaseHistory(<?= (int)$p['id'] ?>)">
-                                <i class="lni lni-calendar me-2 text-info"></i> Purchase History
-                              </a>
-                            </li>
-                            <li>
-                              <a class="dropdown-item" href="javascript:;" onclick="generatePurchaseReport(<?= (int)$p['id'] ?>)">
-                                <i class="lni lni-stats-up me-2 text-primary"></i> Generate Report
-                              </a>
-                            </li>
-                            <li>
-                              <a class="dropdown-item" href="javascript:;" onclick="exportPurchaseData(<?= (int)$p['id'] ?>)">
-                                <i class="lni lni-download me-2 text-success"></i> Export Data
-                              </a>
-                            </li>
-                            <li><hr class="dropdown-divider"></li>
-                            <li>
-                              <h6 class="dropdown-header"><i class="lni lni-warning me-1"></i> Critical Actions</h6>
-                            </li>
-                            <li>
-                              <a class="dropdown-item" href="javascript:;" onclick="suspendPurchase(<?= (int)$p['id'] ?>)">
-                                <i class="lni lni-pause me-2 text-warning"></i> Suspend Purchase
-                              </a>
-                            </li>
                             <li>
                               <a class="dropdown-item cancel-purchase" href="javascript:;" data-id="<?= (int)$p['id'] ?>">
                                 <i class="lni lni-close me-2 text-danger"></i> Cancel Purchase
@@ -388,7 +344,6 @@ jQuery(function($){
     
     // Clean up global functions
     delete window.transferPurchase;
-    delete window.viewPurchaseHistory;
     delete window.generatePurchaseReport;
     delete window.exportPurchaseData;
     delete window.suspendPurchase;
@@ -424,6 +379,12 @@ jQuery(function($){
           imageUrls.push(match[1]);
         }
       }
+      
+      // Also check data-bg-url attribute
+      var dataBgUrl = $node.attr('data-bg-url');
+      if (dataBgUrl) {
+        imageUrls.push(dataBgUrl);
+      }
     });
 
     // If no images to load, callback immediately
@@ -450,7 +411,7 @@ jQuery(function($){
         console.warn('Some background images did not load in time');
         callback();
       }
-    }, 5000); // 5 second timeout
+    }, 8000); // 8 second timeout
   }
 
   function _createPrintWrapperForNodes(nodes) {
@@ -505,7 +466,7 @@ jQuery(function($){
           _cleanupPrintWrapper($wrap); 
           try { window.removeEventListener('afterprint', afterPrintHandler); } catch(e){}
         }, 3000);
-      }, 500); // Increased delay for image rendering
+      }, 1000); // Increased delay for image rendering
     });
   };
 
@@ -519,13 +480,49 @@ jQuery(function($){
 
   // Global functions for dropdown actions
   window.generatePurchaseReport = function(purchaseId) {
-    // Placeholder for report generation
-    alert('Generate Purchase Report functionality for purchase ID: ' + purchaseId);
+    $.post(Wo_Ajax_Requests_File() + '?f=manage_inventory&s=generate_purchase_report', {
+      purchase_id: purchaseId
+    })
+    .done(function(response){
+      var data = typeof response === 'string' ? JSON.parse(response) : response;
+      if (data && data.status === 200 && data.download_url) {
+        window.open(data.download_url, '_blank');
+      } else {
+        alert(data.message || 'Failed to generate report');
+      }
+    })
+    .fail(function(){
+      alert('Server error while generating report');
+    });
   };
 
   window.exportPurchaseData = function(purchaseId) {
-    // Placeholder for data export
-    alert('Export Purchase Data functionality for purchase ID: ' + purchaseId);
+    var format = prompt('Export format:\n1. Excel\n2. PDF\n3. CSV', '1');
+    if (!format) return;
+    
+    var formatMap = {'1': 'excel', '2': 'pdf', '3': 'csv'};
+    var exportFormat = formatMap[format] || 'excel';
+    
+    $.post(Wo_Ajax_Requests_File() + '?f=manage_inventory&s=export_purchase_data', {
+      purchase_id: purchaseId,
+      export_type: exportFormat
+    })
+    .done(function(response){
+      var data = typeof response === 'string' ? JSON.parse(response) : response;
+      if (data && data.status === 200 && data.download_url) {
+        var link = document.createElement('a');
+        link.href = data.download_url;
+        link.download = data.filename || 'purchase_data.' + exportFormat;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      } else {
+        alert(data.message || 'Failed to export data');
+      }
+    })
+    .fail(function(){
+      alert('Server error while exporting data');
+    });
   };
 
 });

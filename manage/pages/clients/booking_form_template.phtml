@@ -1,4 +1,4 @@
-<!-- Booking Form Template Component -->
+<!-- Booking Form Template Component with Enhanced Background Loading -->
 <?php
 $bg_url = '';
 if ($booking['project'] === 'moon-hill') $bg_url = "/manage/pages/clients/moon-hill.jpg?version=4.4.51";
@@ -98,6 +98,11 @@ elseif ($booking['project'] === 'hill-town') $bg_url = "/manage/pages/clients/hi
   .print_area * {
     visibility: visible !important;
   }
+  
+  /* Hide loading states in print */
+  .print_area.loading::before {
+    display: none !important;
+  }
 }
 
 /* Enhanced form field positioning */
@@ -135,12 +140,197 @@ elseif ($booking['project'] === 'hill-town') $bg_url = "/manage/pages/clients/hi
 }
 
 .print_area.loading::before {
-  content: 'Loading...';
+  content: 'Loading background...';
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
   color: #6c757d;
   font-size: 14px;
+  z-index: 1000;
+}
+
+/* Image preloading indicator */
+.print_area.preloading {
+  opacity: 0.7;
+}
+
+.print_area.ready {
+  opacity: 1;
+  transition: opacity 0.3s ease;
 }
 </style>
+
+<script>
+// Enhanced background image preloading for print areas
+jQuery(function($){
+  'use strict';
+
+  // Preload background images when print areas are created
+  function preloadPrintAreaBackgrounds() {
+    $('.print_area[data-bg-url]').each(function(){
+      var $area = $(this);
+      var bgUrl = $area.attr('data-bg-url');
+      
+      if (bgUrl && !$area.hasClass('bg-loaded')) {
+        $area.addClass('loading');
+        
+        var img = new Image();
+        img.onload = function() {
+          $area.removeClass('loading').addClass('bg-loaded ready');
+        };
+        img.onerror = function() {
+          $area.removeClass('loading').addClass('bg-error');
+          console.warn('Failed to load background image:', bgUrl);
+        };
+        img.src = bgUrl;
+      }
+    });
+  }
+
+  // Enhanced print function with proper image loading
+  window.printBookingFormsByIds = function(ids) {
+    if (!ids) return;
+    ids = Array.isArray(ids) ? ids : [ids];
+
+    var nodes = [];
+    ids.forEach(function(id){
+      var selector = '.print_area[data-purchase-id="' + id + '"]';
+      var el = $(selector)[0];
+      if (el) nodes.push(el);
+    });
+
+    if (!nodes.length) {
+      alert('No booking form found for printing.');
+      return;
+    }
+
+    // Show loading indicator
+    var $loadingIndicator = $(`
+      <div id="print-loading" style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:99999;background:white;padding:20px;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,0.3);">
+        <div class="text-center">
+          <div class="spinner-border text-primary mb-3" role="status">
+            <span class="visually-hidden">Loading...</span>
+          </div>
+          <p class="mb-0">Preparing booking forms for printing...</p>
+          <small class="text-muted">Please wait while background images load</small>
+        </div>
+      </div>
+    `);
+    $('body').append($loadingIndicator);
+
+    var $wrap = _createPrintWrapperForNodes(nodes);
+
+    // Enhanced preload with progress tracking
+    preloadBackgroundImagesWithProgress(nodes, function(progress) {
+      if (progress < 100) {
+        $loadingIndicator.find('p').text(`Loading images... ${Math.round(progress)}%`);
+      }
+    }, function() {
+      // All images loaded, proceed with print
+      $loadingIndicator.remove();
+      
+      var afterPrintHandler = function(){
+        try { _cleanupPrintWrapper($wrap); } catch(e) {}
+        try { window.removeEventListener('afterprint', afterPrintHandler); } catch(e) {}
+      };
+
+      window.addEventListener('afterprint', afterPrintHandler);
+
+      // Additional delay to ensure images are fully rendered
+      setTimeout(function(){
+        try { window.print(); } catch(e){ console.error('Print error', e); }
+        setTimeout(function(){ 
+          _cleanupPrintWrapper($wrap); 
+          try { window.removeEventListener('afterprint', afterPrintHandler); } catch(e){}
+        }, 3000);
+      }, 500);
+    });
+  };
+
+  function preloadBackgroundImagesWithProgress(nodes, progressCallback, completeCallback) {
+    var imageUrls = [];
+    var loadedCount = 0;
+    
+    // Extract background image URLs from nodes
+    nodes.forEach(function(node){
+      var $node = $(node);
+      var bgImage = $node.css('background-image');
+      if (bgImage && bgImage !== 'none') {
+        var match = bgImage.match(/url\(['"]?(.*?)['"]?\)/);
+        if (match && match[1]) {
+          imageUrls.push(match[1]);
+        }
+      }
+      
+      // Also check data-bg-url attribute
+      var dataBgUrl = $node.attr('data-bg-url');
+      if (dataBgUrl) {
+        imageUrls.push(dataBgUrl);
+      }
+    });
+
+    // Remove duplicates
+    imageUrls = [...new Set(imageUrls)];
+
+    // If no images to load, complete immediately
+    if (imageUrls.length === 0) {
+      progressCallback(100);
+      completeCallback();
+      return;
+    }
+
+    // Preload each image with progress tracking
+    imageUrls.forEach(function(url) {
+      var img = new Image();
+      img.onload = img.onerror = function() {
+        loadedCount++;
+        var progress = (loadedCount / imageUrls.length) * 100;
+        progressCallback(progress);
+        
+        if (loadedCount >= imageUrls.length) {
+          completeCallback();
+        }
+      };
+      img.src = url;
+    });
+
+    // Fallback timeout in case images don't load
+    setTimeout(function() {
+      if (loadedCount < imageUrls.length) {
+        console.warn('Some background images did not load in time, proceeding anyway');
+        completeCallback();
+      }
+    }, 10000); // 10 second timeout
+  }
+
+  function _createPrintWrapperForNodes(nodes) {
+    var $wrap = $('<div id="print-wrapper-temp"></div>');
+    $wrap.css({ position: 'relative', zIndex: 99999 });
+    nodes.forEach(function(node){
+      var $clone = $(node).clone(true, true);
+      $clone.removeClass('d-none');
+      $clone.css({ display: 'block', visibility: 'visible', position: 'relative' });
+      $wrap.append($clone);
+    });
+    $('body').append($wrap);
+    return $wrap;
+  }
+
+  function _cleanupPrintWrapper($wrap) {
+    if (!$wrap || !$wrap.length) return;
+    try { $wrap.remove(); } catch(e) {}
+  }
+
+  // Initialize background preloading when document is ready
+  $(document).ready(function(){
+    preloadPrintAreaBackgrounds();
+  });
+
+  // Also preload when modal is shown
+  $('#viewClient-modal').on('shown.bs.modal', function(){
+    setTimeout(preloadPrintAreaBackgrounds, 100);
+  });
+
+});
+</script>

@@ -102,13 +102,30 @@
 jQuery(function($){
   'use strict';
 
+  var bsPrintScheduleModal = null;
+
   // Initialize print schedule functionality
   function initPrintSchedule() {
+    // Initialize Bootstrap modal
+    try {
+      var modalEl = document.getElementById('printScheduleModal');
+      if (modalEl) {
+        bsPrintScheduleModal = new bootstrap.Modal(modalEl);
+      }
+    } catch(e) {
+      console.warn('Bootstrap modal initialization failed:', e);
+    }
+
     // Global function to open print schedule modal
     window.printPaymentSchedule = function(purchaseId) {
       $('#print_schedule_purchase_id').val(purchaseId);
       loadSchedulePreview(purchaseId);
-      $('#printScheduleModal').modal('show');
+      
+      if (bsPrintScheduleModal) {
+        bsPrintScheduleModal.show();
+      } else {
+        $('#printScheduleModal').modal('show');
+      }
     };
 
     // Make printPaymentSchedule available for dropdown menu
@@ -284,6 +301,12 @@ jQuery(function($){
 
   // Cleanup
   $('#viewClient-modal').on('hidden.bs.modal.printSchedule', function(){
+    if (bsPrintScheduleModal) {
+      try {
+        bsPrintScheduleModal.dispose();
+        bsPrintScheduleModal = null;
+      } catch(e) {}
+    }
     $(document).off('.printSchedule');
   });
 

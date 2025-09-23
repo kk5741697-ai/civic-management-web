@@ -230,9 +230,20 @@ jQuery(function($){
 
   var currentPurchaseId = null;
   var historyData = [];
+  var bsHistoryModal = null;
 
   // Initialize purchase history functionality
   function initPurchaseHistory() {
+    // Initialize Bootstrap modal
+    try {
+      var modalEl = document.getElementById('purchaseHistoryModal');
+      if (modalEl) {
+        bsHistoryModal = new bootstrap.Modal(modalEl);
+      }
+    } catch(e) {
+      console.warn('Bootstrap modal initialization failed:', e);
+    }
+
     // Global view history function
     window.viewPurchaseHistory = function(purchaseId) {
       currentPurchaseId = purchaseId;
@@ -243,7 +254,11 @@ jQuery(function($){
       $('#custom_date_range, #custom_date_range_to').addClass('d-none');
       
       // Show modal and load data
-      $('#purchaseHistoryModal').modal('show');
+      if (bsHistoryModal) {
+        bsHistoryModal.show();
+      } else {
+        $('#purchaseHistoryModal').modal('show');
+      }
       loadPurchaseHistory(purchaseId);
     };
 
@@ -542,6 +557,12 @@ jQuery(function($){
 
   // Cleanup
   $('#viewClient-modal').on('hidden.bs.modal.purchaseHistory', function(){
+    if (bsHistoryModal) {
+      try {
+        bsHistoryModal.dispose();
+        bsHistoryModal = null;
+      } catch(e) {}
+    }
     currentPurchaseId = null;
     historyData = [];
     $(document).off('.purchaseHistory');

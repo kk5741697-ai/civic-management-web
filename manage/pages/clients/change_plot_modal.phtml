@@ -147,8 +147,20 @@
 jQuery(function($){
   'use strict';
 
+  var bsChangePlotModal = null;
+
   // Initialize change plot functionality
   function initChangePlot() {
+    // Initialize Bootstrap modal
+    try {
+      var modalEl = document.getElementById('changePlotModal');
+      if (modalEl) {
+        bsChangePlotModal = new bootstrap.Modal(modalEl, { backdrop: 'static' });
+      }
+    } catch(e) {
+      console.warn('Bootstrap modal initialization failed:', e);
+    }
+
     // Global change plot function
     window.changePlot = function(purchaseId) {
       $('#change_plot_purchase_id').val(purchaseId);
@@ -159,7 +171,11 @@ jQuery(function($){
       // Load current plot details
       loadCurrentPlotDetails(purchaseId);
       
-      $('#changePlotModal').modal('show');
+      if (bsChangePlotModal) {
+        bsChangePlotModal.show();
+      } else {
+        $('#changePlotModal').modal('show');
+      }
     };
 
     // Make changePlot available for dropdown menu
@@ -233,12 +249,16 @@ jQuery(function($){
         reason: reason
       };
       
-      $.post(Wo_Ajax_Requests_File() + '?f=manage_inventory', payload)
+      $.post(Wo_Ajax_Requests_File() + '?f=manage_inventory&s=change_plot', payload)
         .done(function(response){
           var data = typeof response === 'string' ? JSON.parse(response) : response;
           
           if (data && (data.status === 200 || data.status === '200')) {
-            $('#changePlotModal').modal('hide');
+            if (bsChangePlotModal) {
+              bsChangePlotModal.hide();
+            } else {
+              $('#changePlotModal').modal('hide');
+            }
             
             // Show success message
             var $alert = $('<div class="alert alert-success alert-dismissible fade show" role="alert">' +
@@ -293,7 +313,7 @@ jQuery(function($){
   function loadAvailablePlots(projectSlug) {
     $('#new_plot_select').html('<option value="">Loading plots...</option>');
     
-    $.get(Wo_Ajax_Requests_File() + '?f=booking&s=get_available_plots&project_slug=' + encodeURIComponent(projectSlug))
+    $.get(Wo_Ajax_Requests_File() + '?f=manage_inventory&s=get_available_plots&project_slug=' + encodeURIComponent(projectSlug))
       .done(function(response){
         var plots = Array.isArray(response) ? response : [];
         
@@ -345,6 +365,12 @@ jQuery(function($){
 
   // Cleanup
   $('#viewClient-modal').on('hidden.bs.modal.changePlot', function(){
+    if (bsChangePlotModal) {
+      try {
+        bsChangePlotModal.dispose();
+        bsChangePlotModal = null;
+      } catch(e) {}
+    }
     $(document).off('.changePlot');
   });
 
