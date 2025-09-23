@@ -1,7 +1,6 @@
-<div class="self_remove_on_close">
-  <!-- code will be self remove on modal close also remove the binded functions and events from window to prevent the conflict/problem when the same modal load again using fetch/xhr -->
 <?php
 /* view_client.phtml
+    Also the entire modal & it's script need clear also from window when the #viewClient-modal modal are close.
    Complete client view with enhanced payment schedule functionality and all dropdown actions
 */
 Global $project_mapping;
@@ -1009,6 +1008,6 @@ $get_nominees = $db->where('customer_id', $clientId)->orderBy('name', 'ASC')->ge
     </div>
   </div>
 </div>
+
 <?= Wo_LoadManagePage('clients/style') ?>
-<?= Wo_LoadManagePage('clients/script') ?>
-</div>
+<?= Wo_LoadManagePage('clients/main_script') ?>
