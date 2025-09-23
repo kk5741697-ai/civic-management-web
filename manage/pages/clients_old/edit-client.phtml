@@ -1,0 +1,195 @@
+	<div class="modal fade" id="edit_clientModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+		<div class="modal-dialog">
+			<div class="modal-content">
+			    This feature is comming soon...
+				<div class="modal-body d-none">
+					<div>
+					<h5 class="mb-1 text-center create_invoice_title">Edit Client</h5>
+					<hr>
+					  <form id="edit-client" class="row g-3">
+							<div class="col-6">
+								  <label class="form-label">Client's Name</label>
+								  <input type="text" name="name" class="form-control" placeholder="Client's Name" value="<?php echo $wo['client']['name'];?>" required>
+							</div>
+							
+							<div class="col-6">
+								  <label class="form-label">Spouse Name</label>
+								  <input type="text" name="additional[spouse_name]" id="spouse_name" placeholder="Spouse Name" value="<?php echo isset($wo['additional']['spouse_name']) ? $wo['additional']['spouse_name'] : '';?>" class="form-control" required>
+							</div>
+							
+							<div class="col-6">
+								  <label class="form-label">Father's Name</label>
+								  <input type="text" name="additional[fathers_name]" placeholder="Father's Name" value="<?php echo isset($wo['additional']['fathers_name']) ? $wo['additional']['fathers_name'] : '';?>" class="form-control">
+							</div>
+							<div class="col-6">
+								  <label class="form-label">Mother's Name</label>
+								  <input type="text" name="additional[mothers_name]" placeholder="Mother's Name" value="<?php echo isset($wo['additional']['mothers_name']) ? $wo['additional']['mothers_name'] : '';?>" class="form-control">
+							</div>
+							
+							<div class="col-12">
+								  <label class="form-label">Address</label>
+								  <input type="text" name="address" id="presentAddress" class="form-control" placeholder="Present Address" value="<?php echo $wo['client']['address'];?>">
+							</div>
+							
+							<div class="col-12 d-none">
+								  <label class="form-label">Permanent Address</label>
+								  <input type="text" name="additional[permanent_addr]" id="permanentAddress" class="form-control" placeholder="Permanent Address" value="<?php echo isset($wo['additional']['permanent_addr']) ? $wo['additional']['permanent_addr'] : '';?>">
+							</div>
+							
+							<div class="col-6">
+								<label class="form-label" for="select-religion">Reference</label>
+								<select id="select-religion" name="additional[reference]" class="form-select" required>
+									<?php 
+										$reference = isset($wo['additional']['reference']) ? $wo['additional']['reference'] : '';
+										$get_users = $db->orderBy('serial', 'ASC')->get(T_USERS);
+										foreach ($get_users as $userlist) {
+											$first_name = cleanName($userlist->first_name);
+											echo '<option' . (isset($reference) && $reference == $userlist->user_id ? ' selected' : '') . " value='{$userlist->user_id}'>{$first_name} {$userlist->last_name}</option>";
+										}
+									?>
+								</select>
+							</div>
+							
+							<div class="col-6">
+								  <label class="form-label">Profession</label>
+								  <input type="text" name="additional[profession]" class="form-control" placeholder="Profession" value="<?php echo isset($wo['additional']['profession']) ? $wo['additional']['profession'] : '';?>">
+							</div>
+							
+							<div class="col-12">
+								  <label class="form-label">Phone</label>
+								  <input type="phone" name="phone" class="form-control" placeholder="Phone" value="<?php echo $wo['client']['phone'];?>" required>
+							</div>
+							
+							<div class="col-12">
+								  <label class="form-label">Email</label>
+								  <input type="email" name="additional[email]" class="form-control" placeholder="Email" value="<?php echo isset($wo['additional']['email']) ? $wo['additional']['email'] : '';?>">
+							</div>
+							
+							<div class="col-6">
+								<label class="form-label" for="select-nationality">Nationality</label>
+								<select id="select-nationality" name="additional[nationality]" class="form-select" required>
+									<option value="Bangladeshi" <?php echo (isset($wo['additional']['nationality']) && $wo['additional']['nationality'] == 'Bangladeshi') ? 'selected="true"' : '';?>>Bangladeshi</option>
+								</select>
+							</div>
+							
+							<div class="col-6">
+								  <label class="form-label">Date of Birth</label>
+								  <input type="date" name="additional[birthday]" class="form-control" placeholder="Date of Birth" value="<?php echo isset($wo['additional']['birthday']) ? $wo['additional']['birthday'] : '';?>" required>
+							</div>
+							
+							<div class="col-6">
+								<label class="form-label" for="select-religion">Religion</label>
+								<select id="select-religion" name="additional[religion]" class="form-select" required>
+									<option value="Islam (Sunni)" <?php echo (isset($wo['additional']['religion']) && $wo['additional']['religion'] == 'Islam (Sunni)') ? 'selected="true"' : '';?>>Islam (Sunni)</option>
+								</select>
+							</div>
+							
+							<div class="col-6">
+								  <label class="form-label">National ID</label>
+								  <input type="phone" name="additional[nid]" class="form-control" placeholder="National ID" value="<?php echo isset($wo['additional']['nid']) ? $wo['additional']['nid'] : '';?>" required>
+							</div>
+							
+							<div class="col-12">
+								  <label class="form-label">Passport No (Optional)</label>
+								  <input type="phone" name="additional[passport]" class="form-control" placeholder="Passport No" value="<?php echo isset($wo['additional']['passport']) ? $wo['additional']['passport'] : '';?>">
+							</div>
+							<hr>
+							<div class="col-12">
+								  <label class="form-label">Nominees Name</label>
+								  <input type="text" name="additional[nomine_name]" id="nomine_name" class="form-control" placeholder="Nominees Name" value="<?php echo isset($wo['additional']['nomine_name']) ? $wo['additional']['nomine_name'] : '';?>">
+							</div>
+							<div class="col-12">
+								  <label class="form-label">Nominees Address</label>
+								  <input type="text" name="additional[nomine_address]" class="form-control" placeholder="Nominees Address" value="<?php echo isset($wo['additional']['nomine_address']) ? $wo['additional']['nomine_address'] : '';?>">
+							</div>
+														
+							<div class="col-12">
+								<label class="form-label" for="select-relation">Relation with applicant</label>
+								<select id="select-relation" name="additional[nomine_relation]" class="form-select">
+									<option value="">Select Relation</option>
+									<option value="Husband" <?php echo (isset($wo['additional']['nomine_relation']) && $wo['additional']['nomine_relation'] == 'Husband') ? 'selected="true"' : '';?>>Husband</option>
+									<option value="Wife" <?php echo (isset($wo['additional']['nomine_relation']) && $wo['additional']['nomine_relation'] == 'Wife') ? 'selected="true"' : '';?>>Wife</option>
+									<option value="Daughter" <?php echo (isset($wo['additional']['nomine_relation']) && $wo['additional']['nomine_relation'] == 'Daughter') ? 'selected="true"' : '';?>>Daughter</option>
+									<option value="Son" <?php echo (isset($wo['additional']['nomine_relation']) && $wo['additional']['nomine_relation'] == 'Son') ? 'selected="true"' : '';?>>Son</option>
+									<option value="Sister" <?php echo (isset($wo['additional']['nomine_relation']) && $wo['additional']['nomine_relation'] == 'Sister') ? 'selected="true"' : '';?>>Sister</option>
+									<option value="Brother" <?php echo (isset($wo['additional']['nomine_relation']) && $wo['additional']['nomine_relation'] == 'Brother') ? 'selected="true"' : '';?>>Brother</option>
+									<option value="Mother" <?php echo (isset($wo['additional']['nomine_relation']) && $wo['additional']['nomine_relation'] == 'Mother') ? 'selected="true"' : '';?>>Mother</option>
+								</select>
+							</div>
+							<input type="hidden" name="client_id" value="<?php echo $wo['client']['id'];?>">
+							<div class="d-flex col-12">
+								<div class="ms-auto">
+									<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+									<button type="submit" class="btn btn-primary create_btn">Edit</button>
+								</div>
+							</div>
+					  </form>
+						<script>
+							$("#spouse_name").on("input", function() {
+								// Get the value from Present Address
+								var presentAddressValue = $(this).val();
+
+								// Update Permanent Address field with the same value
+								$("#nomine_name").val(presentAddressValue);
+							});
+							$("#presentAddress").on("input", function() {
+								// Get the value from Present Address
+								var presentAddressValue = $(this).val();
+
+								// Update Permanent Address field with the same value
+								$("#permanentAddress").val(presentAddressValue);
+							});
+							
+							function clear_forms2() {
+								// Clear values for the create-client form
+								$('#select-project2').val(null).trigger('change');
+								$('input[name="name"]').val('');
+								$('input[name="address"]').val('');
+								$('input[name="phone"]').val('');
+								$('#select-block').val(null).trigger('change');
+								$('#select-plot-edit').val(null).trigger('change');
+								$('#select-katha').val(null).trigger('change');
+								$('input[name="per_katha"]').val('');
+
+								// Reset form validation state (optional)
+								$('#create-client').removeClass('was-validated');
+
+								// Remove any error messages
+								$('.error-message').remove();
+
+								// Hide the edit_clientModal modal
+								$('#edit_clientModal').modal('hide');
+							}
+							$(document).ready(function () {
+								// Initialize AjaxForm for the create-client form
+								$('#edit-client').ajaxForm({
+									url: Wo_Ajax_Requests_File() + '?f=manage_clients&s=update_client',
+									type: 'GET',
+									beforeSend: function () {},
+									success: function (data) {
+										if (data['status'] == 200) {
+											pos5_success_noti(data['message']);
+											clear_forms2();
+											DataTableRefresh();
+										} else if (data['message']) {
+											pos4_error_noti(data['message']);
+										}
+									}
+								});
+							});
+							
+							$('#edit_clientModal [data-dismiss="modal"]').on('click', function() {
+								$('#edit_clientModal').fadeOut(200);
+								$('#edit_clientModal').remove();
+							});
+							// Attach a listener for the modal hidden event
+							$('#edit_clientModal').on('hidden.bs.modal', function() {
+								$('#edit_clientModal').fadeOut(200);
+								$('#edit_clientModal').remove();
+							});
+						</script>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
