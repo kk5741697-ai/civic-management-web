@@ -21,7 +21,7 @@ if ($f == "manage_clients") {
     if (!(Wo_IsAdmin() || Wo_IsModerator() || check_permission("manage-clients") || check_permission("clients"))) {
         echo json_encode([
             'status' => 404,
-            'message' => "You don’t have permission"
+            'message' => "You don't have permission"
         ]);
         exit;
     }
@@ -540,8 +540,9 @@ Road 1
 2
 5.22
 north
+2341423
 0
-0
+2
 
 Edit Edit
 Copy Copy
@@ -553,9 +554,8 @@ Road 1
 4
 5
 north
-2341423
 0
-2
+0
 
         sql table structure - crm_customers or T_CUSTOMERS
 
@@ -613,6 +613,29 @@ wqerwqer
 
     
     */
+
+if ($s == 'default_rate') {
+    $project_id = isset($_GET['project_id']) ? trim($_GET['project_id']) : '';
+    
+    if (empty($project_id)) {
+        echo json_encode(['status' => 400, 'message' => 'Project ID required']);
+        exit;
+    }
+    
+    // Get default rate for project (you can customize this logic)
+    $default_rates = [
+        'moon-hill' => 250000,
+        'hill-town' => 300000
+    ];
+    
+    $default_rate = isset($default_rates[$project_id]) ? $default_rates[$project_id] : 200000;
+    
+    echo json_encode([
+        'status' => 200,
+        'default_rate' => $default_rate
+    ]);
+    exit;
+}
     
 if ($s == 'fetch_clients') {
     header('Content-Type: application/json; charset=utf-8');
