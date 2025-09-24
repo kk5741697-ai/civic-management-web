@@ -233,60 +233,6 @@
   </div>
 </div>
 
-<!-- Payment Modal for individual payments -->
-<div class="modal fade" id="paymentModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-md modal-dialog-centered">
-    <div class="modal-content border-0 shadow">
-      <div class="modal-header bg-success text-white border-0">
-        <h6 class="modal-title mb-0">
-          <i class="lni lni-dollar me-2"></i>Mark Payment
-        </h6>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body">
-        <input type="hidden" id="payment_schedule_id" value="">
-        <div class="row g-3">
-          <div class="col-md-6">
-            <label class="form-label fw-medium">Payment Amount</label>
-            <div class="input-group">
-              <span class="input-group-text">৳</span>
-              <input type="number" id="payment_amount" class="form-control" step="0.01" readonly>
-            </div>
-          </div>
-          <div class="col-md-6">
-            <label class="form-label fw-medium">Payment Date</label>
-            <input type="date" id="payment_date" class="form-control">
-          </div>
-          <div class="col-md-6">
-            <label class="form-label fw-medium">Payment Method</label>
-            <select id="payment_method" class="form-control">
-              <option value="cash">Cash</option>
-              <option value="bank_transfer">Bank Transfer</option>
-              <option value="cheque">Cheque</option>
-              <option value="mobile_banking">Mobile Banking</option>
-              <option value="card">Card Payment</option>
-            </select>
-          </div>
-          <div class="col-md-6">
-            <label class="form-label fw-medium">Reference Number</label>
-            <input type="text" id="payment_reference" class="form-control" placeholder="Transaction/Cheque number">
-          </div>
-          <div class="col-md-12">
-            <label class="form-label fw-medium">Notes</label>
-            <textarea id="payment_notes" class="form-control" rows="2" placeholder="Additional notes..."></textarea>
-          </div>
-        </div>
-      </div>
-      <div class="modal-footer border-0">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-        <button type="button" id="save_payment" class="btn btn-success">
-          <i class="lni lni-save me-1"></i>Mark as Paid
-        </button>
-      </div>
-    </div>
-  </div>
-</div>
-
 <script>
 jQuery(function($){
   'use strict';
@@ -311,6 +257,7 @@ jQuery(function($){
   // Global variables
   var currentPurchaseData = null;
   var currentSchedule = [];
+  var originalScheduleConfig = null;
 
   // Initialize update installment functionality
   function initUpdateInstallment() {
@@ -363,8 +310,6 @@ jQuery(function($){
       if (confirm('Mark all installments as paid?')) {
         currentSchedule.forEach(function(item, index){
           item.paid = true;
-          item.payment_date = new Date().toISOString().slice(0, 10);
-          item.payment_method = 'cash';
         });
         renderScheduleTable();
         updateTotals();
@@ -375,10 +320,6 @@ jQuery(function($){
       if (confirm('Mark all installments as unpaid?')) {
         currentSchedule.forEach(function(item, index){
           item.paid = false;
-          delete item.payment_date;
-          delete item.payment_method;
-          delete item.payment_reference;
-          delete item.payment_notes;
         });
         renderScheduleTable();
         updateTotals();
@@ -398,11 +339,6 @@ jQuery(function($){
     // Export schedule handler
     $('#export_schedule_xlsx').off('click').on('click', function(){
       exportSchedule();
-    });
-
-    // Payment modal handlers
-    $('#save_payment').off('click').on('click', function(){
-      savePayment();
     });
 
     // Schedule status filter
@@ -428,31 +364,118 @@ jQuery(function($){
     
     $.get(Wo_Ajax_Requests_File() + '?f=manage_inventory&s=get_purchase_details&purchase_id=' + purchaseId)
       .done(function(response){
-      var response = typeof response === 'string' ? JSON.parse(response) : response;
+        var data = typeof response === 'string' ? JSON.parse(response) : response;
 
-        if (response && response.status == 200) {
-          currentPurchaseData = response;
-          populatePurchaseData(response);
+        if (data && data.status == 200) {
+          currentPurchaseData = data;
+          populatePurchaseData(data);
           
           // Load existing schedule if available
-          if (response.schedule && response.schedule.length > 0) {
-            currentSchedule = response.schedule;
+          if (data.schedule && data.schedule.length > 0) {
+            currentSchedule = data.schedule;
+            
+            // Load configuration from existing schedule
+            loadConfigurationFromSchedule(data.schedule);
+            
             renderScheduleTable();
             updateTotals();
             $('#ui_change_schedule').show();
             $('#ui_configuration_section').hide();
           } else {
             currentSchedule = [];
+            setDefaultConfiguration();
             $('#ui_change_schedule').hide();
             $('#ui_configuration_section').show();
           }
         } else {
-          alert('Failed to load purchase data: ' + (response.message || 'Unknown error'));
+          alert('Failed to load purchase data: ' + (data.message || 'Unknown error'));
         }
       })
       .fail(function(){
         alert('Server error occurred while loading purchase data.');
       });
+  }
+
+  function loadConfigurationFromSchedule(schedule) {
+    if (!schedule || schedule.length === 0) {
+      setDefaultConfiguration();
+      return;
+    }
+
+    // Analyze schedule to determine configuration
+    var totalInstallments = schedule.length;
+    var adjustmentCount = schedule.filter(function(item) { return item.adjustment; }).length;
+    var firstDate = schedule[0].date;
+    var regularAmount = null;
+    var yearlyAmount = null;
+
+    // Find regular and yearly amounts
+    for (var i = 0; i < schedule.length; i++) {
+      if (schedule[i].adjustment) {
+        if (yearlyAmount === null) yearlyAmount = schedule[i].amount;
+      } else {
+        if (regularAmount === null) regularAmount = schedule[i].amount;
+      }
+    }
+
+    // Determine adjustment type based on yearly adjustment positions
+    var adjustmentType = 'monthly';
+    if (adjustmentCount > 0) {
+      var firstAdjustmentIndex = schedule.findIndex(function(item) { return item.adjustment; });
+      var monthInYear = firstAdjustmentIndex % 12;
+      
+      if (monthInYear === 11) adjustmentType = 'year_end';
+      else if (monthInYear === 0) adjustmentType = 'year_start';
+      else if (monthInYear === 6) adjustmentType = 'year_middle';
+      else adjustmentType = 'custom';
+    }
+
+    // Determine start option based on first date
+    var startDate = new Date(firstDate);
+    var dayOfMonth = startDate.getDate();
+    var startOption = 'exact';
+    if (dayOfMonth === 1) startOption = 'start';
+    else if (dayOfMonth === 15) startOption = 'middle';
+    else if (dayOfMonth >= 28) startOption = 'end';
+
+    // Set configuration values
+    $('#ui_mode').val(totalInstallments === 1 ? '1' : '2');
+    $('#ui_installments').val(totalInstallments);
+    $('#ui_adjustment_type').val(adjustmentType);
+    $('#ui_monthly_amount').val(regularAmount || '');
+    $('#ui_yearly_adjustment').val(yearlyAmount || '');
+    $('#ui_start_date').val(firstDate);
+    $('#ui_start_option').val(startOption);
+
+    // Show/hide installment controls
+    if (totalInstallments === 1) {
+      $('#ui_installment_controls').addClass('d-none');
+    } else {
+      $('#ui_installment_controls').removeClass('d-none');
+    }
+
+    originalScheduleConfig = {
+      mode: totalInstallments === 1 ? '1' : '2',
+      installments: totalInstallments,
+      adjustmentType: adjustmentType,
+      monthlyAmount: regularAmount,
+      yearlyAdjustment: yearlyAmount,
+      startDate: firstDate,
+      startOption: startOption
+    };
+  }
+
+  function setDefaultConfiguration() {
+    $('#ui_mode').val('2');
+    $('#ui_installments').val(currentPurchaseData ? currentPurchaseData.default_installments || 12 : 12);
+    $('#ui_adjustment_type').val('year_end');
+    $('#ui_monthly_amount').val('');
+    $('#ui_yearly_adjustment').val('');
+    $('#ui_start_date').val(currentPurchaseData ? currentPurchaseData.default_start_date || new Date().toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10));
+    $('#ui_start_option').val('start');
+    $('#ui_installment_controls').removeClass('d-none');
+    
+    originalScheduleConfig = null;
   }
 
   function populatePurchaseData(data) {
@@ -463,10 +486,6 @@ jQuery(function($){
     
     var remaining = (data.total_price || 0) - (data.down_payment || 0) - (data.booking_money || 0);
     $('#ui_remaining').text(fmtMoney(remaining));
-    
-    // Set default values
-    $('#ui_start_date').val(data.default_start_date || new Date().toISOString().slice(0, 10));
-    $('#ui_installments').val(data.default_installments || 12);
   }
 
   function generateSchedule() {
@@ -483,8 +502,6 @@ jQuery(function($){
       generateInstallmentSchedule();
     }
   }
-
-
 
   function generateFullPaymentSchedule() {
     var remaining = (currentPurchaseData.total_price || 0) - 
@@ -597,8 +614,8 @@ jQuery(function($){
         : '<span class="badge bg-warning">Unpaid</span>';
       
       var actionBtn = item.paid
-        ? '<button class="btn btn-sm btn-outline-danger" onclick="markUnpaid(' + actualIndex + ')">Unpaid</button>'
-        : '<button class="btn btn-sm btn-outline-success" onclick="markPaid(' + actualIndex + ')">Pay</button>';
+        ? '<button class="btn btn-sm btn-outline-danger" onclick="togglePayment(' + actualIndex + ')">Mark Unpaid</button>'
+        : '<button class="btn btn-sm btn-outline-success" onclick="togglePayment(' + actualIndex + ')">Mark Paid</button>';
       
       var adjustmentIcon = item.adjustment ? '<i class="lni lni-star text-warning" title="Yearly adjustment"></i>' : '';
       
@@ -650,67 +667,36 @@ jQuery(function($){
     }
   }
 
-  // Global functions for payment actions
-  window.markPaid = function(index) {
+  // Global function for payment toggle
+  window.togglePayment = function(index) {
     if (index < 0 || index >= currentSchedule.length) return;
     
-    var item = currentSchedule[index];
-    $('#payment_schedule_id').val(index);
-    $('#payment_amount').val(item.amount);
-    $('#payment_date').val(new Date().toISOString().slice(0, 10));
-    $('#payment_method').val('cash');
-    $('#payment_reference').val('');
-    $('#payment_notes').val('');
-    
-    $('#paymentModal').modal('show');
-  };
-
-  window.markUnpaid = function(index) {
-    if (index < 0 || index >= currentSchedule.length) return;
-    
-    if (confirm('Mark this payment as unpaid?')) {
-      currentSchedule[index].paid = false;
-      delete currentSchedule[index].payment_date;
-      delete currentSchedule[index].payment_method;
-      delete currentSchedule[index].payment_reference;
-      delete currentSchedule[index].payment_notes;
-      
-      renderScheduleTable();
-      updateTotals();
-    }
-  };
-
-  function savePayment() {
-    var index = parseInt($('#payment_schedule_id').val());
-    if (index < 0 || index >= currentSchedule.length) return;
-    
-    var amount = moneyVal($('#payment_amount').val());
-    var date = $('#payment_date').val();
-    var method = $('#payment_method').val();
-    var reference = $('#payment_reference').val();
-    var notes = $('#payment_notes').val();
-    
-    if (!date) {
-      alert('Please select payment date');
-      return;
-    }
-    
-    currentSchedule[index].paid = true;
-    currentSchedule[index].payment_date = date;
-    currentSchedule[index].payment_method = method;
-    currentSchedule[index].payment_reference = reference;
-    currentSchedule[index].payment_notes = notes;
-    
-    $('#paymentModal').modal('hide');
+    currentSchedule[index].paid = !currentSchedule[index].paid;
     renderScheduleTable();
     updateTotals();
-  }
+  };
 
   function saveSchedule() {
     var purchaseId = $('#ui_purchase_id').val();
     if (!purchaseId) {
       alert('Purchase ID missing');
       return;
+    }
+
+    // Validate schedule total matches remaining amount
+    var expectedTotal = (currentPurchaseData.total_price || 0) - 
+                       (currentPurchaseData.down_payment || 0) - 
+                       (currentPurchaseData.booking_money || 0);
+    
+    var scheduleTotal = currentSchedule.reduce(function(sum, item) {
+      return sum + (item.amount || 0);
+    }, 0);
+
+    var tolerance = 1; // Allow 1 taka difference for rounding
+    if (Math.abs(scheduleTotal - expectedTotal) > tolerance) {
+      if (!confirm('Schedule total (৳' + fmtMoney(scheduleTotal) + ') does not match expected amount (৳' + fmtMoney(expectedTotal) + '). Continue anyway?')) {
+        return;
+      }
     }
     
     var $btn = $('#ui_save_schedule');
@@ -776,33 +762,122 @@ jQuery(function($){
             <head>
               <title>Payment Schedule</title>
               <style>
-                body { font-family: Arial, sans-serif; margin: 20px; color: #333; }
-                .schedule-print-template { background: white; }
-                .company-header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #007bff; padding-bottom: 20px; }
-                .company-name { font-size: 24px; font-weight: bold; color: #007bff; margin-bottom: 5px; }
-                .document-title { font-size: 18px; color: #666; margin-bottom: 20px; }
-                .info-section { margin-bottom: 20px; }
-                .info-title { font-weight: bold; color: #333; margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 5px; }
-                .info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
-                .info-item { padding: 8px; background: #f8f9fa; border-radius: 4px; }
-                .info-label { font-weight: 600; color: #666; font-size: 12px; }
-                .info-value { color: #333; }
-                table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-                th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-                th { background-color: #f8f9fa; font-weight: 600; }
+                body { 
+                  font-family: Arial, sans-serif; 
+                  margin: 0; 
+                  padding: 20px; 
+                  color: #333; 
+                  background: white;
+                }
+                .schedule-print-template { 
+                  background: white; 
+                  max-width: 800px;
+                  margin: 0 auto;
+                }
+                .company-header { 
+                  text-align: center; 
+                  margin-bottom: 30px; 
+                  border-bottom: 3px solid #007bff; 
+                  padding-bottom: 20px; 
+                }
+                .company-name { 
+                  font-size: 28px; 
+                  font-weight: bold; 
+                  color: #007bff; 
+                  margin-bottom: 5px; 
+                }
+                .document-title { 
+                  font-size: 20px; 
+                  color: #666; 
+                  margin-bottom: 20px; 
+                }
+                .info-section { 
+                  margin-bottom: 25px; 
+                  background: #f8f9fa;
+                  padding: 15px;
+                  border-radius: 8px;
+                }
+                .info-title { 
+                  font-weight: bold; 
+                  color: #333; 
+                  margin-bottom: 15px; 
+                  border-bottom: 2px solid #eee; 
+                  padding-bottom: 8px; 
+                  font-size: 16px;
+                }
+                .info-grid { 
+                  display: grid; 
+                  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); 
+                  gap: 15px; 
+                }
+                .info-item { 
+                  padding: 12px; 
+                  background: white; 
+                  border-radius: 6px; 
+                  border: 1px solid #e9ecef;
+                }
+                .info-label { 
+                  font-weight: 600; 
+                  color: #666; 
+                  font-size: 12px; 
+                  text-transform: uppercase;
+                  margin-bottom: 4px;
+                }
+                .info-value { 
+                  color: #333; 
+                  font-size: 14px;
+                  font-weight: 500;
+                }
+                table { 
+                  width: 100%; 
+                  border-collapse: collapse; 
+                  margin-top: 20px; 
+                  font-size: 13px;
+                }
+                th, td { 
+                  border: 1px solid #ddd; 
+                  padding: 10px 8px; 
+                  text-align: left; 
+                }
+                th { 
+                  background-color: #f8f9fa; 
+                  font-weight: 600; 
+                  color: #495057;
+                }
                 .text-center { text-align: center; }
                 .text-end { text-align: right; }
-                .badge { padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
-                .bg-success { background-color: #28a745; color: white; }
+                .badge { 
+                  padding: 4px 8px; 
+                  border-radius: 4px; 
+                  font-size: 11px; 
+                  font-weight: 600; 
+                  color: white;
+                }
+                .bg-success { background-color: #28a745; }
                 .bg-warning { background-color: #ffc107; color: #212529; }
-                .bg-danger { background-color: #dc3545; color: white; }
-                .bg-secondary { background-color: #6c757d; color: white; }
-                .signature-area { margin-top: 50px; display: flex; justify-content: space-between; }
-                .signature-box { text-align: center; width: 200px; }
-                .signature-line { border-top: 1px solid #333; margin-top: 50px; padding-top: 5px; }
+                .bg-danger { background-color: #dc3545; }
+                .bg-secondary { background-color: #6c757d; }
+                .signature-area { 
+                  margin-top: 60px; 
+                  display: flex; 
+                  justify-content: space-between; 
+                }
+                .signature-box { 
+                  text-align: center; 
+                  width: 200px; 
+                }
+                .signature-line { 
+                  border-top: 2px solid #333; 
+                  margin-top: 60px; 
+                  padding-top: 8px; 
+                  font-weight: 600;
+                }
+                .payment-status-paid { background-color: rgba(40, 167, 69, 0.1); }
+                .payment-status-unpaid { background-color: rgba(255, 193, 7, 0.1); }
                 @media print {
-                  body { margin: 0; }
+                  body { margin: 0; padding: 15px; }
                   .no-print { display: none !important; }
+                  .page-break { page-break-after: always; }
                 }
               </style>
             </head>
@@ -879,6 +954,7 @@ jQuery(function($){
   $('#viewClient-modal').on('hidden.bs.modal.updateInstallment', function(){
     currentPurchaseData = null;
     currentSchedule = [];
+    originalScheduleConfig = null;
     $(document).off('.updateInstallment');
   });
 

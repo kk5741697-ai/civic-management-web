@@ -106,7 +106,6 @@ jQuery(function($){
 
   // Initialize print schedule functionality
   function initPrintSchedule() {
-    // Initialize Bootstrap modal
     try {
       var modalEl = document.getElementById('printScheduleModal');
       if (modalEl) {
@@ -197,7 +196,8 @@ jQuery(function($){
         var data = typeof response === 'string' ? JSON.parse(response) : response;
         
         if (data && data.status === 200) {
-          $('#schedule_print_preview').html(data.html);
+          var previewHtml = generateSchedulePreviewHTML(data);
+          $('#schedule_print_preview').html(previewHtml);
         } else {
           showPreviewError('Failed to load schedule preview: ' + (data.message || 'Unknown error'));
         }
@@ -205,6 +205,165 @@ jQuery(function($){
       .fail(function(){
         showPreviewError('Server error occurred while loading preview.');
       });
+  }
+
+  function generateSchedulePreviewHTML(data) {
+    var html = `
+      <div class="schedule-print-template">
+        <div class="company-header">
+          <div class="company-name">Civic Real Estate Ltd.</div>
+          <div class="document-title">Payment Schedule</div>
+          <div class="text-muted">Generated on ${new Date().toLocaleDateString()}</div>
+        </div>
+    `;
+
+    if (data.client_info && $('#include_client_info').prop('checked')) {
+      html += `
+        <div class="info-section">
+          <div class="info-title">Client Information</div>
+          <div class="info-grid">
+            <div class="info-item">
+              <div class="info-label">Client Name</div>
+              <div class="info-value">${data.client_info.name || '-'}</div>
+            </div>
+            <div class="info-item">
+              <div class="info-label">Phone</div>
+              <div class="info-value">${data.client_info.phone || '-'}</div>
+            </div>
+            <div class="info-item">
+              <div class="info-label">Address</div>
+              <div class="info-value">${data.client_info.address || '-'}</div>
+            </div>
+            <div class="info-item">
+              <div class="info-label">File Number</div>
+              <div class="info-value">${data.client_info.file_num || '-'}</div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    if (data.plot_details && $('#include_plot_details').prop('checked')) {
+      html += `
+        <div class="info-section">
+          <div class="info-title">Plot Details</div>
+          <div class="info-grid">
+            <div class="info-item">
+              <div class="info-label">Project</div>
+              <div class="info-value">${data.plot_details.project || '-'}</div>
+            </div>
+            <div class="info-item">
+              <div class="info-label">Block</div>
+              <div class="info-value">${data.plot_details.block || '-'}</div>
+            </div>
+            <div class="info-item">
+              <div class="info-label">Plot</div>
+              <div class="info-value">${data.plot_details.plot || '-'}</div>
+            </div>
+            <div class="info-item">
+              <div class="info-label">Katha</div>
+              <div class="info-value">${data.plot_details.katha || '-'}</div>
+            </div>
+            <div class="info-item">
+              <div class="info-label">Road</div>
+              <div class="info-value">${data.plot_details.road || '-'}</div>
+            </div>
+            <div class="info-item">
+              <div class="info-label">Facing</div>
+              <div class="info-value">${data.plot_details.facing || '-'}</div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    if (data.payment_summary && $('#include_payment_summary').prop('checked')) {
+      html += `
+        <div class="info-section">
+          <div class="info-title">Payment Summary</div>
+          <div class="info-grid">
+            <div class="info-item">
+              <div class="info-label">Total Price</div>
+              <div class="info-value">৳${data.payment_summary.total_price || '0'}</div>
+            </div>
+            <div class="info-item">
+              <div class="info-label">Booking Money</div>
+              <div class="info-value">৳${data.payment_summary.booking_money || '0'}</div>
+            </div>
+            <div class="info-item">
+              <div class="info-label">Down Payment</div>
+              <div class="info-value">৳${data.payment_summary.down_payment || '0'}</div>
+            </div>
+            <div class="info-item">
+              <div class="info-label">Installment Amount</div>
+              <div class="info-value">৳${data.payment_summary.installment_amount || '0'}</div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    // Schedule table
+    html += `
+      <table class="table table-bordered">
+        <thead>
+          <tr>
+            <th class="text-center">#</th>
+            <th>Date</th>
+            <th class="text-end">Amount</th>
+            <th class="text-center">Type</th>
+            <th class="text-center">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+    `;
+
+    if (data.schedule && Array.isArray(data.schedule)) {
+      data.schedule.forEach(function(item, index) {
+        var statusClass = item.paid ? 'payment-status-paid' : 'payment-status-unpaid';
+        var statusBadge = item.paid ? 
+          '<span class="badge bg-success">Paid</span>' : 
+          '<span class="badge bg-warning">Unpaid</span>';
+        var typeText = item.adjustment ? 'Yearly Adjustment' : 'Regular';
+        
+        html += `
+          <tr class="${statusClass}">
+            <td class="text-center">${index + 1}</td>
+            <td>${item.date}</td>
+            <td class="text-end">৳${Number(item.amount).toLocaleString()}</td>
+            <td class="text-center">${typeText}</td>
+            <td class="text-center">${statusBadge}</td>
+          </tr>
+        `;
+      });
+    }
+
+    html += `
+        </tbody>
+        <tfoot>
+          <tr class="fw-bold">
+            <td colspan="2" class="text-center">Total</td>
+            <td class="text-end">৳${data.schedule_total || '0'}</td>
+            <td colspan="2"></td>
+          </tr>
+        </tfoot>
+      </table>
+    `;
+
+    // Signature area
+    html += `
+      <div class="signature-area">
+        <div class="signature-box">
+          <div class="signature-line">Client Signature</div>
+        </div>
+        <div class="signature-box">
+          <div class="signature-line">Authorized Signature</div>
+        </div>
+      </div>
+    `;
+
+    html += '</div>';
+    return html;
   }
 
   function showPreviewError(message) {
@@ -236,33 +395,122 @@ jQuery(function($){
       <head>
         <title>Payment Schedule</title>
         <style>
-          body { font-family: Arial, sans-serif; margin: 20px; color: #333; }
-          .schedule-print-template { background: white; }
-          .company-header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #007bff; padding-bottom: 20px; }
-          .company-name { font-size: 24px; font-weight: bold; color: #007bff; margin-bottom: 5px; }
-          .document-title { font-size: 18px; color: #666; margin-bottom: 20px; }
-          .info-section { margin-bottom: 20px; }
-          .info-title { font-weight: bold; color: #333; margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 5px; }
-          .info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
-          .info-item { padding: 8px; background: #f8f9fa; border-radius: 4px; }
-          .info-label { font-weight: 600; color: #666; font-size: 12px; }
-          .info-value { color: #333; }
-          table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-          th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-          th { background-color: #f8f9fa; font-weight: 600; }
+          body { 
+            font-family: Arial, sans-serif; 
+            margin: 0; 
+            padding: 20px; 
+            color: #333; 
+            background: white;
+          }
+          .schedule-print-template { 
+            background: white; 
+            max-width: 800px;
+            margin: 0 auto;
+          }
+          .company-header { 
+            text-align: center; 
+            margin-bottom: 30px; 
+            border-bottom: 3px solid #007bff; 
+            padding-bottom: 20px; 
+          }
+          .company-name { 
+            font-size: 28px; 
+            font-weight: bold; 
+            color: #007bff; 
+            margin-bottom: 5px; 
+          }
+          .document-title { 
+            font-size: 20px; 
+            color: #666; 
+            margin-bottom: 20px; 
+          }
+          .info-section { 
+            margin-bottom: 25px; 
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+          }
+          .info-title { 
+            font-weight: bold; 
+            color: #333; 
+            margin-bottom: 15px; 
+            border-bottom: 2px solid #eee; 
+            padding-bottom: 8px; 
+            font-size: 16px;
+          }
+          .info-grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); 
+            gap: 15px; 
+          }
+          .info-item { 
+            padding: 12px; 
+            background: white; 
+            border-radius: 6px; 
+            border: 1px solid #e9ecef;
+          }
+          .info-label { 
+            font-weight: 600; 
+            color: #666; 
+            font-size: 12px; 
+            text-transform: uppercase;
+            margin-bottom: 4px;
+          }
+          .info-value { 
+            color: #333; 
+            font-size: 14px;
+            font-weight: 500;
+          }
+          table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            margin-top: 20px; 
+            font-size: 13px;
+          }
+          th, td { 
+            border: 1px solid #ddd; 
+            padding: 10px 8px; 
+            text-align: left; 
+          }
+          th { 
+            background-color: #f8f9fa; 
+            font-weight: 600; 
+            color: #495057;
+          }
           .text-center { text-align: center; }
           .text-end { text-align: right; }
-          .badge { padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
-          .bg-success { background-color: #28a745; color: white; }
+          .badge { 
+            padding: 4px 8px; 
+            border-radius: 4px; 
+            font-size: 11px; 
+            font-weight: 600; 
+            color: white;
+          }
+          .bg-success { background-color: #28a745; }
           .bg-warning { background-color: #ffc107; color: #212529; }
-          .bg-danger { background-color: #dc3545; color: white; }
-          .bg-secondary { background-color: #6c757d; color: white; }
-          .signature-area { margin-top: 50px; display: flex; justify-content: space-between; }
-          .signature-box { text-align: center; width: 200px; }
-          .signature-line { border-top: 1px solid #333; margin-top: 50px; padding-top: 5px; }
+          .bg-danger { background-color: #dc3545; }
+          .bg-secondary { background-color: #6c757d; }
+          .signature-area { 
+            margin-top: 60px; 
+            display: flex; 
+            justify-content: space-between; 
+          }
+          .signature-box { 
+            text-align: center; 
+            width: 200px; 
+          }
+          .signature-line { 
+            border-top: 2px solid #333; 
+            margin-top: 60px; 
+            padding-top: 8px; 
+            font-weight: 600;
+          }
+          .payment-status-paid { background-color: rgba(40, 167, 69, 0.1); }
+          .payment-status-unpaid { background-color: rgba(255, 193, 7, 0.1); }
           @media print {
-            body { margin: 0; }
+            body { margin: 0; padding: 15px; }
             .no-print { display: none !important; }
+            .page-break { page-break-after: always; }
           }
         </style>
       </head>
