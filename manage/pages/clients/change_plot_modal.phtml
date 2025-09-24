@@ -1,4 +1,4 @@
-<!-- Change Plot Modal Component -->
+<!-- Simplified Change Plot Modal Component -->
 <div class="modal fade" id="changePlotModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-lg modal-dialog-centered">
     <div class="modal-content border-0 shadow-lg">
@@ -45,7 +45,7 @@
           </div>
         </div>
 
-        <!-- New Plot Selection -->
+        <!-- Simplified New Plot Selection -->
         <div class="card border-0 shadow-sm">
           <div class="card-body">
             <h6 class="fw-semibold mb-3">
@@ -148,6 +148,7 @@ jQuery(function($){
   'use strict';
 
   var bsChangePlotModal = null;
+  var searchCache = {};
 
   // Initialize change plot functionality
   function initChangePlot() {
@@ -168,6 +169,10 @@ jQuery(function($){
       $('#change_plot_reason').val('');
       $('#new_plot_details').hide();
       
+      // Reset selects
+      $('#new_project_select').val('').trigger('change');
+      $('#new_plot_select').html('<option value="">First select a project</option>');
+      
       // Load current plot details
       loadCurrentPlotDetails(purchaseId);
       
@@ -187,33 +192,97 @@ jQuery(function($){
       }
     });
 
-    // Project change handler
+    // Project change handler with enhanced Select2
     $('#new_project_select').off('change').on('change', function(){
       var projectSlug = $(this).val();
       $('#new_plot_details').hide();
+      
+      // Destroy existing Select2 instance
+      try {
+        if ($('#new_plot_select').hasClass('select2-hidden-accessible')) {
+          $('#new_plot_select').select2('destroy');
+        }
+      } catch(e) {}
       
       if (!projectSlug) {
         $('#new_plot_select').html('<option value="">First select a project</option>');
         return;
       }
 
-      // Load available plots for selected project
-      loadAvailablePlots(projectSlug);
+      // Initialize Select2 with AJAX for plot selection (same as add_purchase_form)
+      $('#new_plot_select').select2({
+        dropdownParent: $('#changePlotModal'),
+        placeholder: 'Search plots (block/plot/katha/road)...',
+        allowClear: true,
+        minimumInputLength: 0,
+        closeOnSelect: true,
+        width: '100%',
+        ajax: {
+          url: Wo_Ajax_Requests_File() + '?f=manage_inventory&s=search_purchases',
+          dataType: 'json',
+          delay: 300,
+          cache: true,
+          data: function (params) {
+            return {
+              q: params.term || '',
+              page: params.page || 1,
+              per_page: 30,
+              project_id: projectSlug,
+              available_only: true // Only show available plots
+            };
+          },
+          processResults: function (data, params) {
+            try {
+              var rows = [];
+              if (data && Array.isArray(data.data)) {
+                rows = data.data;
+              } else if (Array.isArray(data)) {
+                rows = data;
+              }
+
+              var mapped = rows.map(function(item) {
+                return normalizePlotItem(item);
+              }).filter(function(item) {
+                return item && item.available !== false; // Only available plots
+              });
+
+              return {
+                results: mapped,
+                pagination: { more: !!data.more }
+              };
+            } catch (e) {
+              console.error('processResults error:', e);
+              return { results: [], pagination: { more: false } };
+            }
+          }
+        },
+        templateResult: function(item) {
+          if (!item || !item.id) return item && item.text ? item.text : null;
+          
+          var $wrap = $('<div class="select2-result-item d-flex justify-content-between align-items-center"></div>');
+          var $label = $('<div class="select2-main-text flex-grow-1"></div>').text(item.text);
+          $wrap.append($label);
+
+          if (item.status_label) {
+            var badgeClass = getBadgeClass(item.status);
+            var $badge = $('<span class="select2-result-badge ' + badgeClass + '"></span>').text(item.status_label);
+            $wrap.append($badge);
+          }
+
+          return $wrap;
+        },
+        templateSelection: function(item) {
+          return item && item.text ? item.text : null;
+        }
+      });
     });
 
     // Plot selection handler
-    $('#new_plot_select').off('change').on('change', function(){
-      var plotId = $(this).val();
-      if (plotId) {
-        var selectedOption = $(this).find('option:selected');
-        var plotData = selectedOption.data();
-        
-        if (plotData) {
-          populateNewPlotDetails(plotData);
-          $('#new_plot_details').show();
-        }
-      } else {
-        $('#new_plot_details').hide();
+    $('#new_plot_select').off('select2:select').on('select2:select', function(e){
+      var item = e.params && e.params.data ? e.params.data : null;
+      if (item) {
+        populateNewPlotDetails(item);
+        $('#new_plot_details').show();
       }
     });
 
@@ -243,7 +312,6 @@ jQuery(function($){
       $btn.prop('disabled', true).html('<i class="spinner-border spinner-border-sm me-1"></i>Changing...');
       
       var payload = {
-        s: 'change_plot',
         purchase_id: purchaseId,
         new_plot_id: newPlotId,
         reason: reason
@@ -292,6 +360,61 @@ jQuery(function($){
     });
   }
 
+  // Helper functions
+  function normalizePlotItem(item) {
+    if (!item) return null;
+    
+    var id = item.id || item.purchase_id || '';
+    var plot = item.plot || item.plot_number || '';
+    var katha = (item.katha !== undefined) ? String(item.katha) : '';
+    var block = item.block || item.block_name || '';
+    var road = item.road || item.road_name || '';
+    var facing = item.facing || '';
+    var status = item.status || '';
+    var statusLabel = item.status_label || getStatusLabel(status);
+    var available = item.available === 1 || item.available === true;
+
+    var parts = [];
+    if (block) parts.push('Block ' + String(block).toUpperCase());
+    if (plot) parts.push('Plot ' + String(plot));
+    if (katha) parts.push(String(katha) + ' katha');
+    if (road) parts.push('Road ' + String(road));
+    if (facing) parts.push('Facing ' + String(facing));
+
+    return {
+      id: id,
+      text: parts.join(' • ') || String(id),
+      plot: plot,
+      katha: katha,
+      block: block,
+      road: road,
+      facing: facing,
+      status: status,
+      status_label: statusLabel,
+      available: available,
+      blocked: !available,
+      raw: item
+    };
+  }
+
+  function getStatusLabel(status) {
+    var s = String(status).toLowerCase();
+    if (s === '0' || s === '1' || s === 'available') return 'Available';
+    if (s === '2' || s === 'sold' || s === 'booked') return 'Sold';
+    if (s === '3' || s === 'complete') return 'Complete';
+    if (s === '4' || s.indexOf('cancel') !== -1) return 'Cancelled';
+    return s ? (s.charAt(0).toUpperCase() + s.slice(1)) : '';
+  }
+
+  function getBadgeClass(status) {
+    var s = String(status || '').toLowerCase();
+    if (/(sold|2|booked)/.test(s)) return 'sold';
+    if (/(cancel|4)/.test(s)) return 'cancelled';
+    if (/(complete|3)/.test(s)) return 'completed';
+    if (/(available|0|1)/.test(s)) return 'available';
+    return 'other';
+  }
+
   function loadCurrentPlotDetails(purchaseId) {
     $.get(Wo_Ajax_Requests_File() + '?f=manage_inventory&s=get_purchase_details&id=' + purchaseId)
       .done(function(response){
@@ -307,38 +430,6 @@ jQuery(function($){
       })
       .fail(function(){
         console.warn('Failed to load current plot details');
-      });
-  }
-
-  function loadAvailablePlots(projectSlug) {
-    $('#new_plot_select').html('<option value="">Loading plots...</option>');
-    
-    $.get(Wo_Ajax_Requests_File() + '?f=manage_inventory&s=get_available_plots&project_slug=' + encodeURIComponent(projectSlug))
-      .done(function(response){
-        var plots = Array.isArray(response) ? response : [];
-        
-        $('#new_plot_select').empty().append('<option value="">Choose available plot...</option>');
-        
-        if (plots.length > 0) {
-          plots.forEach(function(plot){
-            var displayText = 'Block ' + (plot.block || 'N/A') + 
-                            ', Plot ' + (plot.plot || 'N/A') + 
-                            ', ' + (plot.katha || 'N/A') + ' katha';
-            if (plot.road) displayText += ', Road ' + plot.road;
-            
-            var $option = $('<option></option>')
-              .attr('value', plot.id)
-              .text(displayText)
-              .data(plot);
-            
-            $('#new_plot_select').append($option);
-          });
-        } else {
-          $('#new_plot_select').append('<option value="" disabled>No available plots found</option>');
-        }
-      })
-      .fail(function(){
-        $('#new_plot_select').html('<option value="" disabled>Failed to load plots</option>');
       });
   }
 
@@ -371,7 +462,19 @@ jQuery(function($){
         bsChangePlotModal = null;
       } catch(e) {}
     }
+    
+    // Destroy Select2 instances
+    try {
+      if ($('#new_project_select').hasClass('select2-hidden-accessible')) {
+        $('#new_project_select').select2('destroy');
+      }
+      if ($('#new_plot_select').hasClass('select2-hidden-accessible')) {
+        $('#new_plot_select').select2('destroy');
+      }
+    } catch(e) {}
+    
     $(document).off('.changePlot');
+    searchCache = {};
   });
 
 });

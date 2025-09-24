@@ -41,6 +41,220 @@ $total_invoice = (int)   $db->where('customer_id', $clientId)->getValue(T_INVOIC
 $get_nominees = $db->where('customer_id', $clientId)->orderBy('name', 'ASC')->get(T_CRM_NOMINEES);
 ?>
 
+<!-- ===== Custom modal styles (drop into page head or here) ===== -->
+<style>
+/* Fix Select2 dropdown positioning issues */
+.select2-container {
+  z-index: 2050 !important;
+}
+
+.select2-dropdown {
+  z-index: 2050 !important;
+  position: fixed !important;
+}
+
+/* Specific fixes for nested modals */
+#viewClient-modal .select2-container {
+  z-index: 2060 !important;
+}
+
+#viewClient-modal .select2-dropdown {
+  z-index: 2060 !important;
+  position: fixed !important;
+}
+
+#updateInstallmentModal .select2-container {
+  z-index: 2070 !important;
+}
+
+#updateInstallmentModal .select2-dropdown {
+  z-index: 2070 !important;
+  position: fixed !important;
+}
+
+#changePlotModal .select2-container {
+  z-index: 2080 !important;
+}
+
+#changePlotModal .select2-dropdown {
+  z-index: 2080 !important;
+  position: fixed !important;
+}
+
+/* Ensure Select2 dropdowns stay within viewport */
+.select2-dropdown {
+  max-height: 300px !important;
+  overflow-y: auto !important;
+}
+
+/* Fix Select2 search field positioning */
+.select2-search--dropdown {
+  padding: 4px !important;
+}
+
+.select2-search--dropdown .select2-search__field {
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* Modal backdrop blur and darker tint */
+.modal-backdrop.show {
+  background-color: rgba(18, 24, 31, 0.55); /* slightly darker */
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+}
+
+/* Enhanced modal styling */
+.modal-xl {
+  max-width: 95vw;
+}
+
+.modal-content {
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+/* Header gradient */
+.bg-gradient-primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+/* Card enhancements */
+.card {
+  transition: all 0.2s ease;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0,0,0,0.15) !important;
+}
+
+/* Table styling */
+.table-hover tbody tr:hover {
+  background-color: rgba(0,123,255,0.05);
+}
+
+/* Print styles */
+@media print {
+  .no-print { display: none !important; }
+  .modal { position: static !important; }
+  .modal-dialog { margin: 0 !important; max-width: none !important; }
+  .modal-content { box-shadow: none !important; border: none !important; }
+  body { background: white !important; }
+  
+  /* Booking form print styles */
+  .print_area {
+    page-break-inside: avoid;
+    margin-bottom: 20px;
+  }
+  
+  .print_area:not(:last-child) {
+    page-break-after: always;
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .modal-xl { max-width: 98vw; margin: 10px; }
+  .card-body { padding: 1rem; }
+  .table-responsive { font-size: 0.875rem; }
+}
+
+/* Loading states */
+.btn.loading {
+  pointer-events: none;
+  opacity: 0.6;
+}
+
+.btn.loading::after {
+  content: "";
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  margin-left: 8px;
+  border: 2px solid transparent;
+  border-top: 2px solid currentColor;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Enhanced dropdown styling */
+.dropdown-menu {
+  border: none;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+  border-radius: 8px;
+}
+
+.dropdown-item {
+  padding: 8px 16px;
+  transition: all 0.2s ease;
+}
+
+.dropdown-item:hover {
+  background-color: rgba(0,123,255,0.1);
+  transform: translateX(2px);
+}
+
+/* Status badge styling */
+.badge {
+  font-size: 0.75em;
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+
+/* Avatar styling */
+.avatar {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+/* Form enhancements */
+.form-control:focus {
+  border-color: #667eea;
+  box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+}
+
+/* Icon styling */
+ion-icon {
+  vertical-align: middle;
+}
+
+/* Utility classes */
+.text-gradient {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.shadow-soft {
+  box-shadow: 0 2px 12px rgba(0,0,0,0.08) !important;
+}
+
+/* Animation classes */
+.fade-in {
+  animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.slide-up {
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+</style>
+
 <div class="modal fade full_screen" id="viewClient-modal" tabindex="-1" role="dialog" aria-hidden="true">
   <div class="modal-dialog modal-xl" role="document">
     <div class="modal-content border-0 shadow-lg">
