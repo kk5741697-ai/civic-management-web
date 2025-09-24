@@ -547,9 +547,10 @@ jQuery(function($){
     }
   }
 
-  function checkPlotBooking(plotId, callback) {
+  function checkPlotBooking(plotId, projectId, callback) {
     $.post(Wo_Ajax_Requests_File() + '?f=manage_inventory&s=check_plot_booking', {
-      purchase_id: plotId
+      purchase_id: plotId,
+      project_id: projectId
     })
     .done(function(response){
       var data = typeof response === 'string' ? JSON.parse(response) : response;
@@ -683,7 +684,7 @@ jQuery(function($){
       $btn.prop('disabled', true).html('<i class="spinner-border spinner-border-sm me-1"></i>Checking...');
 
       // First check plot booking status
-      checkPlotBooking(purchaseId, function(checkResult) {
+      checkPlotBooking(purchaseId, projectId, function(checkResult) {
         if (checkResult.status === 200 && checkResult.available === false) {
           // Plot is not available, ask for confirmation
           var confirmMsg = 'This plot is currently ' + (checkResult.status_label || 'unavailable') + '. ';
