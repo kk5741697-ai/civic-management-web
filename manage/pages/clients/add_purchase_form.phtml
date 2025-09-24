@@ -698,7 +698,6 @@ jQuery(function($){
 
         // Proceed with registration
         var payload = {
-          s: 'register_purchase',
           client_id: <?= (int)$wo['client']['id'] ?>,
           project_id: projectId,
           purchase_id: purchaseId,
@@ -713,7 +712,7 @@ jQuery(function($){
 
         $btn.html('<i class="spinner-border spinner-border-sm me-1"></i>Saving...');
 
-        $.post(Wo_Ajax_Requests_File() + '?f=manage_inventory', payload)
+        $.post(Wo_Ajax_Requests_File() + '?f=manage_inventory&s=register_purchase', payload)
           .done(function(response){
             var data = typeof response === 'string' ? JSON.parse(response) : response;
             
@@ -723,7 +722,7 @@ jQuery(function($){
             } else if (data.status === 409) {
               if (confirm(data.message + '\n\nDo you want to force assign this plot?')) {
                 payload.force = 1;
-                $.post(Wo_Ajax_Requests_File() + '?f=manage_inventory', payload)
+                $.post(Wo_Ajax_Requests_File() + '?f=manage_inventory&s=register_purchase', payload)
                   .done(function(response2){
                     var data2 = typeof response2 === 'string' ? JSON.parse(response2) : response2;
                     if (data2.status === 200) {
