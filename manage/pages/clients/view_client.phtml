@@ -157,11 +157,6 @@ $get_nominees = $db->where('customer_id', $clientId)->orderBy('name', 'ASC')->ge
                               </a>
                             </li>
                             <li>
-                              <a class="dropdown-item print_payment_schedule" href="javascript:;" data-id="<?= (int)$p['id'] ?>">
-                                <i class="lni lni-printer me-2 text-info"></i> Print Payment Schedule
-                              </a>
-                            </li>
-                            <li>
                               <a class="dropdown-item update_installment" href="javascript:;" data-id="<?= (int)$p['id'] ?>">
                                 <i class="lni lni-calendar me-2 text-primary"></i> Manage Schedule
                               </a>
@@ -277,7 +272,6 @@ $get_nominees = $db->where('customer_id', $clientId)->orderBy('name', 'ASC')->ge
       <?= Wo_LoadManagePage('clients/cancel_purchase_modal') ?>
       <?= Wo_LoadManagePage('clients/change_plot_modal') ?>
       <?= Wo_LoadManagePage('clients/update_installment_modal') ?>
-      <?= Wo_LoadManagePage('clients/print_schedule_template') ?>
 
 <!-- Core JavaScript for View Client -->
 <script>

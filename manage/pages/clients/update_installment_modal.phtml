@@ -10,8 +10,11 @@
           <button type="button" class="btn btn-outline-light btn-sm" id="print_schedule_btn" title="Print Schedule">
             <i class="lni lni-printer"></i>
           </button>
-          <button type="button" class="btn btn-outline-light btn-sm" id="export_schedule_xlsx" title="Export XLSX">
+          <button type="button" class="btn btn-outline-light btn-sm" id="download_schedule_btn" title="Download PDF">
             <i class="lni lni-download"></i>
+          </button>
+          <button type="button" class="btn btn-outline-light btn-sm" id="save_schedule_xlsx" title="Save XLSX">
+            <i class="lni lni-save"></i>
           </button>
           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
@@ -78,11 +81,15 @@
             <div class="d-flex align-items-center gap-3">
               <label class="form-label mb-0 fw-medium">Schedule Status:</label>
               <div class="btn-group" role="group">
+                <input type="radio" class="btn-check" name="schedule_status" id="schedule_all" value="all" checked>
+                <label class="btn btn-outline-secondary btn-sm" for="schedule_all">
+                  <i class="lni lni-list me-1"></i>All
+                </label>
                 <input type="radio" class="btn-check" name="schedule_status" id="schedule_paid" value="paid">
                 <label class="btn btn-outline-success btn-sm" for="schedule_paid">
                   <i class="lni lni-checkmark me-1"></i>Paid
                 </label>
-                <input type="radio" class="btn-check" name="schedule_status" id="schedule_unpaid" value="unpaid" checked>
+                <input type="radio" class="btn-check" name="schedule_status" id="schedule_unpaid" value="unpaid">
                 <label class="btn btn-outline-warning btn-sm" for="schedule_unpaid">
                   <i class="lni lni-time me-1"></i>Unpaid
                 </label>
@@ -233,6 +240,182 @@
   </div>
 </div>
 
+<!-- Hidden Print Template -->
+<div id="printScheduleContent" class="d-none">
+  <div class="schedule-print-template">
+    <div class="print-header text-center mb-4">
+      <h2 class="company-name mb-2" id="print_company_name">Civic Real Estate Ltd.</h2>
+      <h4 class="document-title">Payment Schedule</h4>
+      <hr>
+    </div>
+    
+    <div class="client-info row mb-4">
+      <div class="col-6">
+        <h5>Client Information</h5>
+        <table class="table table-borderless table-sm">
+          <tr><td class="fw-bold">Name:</td><td id="print_client_name">-</td></tr>
+          <tr><td class="fw-bold">Phone:</td><td id="print_client_phone">-</td></tr>
+          <tr><td class="fw-bold">Address:</td><td id="print_client_address">-</td></tr>
+        </table>
+      </div>
+      <div class="col-6">
+        <h5>Project Information</h5>
+        <table class="table table-borderless table-sm">
+          <tr><td class="fw-bold">Project:</td><td id="print_project_name">-</td></tr>
+          <tr><td class="fw-bold">Plot:</td><td id="print_plot_info">-</td></tr>
+          <tr><td class="fw-bold">File Number:</td><td id="print_file_number">-</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <div class="purchase-info mb-4">
+      <h5>Purchase Details</h5>
+      <div class="row">
+        <div class="col-3">
+          <div class="card text-center">
+            <div class="card-body p-2">
+              <small>Total Price</small>
+              <div class="fw-bold">৳<span id="print_total_price">0</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="col-3">
+          <div class="card text-center">
+            <div class="card-body p-2">
+              <small>Booking Money</small>
+              <div class="fw-bold">৳<span id="print_booking_money">0</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="col-3">
+          <div class="card text-center">
+            <div class="card-body p-2">
+              <small>Down Payment</small>
+              <div class="fw-bold">৳<span id="print_down_payment">0</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="col-3">
+          <div class="card text-center">
+            <div class="card-body p-2">
+              <small>Remaining</small>
+              <div class="fw-bold">৳<span id="print_remaining">0</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="schedule-table">
+      <h5>Payment Schedule</h5>
+      <table class="table table-bordered table-sm">
+        <thead class="table-light">
+          <tr>
+            <th width="5%">#</th>
+            <th width="15%">Due Date</th>
+            <th width="15%">Amount (৳)</th>
+            <th width="10%">Status</th>
+            <th width="55%">Notes</th>
+          </tr>
+        </thead>
+        <tbody id="print_schedule_rows">
+        </tbody>
+        <tfoot class="table-light">
+          <tr class="fw-bold">
+            <td colspan="2">Total</td>
+            <td>৳<span id="print_schedule_total">0</span></td>
+            <td colspan="2"></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+
+    <div class="print-footer mt-4">
+      <div class="row">
+        <div class="col-4">
+          <p><strong>Generated on:</strong> <span id="print_date"></span></p>
+          <p><strong>Generated by:</strong> <?= htmlspecialchars($wo['user']['name'] ?? 'System') ?></p>
+        </div>
+        <div class="col-8">
+          <div class="signature-area d-flex justify-content-between">
+            <div class="text-center">
+              <p class="mb-4">_________________________</p>
+              <p>Authorized Officer</p>
+            </div>
+            <div class="text-center">
+              <p class="mb-4">_________________________</p>
+              <p>Chairman Signature</p>
+            </div>
+            <div class="text-center">
+              <p class="mb-4">_________________________</p>
+              <p>MD Signature</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+.schedule-print-template {
+  background: white;
+  padding: 30px;
+  font-family: Arial, sans-serif;
+  color: #000;
+}
+
+.schedule-print-template .company-name {
+  color: #2c3e50;
+  font-weight: bold;
+}
+
+.schedule-print-template .document-title {
+  color: #34495e;
+  margin-bottom: 10px;
+}
+
+.schedule-print-template .card {
+  border: 1px solid #dee2e6;
+  margin-bottom: 5px;
+}
+
+.schedule-print-template .signature-area {
+  margin-top: 40px;
+}
+
+.schedule-print-template table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.schedule-print-template th,
+.schedule-print-template td {
+  border: 1px solid #dee2e6;
+  padding: 8px;
+  text-align: left;
+}
+
+.schedule-print-template .table-light {
+  background-color: #f8f9fa;
+}
+
+@media print {
+  .schedule-print-template {
+    padding: 20px;
+  }
+  
+  .schedule-print-template .card {
+    border: 1px solid #000;
+    box-shadow: none;
+  }
+  
+  .schedule-print-template .signature-area p {
+    margin-bottom: 60px;
+  }
+}
+</style>
+
 <script>
 jQuery(function($){
   'use strict';
@@ -336,9 +519,14 @@ jQuery(function($){
       printSchedule();
     });
 
-    // Export schedule handler
-    $('#export_schedule_xlsx').off('click').on('click', function(){
-      exportSchedule();
+    // Download schedule handler
+    $('#download_schedule_btn').off('click').on('click', function(){
+      downloadSchedule();
+    });
+
+    // Save XLSX handler
+    $('#save_schedule_xlsx').off('click').on('click', function(){
+      saveScheduleXLSX();
     });
 
     // Schedule status filter
@@ -604,7 +792,7 @@ jQuery(function($){
     var filteredSchedule = currentSchedule.filter(function(item) {
       if (statusFilter === 'paid') return item.paid;
       if (statusFilter === 'unpaid') return !item.paid;
-      return true;
+      return true; // 'all'
     });
     
     filteredSchedule.forEach(function(item, index) {
@@ -729,194 +917,192 @@ jQuery(function($){
       });
   }
 
-  function printSchedule() {
-    var purchaseId = $('#ui_purchase_id').val();
-    if (!purchaseId) {
-      alert('Purchase ID missing');
-      return;
-    }
+  function populatePrintTemplate() {
+    if (!currentPurchaseData) return;
     
-    var options = {
-      include_client_info: true,
-      include_plot_details: true,
-      include_payment_summary: true
-    };
+    // Populate print template
+    $('#print_company_name').text(currentPurchaseData.company_name || 'Civic Real Estate Ltd.');
+    $('#print_client_name').text(currentPurchaseData.client_name || '-');
+    $('#print_client_phone').text(currentPurchaseData.client_phone || '-');
+    $('#print_client_address').text(currentPurchaseData.client_address || '-');
+    $('#print_project_name').text(currentPurchaseData.project_name || '-');
+    $('#print_plot_info').text(currentPurchaseData.plot_info || '-');
+    $('#print_file_number').text(currentPurchaseData.file_number || '-');
+    $('#print_total_price').text(fmtMoney(currentPurchaseData.total_price || 0));
+    $('#print_booking_money').text(fmtMoney(currentPurchaseData.booking_money || 0));
+    $('#print_down_payment').text(fmtMoney(currentPurchaseData.down_payment || 0));
     
-    $.post(Wo_Ajax_Requests_File() + '?f=manage_inventory&s=get_schedule_preview', {
-      purchase_id: purchaseId,
-      options: JSON.stringify(options)
-    })
-      .done(function(response){
-        var data = typeof response === 'string' ? JSON.parse(response) : response;
-        
-        if (data && data.status === 200 && data.html) {
-          var printWindow = window.open('', '_blank', 'width=800,height=600');
-          if (!printWindow) {
-            alert('Please allow popups to print the schedule.');
-            return;
-          }
-
-          var printDocument = `
-            <!DOCTYPE html>
-            <html>
-            <head>
-              <title>Payment Schedule</title>
-              <style>
-                body { 
-                  font-family: Arial, sans-serif; 
-                  margin: 0; 
-                  padding: 20px; 
-                  color: #333; 
-                  background: white;
-                }
-                .schedule-print-template { 
-                  background: white; 
-                  max-width: 800px;
-                  margin: 0 auto;
-                }
-                .company-header { 
-                  text-align: center; 
-                  margin-bottom: 30px; 
-                  border-bottom: 3px solid #007bff; 
-                  padding-bottom: 20px; 
-                }
-                .company-name { 
-                  font-size: 28px; 
-                  font-weight: bold; 
-                  color: #007bff; 
-                  margin-bottom: 5px; 
-                }
-                .document-title { 
-                  font-size: 20px; 
-                  color: #666; 
-                  margin-bottom: 20px; 
-                }
-                .info-section { 
-                  margin-bottom: 25px; 
-                  background: #f8f9fa;
-                  padding: 15px;
-                  border-radius: 8px;
-                }
-                .info-title { 
-                  font-weight: bold; 
-                  color: #333; 
-                  margin-bottom: 15px; 
-                  border-bottom: 2px solid #eee; 
-                  padding-bottom: 8px; 
-                  font-size: 16px;
-                }
-                .info-grid { 
-                  display: grid; 
-                  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); 
-                  gap: 15px; 
-                }
-                .info-item { 
-                  padding: 12px; 
-                  background: white; 
-                  border-radius: 6px; 
-                  border: 1px solid #e9ecef;
-                }
-                .info-label { 
-                  font-weight: 600; 
-                  color: #666; 
-                  font-size: 12px; 
-                  text-transform: uppercase;
-                  margin-bottom: 4px;
-                }
-                .info-value { 
-                  color: #333; 
-                  font-size: 14px;
-                  font-weight: 500;
-                }
-                table { 
-                  width: 100%; 
-                  border-collapse: collapse; 
-                  margin-top: 20px; 
-                  font-size: 13px;
-                }
-                th, td { 
-                  border: 1px solid #ddd; 
-                  padding: 10px 8px; 
-                  text-align: left; 
-                }
-                th { 
-                  background-color: #f8f9fa; 
-                  font-weight: 600; 
-                  color: #495057;
-                }
-                .text-center { text-align: center; }
-                .text-end { text-align: right; }
-                .badge { 
-                  padding: 4px 8px; 
-                  border-radius: 4px; 
-                  font-size: 11px; 
-                  font-weight: 600; 
-                  color: white;
-                }
-                .bg-success { background-color: #28a745; }
-                .bg-warning { background-color: #ffc107; color: #212529; }
-                .bg-danger { background-color: #dc3545; }
-                .bg-secondary { background-color: #6c757d; }
-                .signature-area { 
-                  margin-top: 60px; 
-                  display: flex; 
-                  justify-content: space-between; 
-                }
-                .signature-box { 
-                  text-align: center; 
-                  width: 200px; 
-                }
-                .signature-line { 
-                  border-top: 2px solid #333; 
-                  margin-top: 60px; 
-                  padding-top: 8px; 
-                  font-weight: 600;
-                }
-                .payment-status-paid { background-color: rgba(40, 167, 69, 0.1); }
-                .payment-status-unpaid { background-color: rgba(255, 193, 7, 0.1); }
-                @media print {
-                  body { margin: 0; padding: 15px; }
-                  .no-print { display: none !important; }
-                  .page-break { page-break-after: always; }
-                }
-              </style>
-            </head>
-            <body>
-              ${data.html}
-            </body>
-            </html>
-          `;
-
-          printWindow.document.write(printDocument);
-          printWindow.document.close();
-          
-          setTimeout(function(){
-            printWindow.focus();
-            printWindow.print();
-            setTimeout(function(){
-              printWindow.close();
-            }, 1000);
-          }, 500);
-        } else {
-          alert('Failed to generate print preview');
-        }
-      })
-      .fail(function(){
-        alert('Server error while generating print preview');
-      });
+    var remaining = (currentPurchaseData.total_price || 0) - (currentPurchaseData.down_payment || 0) - (currentPurchaseData.booking_money || 0);
+    $('#print_remaining').text(fmtMoney(remaining));
+    $('#print_date').text(new Date().toLocaleDateString());
+    
+    // Populate schedule rows
+    var $tbody = $('#print_schedule_rows');
+    $tbody.empty();
+    
+    var totalAmount = 0;
+    currentSchedule.forEach(function(item, index) {
+      totalAmount += item.amount || 0;
+      
+      var statusText = item.paid ? 'Paid' : 'Unpaid';
+      var notes = item.adjustment ? 'Yearly Adjustment' : 'Regular Payment';
+      
+      var row = `
+        <tr class="${item.paid ? 'payment-status-paid' : 'payment-status-unpaid'}">
+          <td class="text-center">${index + 1}</td>
+          <td>${item.date}</td>
+          <td class="text-end">৳${fmtMoney(item.amount)}</td>
+          <td class="text-center">${statusText}</td>
+          <td>${notes}</td>
+        </tr>
+      `;
+      
+      $tbody.append(row);
+    });
+    
+    $('#print_schedule_total').text(fmtMoney(totalAmount));
   }
 
-  function exportSchedule() {
+  function printSchedule() {
+    populatePrintTemplate();
+    
+    var printContent = document.getElementById('printScheduleContent').innerHTML;
+    var printWindow = window.open('', '_blank', 'width=800,height=600');
+    
+    if (!printWindow) {
+      alert('Please allow popups to print the schedule.');
+      return;
+    }
+
+    var printDocument = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Payment Schedule</title>
+        <style>
+          body { 
+            font-family: Arial, sans-serif; 
+            margin: 0; 
+            padding: 20px; 
+            color: #333; 
+            background: white;
+          }
+          .schedule-print-template { 
+            background: white; 
+            max-width: 800px;
+            margin: 0 auto;
+          }
+          .company-header { 
+            text-align: center; 
+            margin-bottom: 30px; 
+            border-bottom: 3px solid #007bff; 
+            padding-bottom: 20px; 
+          }
+          .company-name { 
+            font-size: 28px; 
+            font-weight: bold; 
+            color: #007bff; 
+            margin-bottom: 5px; 
+          }
+          .document-title { 
+            font-size: 20px; 
+            color: #666; 
+            margin-bottom: 20px; 
+          }
+          .client-info, .purchase-info { 
+            margin-bottom: 25px; 
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+          }
+          .client-info h5, .purchase-info h5 { 
+            font-weight: bold; 
+            color: #333; 
+            margin-bottom: 15px; 
+            border-bottom: 2px solid #eee; 
+            padding-bottom: 8px; 
+            font-size: 16px;
+          }
+          .card { 
+            padding: 12px; 
+            background: white; 
+            border-radius: 6px; 
+            border: 1px solid #e9ecef;
+          }
+          table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            margin-top: 20px; 
+            font-size: 13px;
+          }
+          th, td { 
+            border: 1px solid #ddd; 
+            padding: 10px 8px; 
+            text-align: left; 
+          }
+          th { 
+            background-color: #f8f9fa; 
+            font-weight: 600; 
+            color: #495057;
+          }
+          .text-center { text-align: center; }
+          .text-end { text-align: right; }
+          .fw-bold { font-weight: bold; }
+          .signature-area { 
+            margin-top: 60px; 
+            display: flex; 
+            justify-content: space-between; 
+          }
+          .signature-area > div { 
+            text-align: center; 
+            width: 200px; 
+          }
+          .signature-area p { 
+            border-top: 2px solid #333; 
+            margin-top: 60px; 
+            padding-top: 8px; 
+            font-weight: 600;
+          }
+          .payment-status-paid { background-color: rgba(40, 167, 69, 0.1); }
+          .payment-status-unpaid { background-color: rgba(255, 193, 7, 0.1); }
+          @media print {
+            body { margin: 0; padding: 15px; }
+            .no-print { display: none !important; }
+            .page-break { page-break-after: always; }
+          }
+        </style>
+      </head>
+      <body>
+        ${printContent}
+      </body>
+      </html>
+    `;
+
+    printWindow.document.write(printDocument);
+    printWindow.document.close();
+    
+    setTimeout(function(){
+      printWindow.focus();
+      printWindow.print();
+      setTimeout(function(){
+        printWindow.close();
+      }, 1000);
+    }, 500);
+  }
+
+  function downloadSchedule() {
     var purchaseId = $('#ui_purchase_id').val();
     if (!purchaseId) {
       alert('Purchase ID missing');
       return;
     }
     
-    $.post(Wo_Ajax_Requests_File() + '?f=manage_inventory&s=export_schedule', {
+    populatePrintTemplate();
+    
+    $.post(Wo_Ajax_Requests_File() + '?f=manage_inventory&s=download_schedule_pdf', {
       purchase_id: purchaseId,
       schedule: JSON.stringify(currentSchedule),
-      format: 'excel'
+      client_data: JSON.stringify(currentPurchaseData)
     })
       .done(function(response){
         var data = typeof response === 'string' ? JSON.parse(response) : response;
@@ -924,16 +1110,57 @@ jQuery(function($){
         if (data && data.status === 200 && data.download_url) {
           var link = document.createElement('a');
           link.href = data.download_url;
-          link.download = data.filename || 'payment_schedule.xlsx';
+          link.download = data.filename || 'payment_schedule.pdf';
           document.body.appendChild(link);
           link.click();
           document.body.removeChild(link);
         } else {
-          alert('Failed to export schedule: ' + (data.message || 'Unknown error'));
+          alert('Failed to download schedule: ' + (data.message || 'Unknown error'));
         }
       })
       .fail(function(){
-        alert('Server error while exporting schedule');
+        alert('Server error while downloading schedule');
+      });
+  }
+
+  function saveScheduleXLSX() {
+    var purchaseId = $('#ui_purchase_id').val();
+    if (!purchaseId) {
+      alert('Purchase ID missing');
+      return;
+    }
+    
+    var $btn = $('#save_schedule_xlsx');
+    $btn.prop('disabled', true).html('<i class="spinner-border spinner-border-sm me-1"></i>Saving...');
+    
+    $.post(Wo_Ajax_Requests_File() + '?f=manage_inventory&s=save_schedule_xlsx', {
+      purchase_id: purchaseId,
+      schedule: JSON.stringify(currentSchedule),
+      client_data: JSON.stringify(currentPurchaseData)
+    })
+      .done(function(response){
+        var data = typeof response === 'string' ? JSON.parse(response) : response;
+        
+        if (data && data.status === 200) {
+          alert('Payment schedule saved to server successfully!');
+          if (data.file_path) {
+            // Optionally provide download link
+            var link = document.createElement('a');
+            link.href = data.download_url || data.file_path;
+            link.download = data.filename || 'payment_schedule.xlsx';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+          }
+        } else {
+          alert('Failed to save schedule: ' + (data.message || 'Unknown error'));
+        }
+      })
+      .fail(function(){
+        alert('Server error while saving schedule');
+      })
+      .always(function(){
+        $btn.prop('disabled', false).html('<i class="lni lni-save me-1"></i>Save XLSX');
       });
   }
 

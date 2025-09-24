@@ -221,6 +221,23 @@
   opacity: 0.6;
   pointer-events: none;
 }
+
+/* Fix Select2 dropdown positioning */
+.select2-container {
+  z-index: 9999 !important;
+}
+
+.select2-dropdown {
+  z-index: 9999 !important;
+}
+
+#viewClient-modal .select2-container {
+  z-index: 2100 !important;
+}
+
+#viewClient-modal .select2-dropdown {
+  z-index: 2100 !important;
+}
 </style>
 
 <script>
@@ -532,7 +549,7 @@ jQuery(function($){
 
   function checkPlotBooking(plotId, callback) {
     $.post(Wo_Ajax_Requests_File() + '?f=manage_inventory&s=check_plot_booking', {
-      plot_id: plotId
+      purchase_id: plotId
     })
     .done(function(response){
       var data = typeof response === 'string' ? JSON.parse(response) : response;
@@ -552,7 +569,7 @@ jQuery(function($){
       
       var modalContent = $('#viewClient-modal');
       
-      // Initialize project select
+      // Initialize project select with proper z-index
       if (!safeInitSelect2($('#projectSelect'), {
         dropdownParent: modalContent,
         placeholder: 'Select Project',
@@ -562,7 +579,7 @@ jQuery(function($){
         console.warn('Failed to initialize project select');
       }
 
-      // Initialize nominee select
+      // Initialize nominee select with proper z-index
       if (!safeInitSelect2($('#nomineeSelect'), {
         dropdownParent: modalContent,
         placeholder: 'Select nominee(s)',
@@ -604,7 +621,7 @@ jQuery(function($){
         return;
       }
 
-      // Initialize AJAX-backed plot selection
+      // Initialize AJAX-backed plot selection with proper z-index
       if (!safeInitSelect2($('#purchaseSelect'), buildSelect2AjaxOpts(projectId))) {
         console.error('Failed to initialize purchase select');
         return;
