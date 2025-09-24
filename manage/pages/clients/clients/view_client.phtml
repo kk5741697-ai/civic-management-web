@@ -1,9 +1,8 @@
 <div class="self_remove_on_close">
-  <!-- code will be self remove on modal close also remove the binded functions and events from window to prevent the conflict/problem when the same modal load again using fetch/xhr -->
+    
+<?= Wo_LoadManagePage('clients/style') ?>
 <?php
-/* view_client.phtml
-   Complete client view with enhanced payment schedule functionality and all dropdown actions
-*/
+/* view_client.phtml - Complete client view with enhanced payment schedule functionality */
 Global $project_mapping;
 global $db, $wo;
 
@@ -13,7 +12,7 @@ $get_users = $db->orderBy('position', 'ASC')->where('active', '1')->where('banne
 // Totals - Fixed calculations
 $clientId = $wo['client']['id'];
 
-// Fixed total amount calculation - sum of (per_katha * katha) from booking_helper with proper joins
+// Fixed total amount calculation
 $total_amount = 0;
 $total_purchase = 0;
 try {
@@ -39,7 +38,6 @@ $total_paid    = (float) $db->where('customer_id', $clientId)->getValue(T_INVOIC
 $total_due     = $total_amount - $total_paid;
 $total_invoice = (int)   $db->where('customer_id', $clientId)->getValue(T_INVOICE, 'COUNT(*)');
 
-//crm_nominees -> T_CRM_NOMINEES
 $get_nominees = $db->where('customer_id', $clientId)->orderBy('name', 'ASC')->get(T_CRM_NOMINEES);
 ?>
 
@@ -164,7 +162,7 @@ $get_nominees = $db->where('customer_id', $clientId)->orderBy('name', 'ASC')->ge
                               </a>
                             </li>
                             <li>
-                              <a class="dropdown-item" href="javascript:;" onclick="openPaymentSchedule(<?= (int)$p['id'] ?>)">
+                              <a class="dropdown-item update_installment" href="javascript:;" data-id="<?= (int)$p['id'] ?>">
                                 <i class="lni lni-calendar me-2 text-primary"></i> Manage Schedule
                               </a>
                             </li>
@@ -271,18 +269,15 @@ $get_nominees = $db->where('customer_id', $clientId)->orderBy('name', 'ASC')->ge
         </section>
       </div>
       
-      <!-- Load all modals -->
-      <?= Wo_LoadManagePage('clients/cancel_purchase_modal') ?>
-      <?= Wo_LoadManagePage('clients/transfer_purchase_modal') ?>
-      <?= Wo_LoadManagePage('clients/suspend_purchase_modal') ?>
-      <?= Wo_LoadManagePage('clients/purchase_history_modal') ?>
-      <?= Wo_LoadManagePage('clients/update_installment_modal') ?>
-      <?= Wo_LoadManagePage('clients/change_plot_modal') ?>
-      <?= Wo_LoadManagePage('clients/print_schedule_template') ?>
 
     </div>
   </div>
 </div>
+      <!-- Load all modals -->
+      <?= Wo_LoadManagePage('clients/cancel_purchase_modal') ?>
+      <?= Wo_LoadManagePage('clients/change_plot_modal') ?>
+      <?= Wo_LoadManagePage('clients/update_installment_modal') ?>
+      <?= Wo_LoadManagePage('clients/print_schedule_template') ?>
 
 <!-- Core JavaScript for View Client -->
 <script>
@@ -302,7 +297,7 @@ jQuery(function($){
     if (v === undefined || v === null) v = 0;
     return Number(Math.round(v * 100) / 100).toLocaleString('en-US', {
       minimumFractionDigits: 0,
-      maximumFractionDigits: 1
+      maximumFractionDigits: 2
     });
   }
 
@@ -348,6 +343,14 @@ jQuery(function($){
     delete window.exportPurchaseData;
     delete window.suspendPurchase;
     delete window.initViewClientComponents;
+    delete window.openPaymentSchedule;
+    delete window.changePlot;
+    delete window.printPaymentSchedule;
+    delete window.markPaid;
+    delete window.markUnpaid;
+    
+    //Clearn up the code
+    $('.self_remove_on_close').remove();
   });
 
   // Wire #printButton to print ALL booking forms in this modal
@@ -369,7 +372,6 @@ jQuery(function($){
     var imageUrls = [];
     var loadedCount = 0;
     
-    // Extract background image URLs from nodes
     nodes.forEach(function(node){
       var $node = $(node);
       var bgImage = $node.css('background-image');
@@ -380,20 +382,17 @@ jQuery(function($){
         }
       }
       
-      // Also check data-bg-url attribute
       var dataBgUrl = $node.attr('data-bg-url');
       if (dataBgUrl) {
         imageUrls.push(dataBgUrl);
       }
     });
 
-    // If no images to load, callback immediately
     if (imageUrls.length === 0) {
       callback();
       return;
     }
 
-    // Preload each image
     imageUrls.forEach(function(url) {
       var img = new Image();
       img.onload = img.onerror = function() {
@@ -405,13 +404,12 @@ jQuery(function($){
       img.src = url;
     });
 
-    // Fallback timeout in case images don't load
     setTimeout(function() {
       if (loadedCount < imageUrls.length) {
         console.warn('Some background images did not load in time');
         callback();
       }
-    }, 8000); // 8 second timeout
+    }, 8000);
   }
 
   function _createPrintWrapperForNodes(nodes) {
@@ -450,7 +448,6 @@ jQuery(function($){
 
     var $wrap = _createPrintWrapperForNodes(nodes);
 
-    // Preload background images before printing
     preloadBackgroundImages(nodes, function() {
       var afterPrintHandler = function(){
         try { _cleanupPrintWrapper($wrap); } catch(e) {}
@@ -459,18 +456,17 @@ jQuery(function($){
 
       window.addEventListener('afterprint', afterPrintHandler);
 
-      // Additional delay to ensure images are fully rendered
       setTimeout(function(){
         try { window.print(); } catch(e){ console.error('Print error', e); }
         setTimeout(function(){ 
           _cleanupPrintWrapper($wrap); 
           try { window.removeEventListener('afterprint', afterPrintHandler); } catch(e){}
         }, 3000);
-      }, 1000); // Increased delay for image rendering
+      }, 1000);
     });
   };
 
-  // Wire individual print button(s) -> print only that booking form
+  // Wire individual print button(s)
   $(document).off('click', '.print-booking-form').on('click', '.print-booking-form', function(e){
     e.preventDefault();
     var id = $(this).data('id');

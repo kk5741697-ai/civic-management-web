@@ -16,6 +16,103 @@
   background: linear-gradient(45deg, #00d4ff 0%, #090979 100%);
 }
 
+/* Modal positioning and z-index fixes */
+.modal {
+  z-index: 1050;
+}
+
+.modal-backdrop {
+  z-index: 1040;
+}
+
+/* Fix Select2 dropdown positioning in modals */
+.select2-container {
+  z-index: 9999 !important;
+}
+
+.select2-dropdown {
+  z-index: 9999 !important;
+}
+
+/* Specific fixes for nested modals */
+#viewClient-modal .select2-container {
+  z-index: 2100 !important;
+}
+
+#viewClient-modal .select2-dropdown {
+  z-index: 2100 !important;
+}
+
+#updateInstallmentModal .select2-container {
+  z-index: 2200 !important;
+}
+
+#updateInstallmentModal .select2-dropdown {
+  z-index: 2200 !important;
+}
+
+#changePlotModal .select2-container {
+  z-index: 2200 !important;
+}
+
+#changePlotModal .select2-dropdown {
+  z-index: 2200 !important;
+}
+
+#printScheduleModal .select2-container {
+  z-index: 2200 !important;
+}
+
+#printScheduleModal .select2-dropdown {
+  z-index: 2200 !important;
+}
+
+/* Enhanced Select2 styling */
+.select2-container--bootstrap-5 .select2-selection {
+  min-height: 38px;
+  border: 1px solid #ced4da;
+  border-radius: 0.375rem;
+}
+
+.select2-container--bootstrap-5 .select2-selection--single {
+  height: 38px;
+}
+
+.select2-container--bootstrap-5 .select2-selection--single .select2-selection__rendered {
+  line-height: 36px;
+  padding-left: 12px;
+}
+
+.select2-container--bootstrap-5 .select2-selection--multiple {
+  min-height: 38px;
+}
+
+.select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__rendered {
+  padding: 2px 5px;
+}
+
+.select2-dropdown {
+  border: 1px solid #ced4da;
+  border-radius: 0.375rem;
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
+
+.select2-search--dropdown .select2-search__field {
+  border: 1px solid #ced4da;
+  border-radius: 0.25rem;
+  padding: 0.375rem 0.75rem;
+}
+
+.select2-results__option {
+  padding: 8px 12px;
+}
+
+.select2-results__option--highlighted {
+  background-color: #667eea !important;
+  color: white;
+}
+
+/* Enhanced card styling */
 .card {
   transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
 }
@@ -89,6 +186,7 @@
   border-radius: 8px;
   padding: 0;
   min-width: 220px;
+  z-index: 1060;
 }
 
 .dropdown-header {
@@ -123,52 +221,6 @@
 .dropdown-divider {
   margin: 5px 0;
   border-top: 1px solid rgba(0,0,0,0.1);
-}
-
-/* Select2 enhancements for modals */
-.select2-container {
-  z-index: 9999 !important;
-}
-
-.select2-container--bootstrap-5 .select2-selection {
-  min-height: 38px;
-}
-
-.select2-container--bootstrap-5 .select2-selection--single {
-  height: 38px;
-}
-
-.select2-container--bootstrap-5 .select2-selection--single .select2-selection__rendered {
-  line-height: 36px;
-  padding-left: 12px;
-}
-
-.select2-container--bootstrap-5 .select2-selection--multiple {
-  min-height: 38px;
-}
-
-.select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__rendered {
-  padding: 2px 5px;
-}
-
-.select2-dropdown {
-  border: 1px solid #ced4da;
-  border-radius: 0.375rem;
-}
-
-.select2-search--dropdown .select2-search__field {
-  border: 1px solid #ced4da;
-  border-radius: 0.25rem;
-  padding: 0.375rem 0.75rem;
-}
-
-.select2-results__option {
-  padding: 8px 12px;
-}
-
-.select2-results__option--highlighted {
-  background-color: #667eea !important;
-  color: white;
 }
 
 /* Print styles */
@@ -242,36 +294,6 @@
 
 .schedule-print-template .signature-area {
   margin-top: 40px;
-}
-
-/* Timeline styles for history */
-.timeline {
-  position: relative;
-  padding-left: 30px;
-}
-
-.timeline-item {
-  position: relative;
-  margin-bottom: 20px;
-}
-
-.timeline-marker {
-  position: absolute;
-  left: -35px;
-  top: 5px;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-}
-
-.timeline-content h6 {
-  margin-bottom: 5px;
-  font-weight: 600;
-}
-
-.timeline-content p {
-  margin-bottom: 5px;
-  color: #6c757d;
 }
 
 /* Enhanced loading states */
@@ -370,18 +392,10 @@
 /* Enhanced form validation */
 .was-validated .form-control:invalid {
   border-color: #dc3545;
-  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' width='12' height='12' fill='none' stroke='%23dc3545'%3e%3ccircle cx='6' cy='6' r='4.5'/%3e%3cpath d='M5.8 3.6h.4L6 6.5z'/%3e%3ccircle cx='6' cy='8.2' r='.6' fill='%23dc3545' stroke='none'/%3e%3c/svg%3e");
-  background-repeat: no-repeat;
-  background-position: right calc(0.375em + 0.1875rem) center;
-  background-size: calc(0.75em + 0.375rem) calc(0.75em + 0.375rem);
 }
 
 .was-validated .form-control:valid {
   border-color: #198754;
-  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3e%3cpath fill='%23198754' d='M2.3 6.73L.6 4.53c-.4-1.04.46-1.4 1.1-.8l1.1 1.4 3.4-3.8c.6-.63 1.6-.27 1.2.7l-4 4.6c-.43.5-.8.4-1.1.1z'/%3e%3c/svg%3e");
-  background-repeat: no-repeat;
-  background-position: right calc(0.375em + 0.1875rem) center;
-  background-size: calc(0.75em + 0.375rem) calc(0.75em + 0.375rem);
 }
 
 /* Enhanced accessibility */
@@ -438,7 +452,7 @@
   box-shadow: inset 0 0 0 9999px var(--bs-table-accent-bg);
 }
 
-/* Better modal animations */
+/* Enhanced modal animations */
 .modal.fade .modal-dialog {
   transition: transform 0.3s ease-out;
   transform: translate(0, -50px);
@@ -868,5 +882,307 @@
 .modal-body .row.g-3 > * {
   padding-right: 0.75rem;
   padding-left: 0.75rem;
+}
+
+/* Fix for nested modal z-index issues */
+.modal.show ~ .modal {
+  z-index: 1060;
+}
+
+.modal.show ~ .modal .modal-backdrop {
+  z-index: 1055;
+}
+
+/* Ensure dropdowns in modals work properly */
+.modal .dropdown-menu {
+  z-index: 2100;
+}
+
+/* Fix for Select2 in nested modals */
+.select2-container--open {
+  z-index: 9999999 !important;
+}
+
+.select2-dropdown {
+  z-index: 9999999 !important;
+}
+
+/* Enhanced Select2 result styling for purchase forms */
+.select2-result-badge {
+    display: inline-flex;
+    height: 21px;
+    vertical-align: middle;
+    font-size: 0.6rem;
+    line-height: 1.2;
+    padding: 3px 6px;
+    margin-left: 8px;
+    border-radius: 999px;
+    font-weight: 600;
+    text-transform: none;
+    white-space: nowrap;
+    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.06);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    align-items: center;
+}
+
+.select2-result-badge.available { 
+  background: #18bb6b; 
+  color: #fff; 
+  border-color: rgba(0,0,0,0.08); 
+}
+
+.select2-result-badge.sold { 
+  background: #dc3545; 
+  color: #fff; 
+  border-color: rgba(0,0,0,0.08); 
+}
+
+.select2-result-badge.cancelled { 
+  background: #6c757d; 
+  color: #fff; 
+  border-color: rgba(0,0,0,0.08); 
+}
+
+.select2-result-badge.completed { 
+  background: #0d6efd; 
+  color: #fff; 
+  border-color: rgba(0,0,0,0.08); 
+}
+
+.select2-result-badge.other {
+  background: #e2e3e5;
+  color: #6c757d;
+  border-color: rgba(0,0,0,0.08);
+}
+
+.select2-result--disabled .select2-result-badge {
+  opacity: 0.45;
+  filter: grayscale(10%);
+}
+
+.select2-result-item .select2-result-badge { 
+  margin-left: 10px; 
+}
+
+/* Fix Select2 arrow positioning */
+#viewClient-modal .select2-container .select2-selection__arrow { 
+  height: 36px !important; 
+  top: 0 !important; 
+}
+
+/* Ensure Select2 containers are properly sized */
+#viewClient-modal .select2-container .select2-selection--single,
+#viewClient-modal .select2-container--bootstrap-5 .select2-selection--single,
+#viewClient-modal .select2-container .select2-selection--multiple,
+#viewClient-modal .select2-container--bootstrap-5 .select2-selection--multiple {
+    height: 36px !important;
+    min-height: 36px !important;
+}
+
+#viewClient-modal .select2-container .select2-selection--single .select2-selection__rendered {
+  display: flex !important;
+  align-items: center !important;
+  line-height: 36px !important;
+  padding: 0 8px !important;
+}
+
+/* Special handling for nominee selects */
+#viewClient-modal .select2-container.select2-nominee-exclude .select2-selection__rendered,
+#viewClient-modal .select2-container.select2-nominee-exclude .select2-selection--multiple .select2-selection__rendered,
+#viewClient-modal .select2-container.select2-nominee-exclude .select2-selection--single .select2-selection__rendered {
+  align-items: normal !important;
+  line-height: 1.5 !important;
+  padding: 0 8px !important;
+}
+
+/* Ensure proper modal stacking */
+.modal {
+  --bs-modal-zindex: 1055;
+}
+
+.modal.show {
+  z-index: var(--bs-modal-zindex);
+}
+
+.modal-backdrop {
+  --bs-backdrop-zindex: 1050;
+  z-index: var(--bs-backdrop-zindex);
+}
+
+/* Fix for multiple modals */
+body.modal-open .modal:nth-of-type(even) {
+  z-index: 1056;
+}
+
+body.modal-open .modal:nth-of-type(even) + .modal-backdrop {
+  z-index: 1055;
+}
+
+/* Enhanced responsive modal sizing */
+@media (min-width: 576px) {
+  .modal-dialog {
+    max-width: 500px;
+    margin: 1.75rem auto;
+  }
+}
+
+@media (min-width: 992px) {
+  .modal-lg {
+    max-width: 800px;
+  }
+}
+
+@media (min-width: 1200px) {
+  .modal-xl {
+    max-width: 1140px;
+  }
+}
+
+/* Fix for modal content overflow */
+.modal-body {
+  max-height: calc(100vh - 200px);
+  overflow-y: auto;
+}
+
+/* Enhanced button states */
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Better form control styling in modals */
+.modal .form-control,
+.modal .form-select {
+  font-size: 0.9rem;
+}
+
+/* Enhanced table responsiveness */
+@media (max-width: 768px) {
+  .table-responsive {
+    font-size: 0.8rem;
+  }
+  
+  .table th,
+  .table td {
+    padding: 0.5rem 0.25rem;
+  }
+}
+
+/* Fix for Select2 search field focus */
+.select2-search--dropdown .select2-search__field:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+}
+
+/* Enhanced modal header styling */
+.modal-header.bg-gradient-primary,
+.modal-header.bg-gradient-success,
+.modal-header.bg-gradient-warning,
+.modal-header.bg-gradient-info {
+  border-bottom: none;
+}
+
+/* Better close button styling */
+.btn-close-white {
+  filter: invert(1) grayscale(100%) brightness(200%);
+}
+
+/* Enhanced card body padding */
+.card-body.p-3 {
+  padding: 1rem !important;
+}
+
+.card-body.p-4 {
+  padding: 1.5rem !important;
+}
+
+/* Fix for table header stickiness */
+.table thead th.sticky-top {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background-color: inherit;
+}
+
+/* Enhanced input focus states */
+.form-control:focus,
+.form-select:focus {
+  border-color: #667eea;
+  box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+  outline: 0;
+}
+
+/* Better modal dialog centering */
+.modal-dialog-centered {
+  display: flex;
+  align-items: center;
+  min-height: calc(100% - 1rem);
+}
+
+@media (min-width: 576px) {
+  .modal-dialog-centered {
+    min-height: calc(100% - 3.5rem);
+  }
+}
+
+/* Enhanced alert dismissible styling */
+.alert-dismissible .btn-close {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 2;
+  padding: 1.25rem 1rem;
+}
+
+/* Fix for nested modal backdrop issues */
+.modal-backdrop.fade {
+  opacity: 0;
+}
+
+.modal-backdrop.show {
+  opacity: 0.5;
+}
+
+/* Enhanced table striping */
+.table-striped > tbody > tr:nth-of-type(odd) > td,
+.table-striped > tbody > tr:nth-of-type(odd) > th {
+  background-color: rgba(0, 0, 0, 0.025);
+}
+
+/* Better form validation styling */
+.is-invalid {
+  border-color: #dc3545;
+  padding-right: calc(1.5em + 0.75rem);
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' width='12' height='12' fill='none' stroke='%23dc3545'%3e%3ccircle cx='6' cy='6' r='4.5'/%3e%3cpath d='M5.8 3.6h.4L6 6.5z'/%3e%3ccircle cx='6' cy='8.2' r='.6' fill='%23dc3545' stroke='none'/%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right calc(0.375em + 0.1875rem) center;
+  background-size: calc(0.75em + 0.375rem) calc(0.75em + 0.375rem);
+}
+
+.is-valid {
+  border-color: #198754;
+  padding-right: calc(1.5em + 0.75rem);
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3e%3cpath fill='%23198754' d='M2.3 6.73L.6 4.53c-.4-1.04.46-1.4 1.1-.8l1.1 1.4 3.4-3.8c.6-.63 1.6-.27 1.2.7l-4 4.6c-.43.5-.8.4-1.1.1z'/%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right calc(0.375em + 0.1875rem) center;
+  background-size: calc(0.75em + 0.375rem) calc(0.75em + 0.375rem);
+}
+
+/* Enhanced feedback styling */
+.invalid-feedback {
+  display: block;
+  width: 100%;
+  margin-top: 0.25rem;
+  font-size: 0.875em;
+  color: #dc3545;
+}
+
+.valid-feedback {
+  display: block;
+  width: 100%;
+  margin-top: 0.25rem;
+  font-size: 0.875em;
+  color: #198754;
 }
 </style>

@@ -153,7 +153,6 @@ jQuery(function($){
     // Filter change handlers
     $('#show_paid_only, #show_pending_only').off('change').on('change', function(){
       if ($(this).prop('checked')) {
-        // Uncheck the other filter
         var otherId = $(this).attr('id') === 'show_paid_only' ? '#show_pending_only' : '#show_paid_only';
         $(otherId).prop('checked', false);
       }
@@ -276,7 +275,6 @@ jQuery(function($){
     printWindow.document.write(printDocument);
     printWindow.document.close();
     
-    // Wait for content to load then print
     setTimeout(function(){
       printWindow.focus();
       printWindow.print();

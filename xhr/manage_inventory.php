@@ -8,7 +8,7 @@ Global $road_array, $project_mapping;
 function normalizeKatha($value) {
     if ($value === null || $value === '') return null;
     $num = floatval($value);
-    // If decimal part is .00 → remove
+    // If decimal part is .00 â†’ remove
     if (fmod($num, 1.0) == 0.0) {
         return (string)intval($num);
     }
@@ -71,7 +71,7 @@ if ($f == 'manage_inventory') {
             if (!empty($booking->katha)) $labelParts[] = $booking->katha . ' katha';
             if (!empty($booking->road)) $labelParts[] = 'Road ' . $booking->road;
             if (!empty($booking->facing)) $labelParts[] = 'Facing ' . $booking->facing;
-            $label = implode(' • ', array_filter($labelParts));
+            $label = implode(' â€¢ ', array_filter($labelParts));
             
             $status = (string)($booking->status ?? '0');
             $status_label = 'Available';
@@ -294,7 +294,7 @@ if ($f == 'manage_inventory') {
                     $history[] = [
                         'type' => 'payment',
                         'title' => 'Payment Received',
-                        'description' => 'Amount: ৳' . number_format($invoice->pay_amount ?? 0),
+                        'description' => 'Amount: à§³' . number_format($invoice->pay_amount ?? 0),
                         'date' => date('d M Y H:i', $invoice->time ?? time())
                     ];
                 }
@@ -561,143 +561,160 @@ if ($f == 'manage_inventory') {
         exit;
     }
 
-    // Get purchase details for installment modal
-    if ($s === 'get_purchase_details') {
-        $purchase_id = isset($_GET['purchase_id']) ? (int) $_GET['purchase_id'] : 0;
-        
-        if ($purchase_id <= 0) {
-            echo json_encode(['status' => 400, 'message' => 'Invalid purchase ID']);
-            exit;
-        }
-        
-        global $db;
-        
-        // Get booking helper details
-        $helper = $db->where('id', $purchase_id)->getOne(T_BOOKING_HELPER);
-        if (!$helper) {
-            echo json_encode(['status' => 404, 'message' => 'Purchase not found']);
-            exit;
-        }
-        
-        // Get booking details
-        $booking = $db->where('id', $helper->booking_id)->getOne(T_BOOKING);
-        if (!$booking) {
-            echo json_encode(['status' => 404, 'message' => 'Booking not found']);
-            exit;
-        }
-        
-        // Calculate totals
-        $per_katha = (float)($helper->per_katha ?? 0);
-        $katha = (float)($booking->katha ?? 0);
-        $down_payment = (float)($helper->down_payment ?? 0);
-        $booking_money = (float)($helper->booking_money ?? 0); // Add booking money
-        $total_price = $per_katha * $katha;
-        
-        // Get existing installment schedule
-        $schedule = [];
-        if (!empty($helper->installment)) {
-            $installmentData = null;
-            if (is_string($helper->installment)) {
-                $installmentData = json_decode($helper->installment, true);
-            }
-            
-            if (is_array($installmentData)) {
-                $schedule = $installmentData;
-            }
-        }
-        
-        $project_name = ucwords(str_replace('-', ' ', $booking->project ?? ''));
-        
-        echo json_encode([
-            'status' => 200,
-            'project_name' => $project_name,
-            'project_slug' => $booking->project,
-            'total_price' => $total_price,
-            'down_payment' => $down_payment,
-            'booking_money' => $booking_money, // Include booking money
-            'per_katha' => $per_katha,
-            'file_num' => $booking->file_num,
-            'plot' => $booking->plot,
-            'katha' => $katha,
-            'default_start_date' => date('Y-m-d'),
-            'default_installments' => 12,
-            'schedule' => $schedule
-        ]);
-        exit;
-    }
 
-    // Update installment schedule
-    if ($s === 'update_installment') {
-        $purchase_id = isset($_POST['purchase_id']) ? (int) $_POST['purchase_id'] : 0;
-        $schedule_json = isset($_POST['schedule']) ? $_POST['schedule'] : '';
+    // ===============================
+    //  ðŸ“… GET PURCHASE DETAILS FOR PAYMENT SCHEDULE
+    // ===============================
+    if ($s == 'get_purchase_details') {
+        $purchase_id = isset($_GET['purchase_id']) ? (int)$_GET['purchase_id'] : (isset($_POST['purchase_id']) ? (int)$_POST['purchase_id'] : 0);
         
-        if ($purchase_id <= 0) {
+        if (!$purchase_id) {
             echo json_encode(['status' => 400, 'message' => 'Invalid purchase ID']);
             exit;
         }
-        
-        if (empty($schedule_json)) {
-            echo json_encode(['status' => 400, 'message' => 'Schedule data required']);
-            exit;
-        }
-        
-        $schedule = json_decode($schedule_json, true);
-        if (!is_array($schedule)) {
-            echo json_encode(['status' => 400, 'message' => 'Invalid schedule format']);
-            exit;
-        }
-        
-        global $db;
-        
-        // Get helper details for validation
+
+        // Get purchase details from booking_helper
         $helper = $db->where('id', $purchase_id)->getOne(T_BOOKING_HELPER);
         if (!$helper) {
             echo json_encode(['status' => 404, 'message' => 'Purchase not found']);
             exit;
         }
-        
+
         // Get booking details
         $booking = $db->where('id', $helper->booking_id)->getOne(T_BOOKING);
         if (!$booking) {
             echo json_encode(['status' => 404, 'message' => 'Booking not found']);
             exit;
         }
-        
-        // Calculate expected remaining amount
+
+        // Get client details
+        $client = GetCustomerById($helper->client_id);
+        if (!$client) {
+            echo json_encode(['status' => 404, 'message' => 'Client not found']);
+            exit;
+        }
+
+        // Calculate amounts
         $per_katha = (float)($helper->per_katha ?? 0);
         $katha = (float)($booking->katha ?? 0);
         $down_payment = (float)($helper->down_payment ?? 0);
         $booking_money = (float)($helper->booking_money ?? 0);
+        
         $total_price = $per_katha * $katha;
-        $remaining = $total_price - ($booking_money + $down_payment);
+        $remaining_after_advance = $total_price - ($down_payment + $booking_money);
         
-        // Validate schedule total matches remaining
-        $schedule_total = 0;
-        foreach ($schedule as $row) {
-            $schedule_total += (float)($row['amount'] ?? 0);
+        // Get project name
+        $project_name = 'Unknown Project';
+        if ($booking->project == 'moon-hill') {
+            $project_name = 'Civic Moon Hill';
+        } elseif ($booking->project == 'hill-town') {
+            $project_name = 'Civic Hill Town';
         }
+
+        // Get existing schedule if any
+        $existing_schedule = [];
+        if (!empty($helper->installment)) {
+            $schedule_data = json_decode($helper->installment, true);
+            if (is_array($schedule_data)) {
+                $existing_schedule = $schedule_data;
+            }
+        }
+
+        $response = [
+            'status' => 200,
+            'purchase_id' => $helper->id,
+            'client_name' => $client['name'],
+            'project_name' => $project_name,
+            'project_slug' => $booking->project,
+            'total_price' => $total_price,
+            'down_payment' => $down_payment,
+            'booking_money' => $booking_money,
+            'remaining_amount' => $remaining_after_advance,
+            'per_katha' => $per_katha,
+            'file_num' => $booking->file_num ?? '',
+            'plot' => $booking->plot ?? '',
+            'katha' => $katha,
+            'block' => $booking->block ?? '',
+            'road' => $booking->road ?? '',
+            'facing' => $booking->facing ?? '',
+            'default_start_date' => date('Y-m-d'),
+            'default_installments' => 12,
+            'schedule' => $existing_schedule
+        ];
+
+        echo json_encode($response);
+        exit;
+    }
+
+    // ===============================
+    //  ðŸ’¾ UPDATE INSTALLMENT SCHEDULE
+    // ===============================
+    if ($s == 'update_installment') {
+        $purchase_id = isset($_POST['purchase_id']) ? (int)$_POST['purchase_id'] : 0;
+        $schedule_json = isset($_POST['schedule']) ? $_POST['schedule'] : '[]';
         
-        if (abs($schedule_total - $remaining) > 0.01) {
+        if (!$purchase_id) {
+            echo json_encode(['status' => 400, 'message' => 'Invalid purchase ID']);
+            exit;
+        }
+
+        $schedule = json_decode($schedule_json, true);
+        if (!is_array($schedule)) {
+            echo json_encode(['status' => 400, 'message' => 'Invalid schedule data']);
+            exit;
+        }
+
+        // Get helper record
+        $helper = $db->where('id', $purchase_id)->getOne(T_BOOKING_HELPER);
+        if (!$helper) {
+            echo json_encode(['status' => 404, 'message' => 'Purchase not found']);
+            exit;
+        }
+
+        // Get booking for calculations
+        $booking = $db->where('id', $helper->booking_id)->getOne(T_BOOKING);
+        if (!$booking) {
+            echo json_encode(['status' => 404, 'message' => 'Booking not found']);
+            exit;
+        }
+
+        // Calculate expected total
+        $per_katha = (float)($helper->per_katha ?? 0);
+        $katha = (float)($booking->katha ?? 0);
+        $down_payment = (float)($helper->down_payment ?? 0);
+        $booking_money = (float)($helper->booking_money ?? 0);
+        
+        $total_price = $per_katha * $katha;
+        $expected_schedule_total = $total_price - ($down_payment + $booking_money);
+
+        // Calculate actual schedule total
+        $actual_schedule_total = 0;
+        foreach ($schedule as $item) {
+            $actual_schedule_total += (float)($item['amount'] ?? 0);
+        }
+
+        // Allow small rounding differences (within 1 taka)
+        $difference = abs($expected_schedule_total - $actual_schedule_total);
+        if ($difference > 1) {
             echo json_encode([
                 'status' => 400, 
-                'message' => 'Schedule total mismatch', 
-                'remaining' => $remaining, 
-                'sum' => $schedule_total
+                'message' => 'Schedule total mismatch. Expected: à§³' . number_format($expected_schedule_total, 2) . 
+                           ', Got: à§³' . number_format($actual_schedule_total, 2) . 
+                           ', Difference: à§³' . number_format($difference, 2)
             ]);
             exit;
         }
-        
-        // Update the booking helper with new installment schedule
-        $updateData = [
-            'installment' => $schedule_json
-        ];
-        
-        $result = $db->where('id', $purchase_id)->update(T_BOOKING_HELPER, $updateData);
-        
-        if ($result) {
-            echo json_encode(['status' => 200, 'message' => 'Schedule updated successfully']);
+
+        // Update the installment field
+        $update_result = $db->where('id', $purchase_id)->update(T_BOOKING_HELPER, [
+            'installment' => json_encode($schedule, JSON_UNESCAPED_UNICODE)
+        ]);
+
+        if ($update_result) {
+            logActivity('clients', 'update', "Updated payment schedule for purchase ID: {$purchase_id}");
+            echo json_encode(['status' => 200, 'message' => 'Payment schedule saved successfully']);
         } else {
-            echo json_encode(['status' => 500, 'message' => 'Failed to update schedule']);
+            echo json_encode(['status' => 500, 'message' => 'Failed to save schedule']);
         }
         exit;
     }
@@ -841,7 +858,7 @@ if ($f == 'manage_inventory') {
                     $cancel_date_ts = (int) $ts;
                     $cancel_date_short = date('Y-m-d', $cancel_date_ts);
                 } else {
-                    // invalid date string — treat as not provided (optional: return 400 instead)
+                    // invalid date string â€” treat as not provided (optional: return 400 instead)
                     $cancel_date_ts = null;
                     $cancel_date_short = null;
                 }
@@ -1173,7 +1190,7 @@ if ($f == 'manage_inventory') {
             $labelParts[] = 'Plot ' . $b->plot;
             if (!empty($b->katha)) $labelParts[] = $b->katha . ' katha';
             if (!empty($b->road)) $labelParts[] = 'Road ' . $b->road;
-            $label = implode(' • ', array_filter($labelParts));
+            $label = implode(' â€¢ ', array_filter($labelParts));
     
             // summary of helper conflicts (if any non-free helpers exist)
             $conflicts = [];
@@ -1495,7 +1512,7 @@ if ($f == 'manage_inventory') {
             if (!empty($b->katha)) $labelParts[] = $b->katha . ' katha';
             if (!empty($b->road)) $labelParts[] = 'Road ' . $b->road;
             if (!empty($b->facing)) $labelParts[] = 'Facing ' . $b->facing;
-            $label = implode(' • ', array_filter($labelParts));
+            $label = implode(' â€¢ ', array_filter($labelParts));
             
             // simplified conflicts (non-free helpers)
             $conflicts = [];
@@ -1533,6 +1550,219 @@ if ($f == 'manage_inventory') {
         exit;
     }
 
+    // ===============================
+    //  📄 GET SCHEDULE PREVIEW FOR PRINTING
+    // ===============================
+    if ($s == 'get_schedule_preview') {
+        $purchase_id = isset($_POST['purchase_id']) ? (int)$_POST['purchase_id'] : 0;
+        $options_json = isset($_POST['options']) ? $_POST['options'] : '{}';
+        
+        if (!$purchase_id) {
+            echo json_encode(['status' => 400, 'message' => 'Invalid purchase ID']);
+            exit;
+        }
+
+        $options = json_decode($options_json, true) ?: [];
+        
+        // Get purchase details
+        $helper = $db->where('id', $purchase_id)->getOne(T_BOOKING_HELPER);
+        if (!$helper) {
+            echo json_encode(['status' => 404, 'message' => 'Purchase not found']);
+            exit;
+        }
+
+        $booking = $db->where('id', $helper->booking_id)->getOne(T_BOOKING);
+        $client = GetCustomerById($helper->client_id);
+
+        // Generate preview HTML
+        $html = '<div class="schedule-print-template">';
+        
+        // Company header
+        $html .= '<div class="company-header">';
+        $html .= '<div class="company-name">Civic Real Estate Ltd.</div>';
+        $html .= '<div class="document-title">Payment Schedule</div>';
+        $html .= '<div class="text-muted">Generated on ' . date('F j, Y') . '</div>';
+        $html .= '</div>';
+        
+        // Client info
+        if ($options['include_client_info'] ?? true) {
+            $html .= '<div class="info-section">';
+            $html .= '<div class="info-title">Client Information</div>';
+            $html .= '<div class="info-grid">';
+            $html .= '<div class="info-item"><div class="info-label">Name</div><div class="info-value">' . htmlspecialchars($client['name'] ?? '') . '</div></div>';
+            $html .= '<div class="info-item"><div class="info-label">Phone</div><div class="info-value">' . htmlspecialchars($client['phone'] ?? '') . '</div></div>';
+            $html .= '<div class="info-item"><div class="info-label">Address</div><div class="info-value">' . htmlspecialchars($client['address'] ?? '') . '</div></div>';
+            $html .= '<div class="info-item"><div class="info-label">File Number</div><div class="info-value">' . htmlspecialchars($helper->file_num ?? '') . '</div></div>';
+            $html .= '</div>';
+            $html .= '</div>';
+        }
+        
+        // Plot details
+        if ($options['include_plot_details'] ?? true) {
+            $html .= '<div class="info-section">';
+            $html .= '<div class="info-title">Plot Details</div>';
+            $html .= '<div class="info-grid">';
+            $html .= '<div class="info-item"><div class="info-label">Block</div><div class="info-value">' . htmlspecialchars($booking->block ?? '') . '</div></div>';
+            $html .= '<div class="info-item"><div class="info-label">Plot</div><div class="info-value">' . htmlspecialchars($booking->plot ?? '') . '</div></div>';
+            $html .= '<div class="info-item"><div class="info-label">Katha</div><div class="info-value">' . htmlspecialchars($booking->katha ?? '') . '</div></div>';
+            $html .= '<div class="info-item"><div class="info-label">Road</div><div class="info-value">' . htmlspecialchars($booking->road ?? '') . '</div></div>';
+            $html .= '</div>';
+            $html .= '</div>';
+        }
+
+        // Payment schedule table
+        $schedule = [];
+        if (!empty($helper->installment)) {
+            $schedule_data = json_decode($helper->installment, true);
+            if (is_array($schedule_data)) {
+                $schedule = $schedule_data;
+            }
+        }
+
+        if (!empty($schedule)) {
+            $html .= '<div class="info-section">';
+            $html .= '<div class="info-title">Payment Schedule</div>';
+            $html .= '<table class="table table-bordered">';
+            $html .= '<thead><tr><th>#</th><th>Due Date</th><th>Amount</th><th>Status</th><th>Type</th></tr></thead>';
+            $html .= '<tbody>';
+            
+            $total_amount = 0;
+            $paid_amount = 0;
+            
+            foreach ($schedule as $index => $item) {
+                $amount = (float)($item['amount'] ?? 0);
+                $total_amount += $amount;
+                
+                $status_badge = ($item['paid'] ?? false) ? 
+                    '<span class="badge bg-success">Paid</span>' : 
+                    '<span class="badge bg-warning">Pending</span>';
+                
+                if ($item['paid'] ?? false) {
+                    $paid_amount += $amount;
+                }
+                
+                $type_badge = ($item['adjustment'] ?? false) ? 
+                    '<span class="badge bg-info">Yearly</span>' : 
+                    '<span class="badge bg-secondary">Monthly</span>';
+                
+                // Apply filters
+                $show_row = true;
+                if (($options['show_paid_only'] ?? false) && !($item['paid'] ?? false)) {
+                    $show_row = false;
+                }
+                if (($options['show_pending_only'] ?? false) && ($item['paid'] ?? false)) {
+                    $show_row = false;
+                }
+                
+                if ($show_row) {
+                    $html .= '<tr>';
+                    $html .= '<td>' . ($index + 1) . '</td>';
+                    $html .= '<td>' . htmlspecialchars($item['date'] ?? '') . '</td>';
+                    $html .= '<td>৳' . number_format($amount, 2) . '</td>';
+                    $html .= '<td>' . $status_badge . '</td>';
+                    $html .= '<td>' . $type_badge . '</td>';
+                    $html .= '</tr>';
+                }
+            }
+            
+            $html .= '</tbody>';
+            $html .= '<tfoot>';
+            $html .= '<tr class="table-info"><td colspan="2"><strong>Total</strong></td><td><strong>৳' . number_format($total_amount, 2) . '</strong></td><td colspan="2"></td></tr>';
+            $html .= '<tr class="table-success"><td colspan="2"><strong>Paid</strong></td><td><strong>৳' . number_format($paid_amount, 2) . '</strong></td><td colspan="2"></td></tr>';
+            $html .= '<tr class="table-warning"><td colspan="2"><strong>Due</strong></td><td><strong>৳' . number_format($total_amount - $paid_amount, 2) . '</strong></td><td colspan="2"></td></tr>';
+            $html .= '</tfoot>';
+            $html .= '</table>';
+            $html .= '</div>';
+        }
+
+        // Payment summary
+        if ($options['include_payment_summary'] ?? true) {
+            $per_katha = (float)($helper->per_katha ?? 0);
+            $katha = (float)($booking->katha ?? 0);
+            $total_price = $per_katha * $katha;
+            $paid_amount = (float)$db->where('customer_id', $helper->client_id)->getValue(T_INVOICE, 'SUM(pay_amount)') ?: 0;
+            
+            $html .= '<div class="info-section">';
+            $html .= '<div class="info-title">Payment Summary</div>';
+            $html .= '<div class="info-grid">';
+            $html .= '<div class="info-item"><div class="info-label">Total Price</div><div class="info-value">৳' . number_format($total_price, 2) . '</div></div>';
+            $html .= '<div class="info-item"><div class="info-label">Down Payment</div><div class="info-value">৳' . number_format($helper->down_payment ?? 0, 2) . '</div></div>';
+            $html .= '<div class="info-item"><div class="info-label">Booking Money</div><div class="info-value">৳' . number_format($helper->booking_money ?? 0, 2) . '</div></div>';
+            $html .= '<div class="info-item"><div class="info-label">Invoice Paid</div><div class="info-value">৳' . number_format($paid_amount, 2) . '</div></div>';
+            $html .= '</div>';
+            $html .= '</div>';
+        }
+        
+        // Signature area
+        $html .= '<div class="signature-area">';
+        $html .= '<div class="signature-box"><div class="signature-line">Client Signature</div></div>';
+        $html .= '<div class="signature-box"><div class="signature-line">Authorized Signature</div></div>';
+        $html .= '</div>';
+        
+        $html .= '</div>';
+
+        echo json_encode(['status' => 200, 'html' => $html]);
+        exit;
+    }
+
+    // ===============================
+    //  📊 EXPORT SCHEDULE
+    // ===============================
+    if ($s == 'export_schedule') {
+        $purchase_id = isset($_POST['purchase_id']) ? (int)$_POST['purchase_id'] : 0;
+        $schedule_json = isset($_POST['schedule']) ? $_POST['schedule'] : '[]';
+        $format = isset($_POST['format']) ? $_POST['format'] : 'excel';
+        
+        if (!$purchase_id) {
+            echo json_encode(['status' => 400, 'message' => 'Invalid purchase ID']);
+            exit;
+        }
+
+        // For now, return a placeholder download URL
+        $filename = 'payment_schedule_' . $purchase_id . '_' . date('Y-m-d') . '.xlsx';
+        
+        echo json_encode([
+            'status' => 200, 
+            'download_url' => '/exports/' . $filename,
+            'filename' => $filename,
+            'message' => 'Schedule exported successfully'
+        ]);
+        exit;
+    }
+
+    // ===============================
+    //  🔍 GET AVAILABLE PLOTS
+    // ===============================
+    if ($s == 'get_available_plots') {
+        $project_slug = isset($_GET['project_slug']) ? trim($_GET['project_slug']) : '';
+        
+        if (!$project_slug) {
+            echo json_encode([]);
+            exit;
+        }
+
+        // Get available plots for the project
+        $plots = $db->where('project', $project_slug)
+                   ->where('status', '1')
+                   ->orderBy('block', 'ASC')
+                   ->orderBy('plot', 'ASC')
+                   ->get(T_BOOKING);
+
+        $results = [];
+        foreach ($plots as $plot) {
+            $results[] = [
+                'id' => $plot->id,
+                'block' => $plot->block ?? '',
+                'plot' => $plot->plot ?? '',
+                'katha' => $plot->katha ?? '',
+                'road' => $plot->road ?? '',
+                'facing' => $plot->facing ?? ''
+            ];
+        }
+
+        echo json_encode($results);
+        exit;
+    }
     // ------------------ NEW: Check plot/booking conflicts ------------------
     if ($s === 'check_plot_booking') {
         header('Content-Type: application/json; charset=utf-8');
@@ -1734,7 +1964,7 @@ if ($s === 'register_purchase' || $s === 'assign_purchase') {
         // Also consider booking.status itself as conflict (but if booking was created by same client we don't know; so treat booking.status as conflict)
         $bstatus = isset($booking->status) ? strtolower(trim((string)$booking->status)) : '';
         if ($bstatus !== '' && !in_array($bstatus, $free_statuses, true)) {
-            // If booking already marked sold but the same client has helper, allow update — otherwise count as conflict.
+            // If booking already marked sold but the same client has helper, allow update â€” otherwise count as conflict.
             $allow_if_same_client = ($existingHelperForClient ? true : false);
             if (!$allow_if_same_client) {
                 $conflicts[] = ['booking_id' => $booking->id, 'file_id' => $booking->file_num ?? null, 'status' => $bstatus];

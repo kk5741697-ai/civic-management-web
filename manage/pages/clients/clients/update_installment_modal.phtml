@@ -107,12 +107,12 @@
                 <label class="form-label fw-medium">Mode of Payment</label>
                 <select id="ui_mode" class="form-control">
                   <option value="1">Full Payment</option>
-                  <option value="2">Installment</option>
+                  <option value="2" selected>Installment</option>
                 </select>
               </div>
 
               <!-- installment-specific controls -->
-              <div id="ui_installment_controls" class="col-md-9 d-none">
+              <div id="ui_installment_controls" class="col-md-9">
                 <div class="row g-3">
                   <div class="col-md-2">
                     <label class="form-label fw-medium">Installments</label>
@@ -132,13 +132,13 @@
 
                   <div class="col-md-3">
                     <label class="form-label fw-medium">Monthly Amount <small class="text-muted">(optional)</small></label>
-                    <input type="number" id="ui_monthly_amount" class="form-control" placeholder="Auto-calc if empty">
+                    <input type="number" id="ui_monthly_amount" class="form-control" placeholder="Auto-calc if empty" step="0.01">
                     <small class="text-muted">If empty, auto-calculated based on remaining amount after yearly adjustments.</small>
                   </div>
 
                   <div class="col-md-4">
                     <label class="form-label fw-medium">Yearly Adjustment <small class="text-muted">(optional)</small></label>
-                    <input type="number" id="ui_yearly_adjustment" class="form-control" placeholder="e.g. 100000">
+                    <input type="number" id="ui_yearly_adjustment" class="form-control" placeholder="e.g. 100000" step="0.01">
                     <small class="text-muted">Fixed amount added once per year (not added to monthly).</small>
                   </div>
                 </div>
@@ -304,7 +304,7 @@ jQuery(function($){
     if (v === undefined || v === null) v = 0;
     return Number(Math.round(v * 100) / 100).toLocaleString('en-US', {
       minimumFractionDigits: 0,
-      maximumFractionDigits: 1
+      maximumFractionDigits: 2
     });
   }
 
@@ -367,6 +367,7 @@ jQuery(function($){
           item.payment_method = 'cash';
         });
         renderScheduleTable();
+        updateTotals();
       }
     });
 
@@ -380,6 +381,7 @@ jQuery(function($){
           delete item.payment_notes;
         });
         renderScheduleTable();
+        updateTotals();
       }
     });
 
@@ -426,14 +428,26 @@ jQuery(function($){
     
     $.get(Wo_Ajax_Requests_File() + '?f=manage_inventory&s=get_purchase_details&purchase_id=' + purchaseId)
       .done(function(response){
-        var data = typeof response === 'string' ? JSON.parse(response) : response;
-        
-        if (data && data.purchase_id) {
-          currentPurchaseData = data;
-          populatePurchaseData(data);
-          loadExistingSchedule(purchaseId);
+      var response = typeof response === 'string' ? JSON.parse(response) : response;
+
+        if (response && response.status == 200) {
+          currentPurchaseData = response;
+          populatePurchaseData(response);
+          
+          // Load existing schedule if available
+          if (response.schedule && response.schedule.length > 0) {
+            currentSchedule = response.schedule;
+            renderScheduleTable();
+            updateTotals();
+            $('#ui_change_schedule').show();
+            $('#ui_configuration_section').hide();
+          } else {
+            currentSchedule = [];
+            $('#ui_change_schedule').hide();
+            $('#ui_configuration_section').show();
+          }
         } else {
-          alert('Failed to load purchase data: ' + (data.message || 'Unknown error'));
+          alert('Failed to load purchase data: ' + (response.message || 'Unknown error'));
         }
       })
       .fail(function(){
@@ -445,37 +459,14 @@ jQuery(function($){
     $('#ui_project_name').text(data.project_name || 'Unknown Project');
     $('#ui_total_price').text(fmtMoney(data.total_price || 0));
     $('#ui_down_payment').text(fmtMoney(data.down_payment || 0));
+    $('#ui_booking_money').text(fmtMoney(data.booking_money || 0));
     
-    var remaining = (data.total_price || 0) - (data.down_payment || 0);
+    var remaining = (data.total_price || 0) - (data.down_payment || 0) - (data.booking_money || 0);
     $('#ui_remaining').text(fmtMoney(remaining));
     
     // Set default values
     $('#ui_start_date').val(data.default_start_date || new Date().toISOString().slice(0, 10));
-    
-    // Show change schedule button if there's existing data
-    if (data.schedule && data.schedule.length > 0) {
-      $('#ui_change_schedule').show();
-      $('#ui_configuration_section').hide();
-    } else {
-      $('#ui_change_schedule').hide();
-      $('#ui_configuration_section').show();
-    }
-  }
-
-  function loadExistingSchedule(purchaseId) {
-    $.get(Wo_Ajax_Requests_File() + '?f=manage_inventory&s=get_payment_schedule&id=' + purchaseId)
-      .done(function(response){
-        var data = typeof response === 'string' ? JSON.parse(response) : response;
-        
-        if (data && data.status === 200) {
-          currentSchedule = data.schedule || [];
-          renderScheduleTable();
-          updateTotals();
-        }
-      })
-      .fail(function(){
-        console.warn('Failed to load existing schedule');
-      });
+    $('#ui_installments').val(data.default_installments || 12);
   }
 
   function generateSchedule() {
@@ -493,13 +484,17 @@ jQuery(function($){
     }
   }
 
+
+
   function generateFullPaymentSchedule() {
-    var remaining = (currentPurchaseData.total_price || 0) - (currentPurchaseData.down_payment || 0);
+    var remaining = (currentPurchaseData.total_price || 0) - 
+                   (currentPurchaseData.down_payment || 0) - 
+                   (currentPurchaseData.booking_money || 0);
     var startDate = $('#ui_start_date').val() || new Date().toISOString().slice(0, 10);
     
     currentSchedule = [{
       date: startDate,
-      amount: remaining,
+      amount: Math.round(remaining * 100) / 100,
       adjustment: false,
       paid: false
     }];
@@ -516,7 +511,9 @@ jQuery(function($){
     var startDate = $('#ui_start_date').val() || new Date().toISOString().slice(0, 10);
     var startOption = $('#ui_start_option').val();
     
-    var remaining = (currentPurchaseData.total_price || 0) - (currentPurchaseData.down_payment || 0);
+    var remaining = (currentPurchaseData.total_price || 0) - 
+                   (currentPurchaseData.down_payment || 0) - 
+                   (currentPurchaseData.booking_money || 0);
     
     currentSchedule = [];
     var currentDate = new Date(startDate);
